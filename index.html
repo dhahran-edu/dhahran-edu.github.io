@@ -800,6 +800,7 @@ select.input { cursor:pointer; }
     <button class="school-tab" onclick="switchSchoolTab('care')">⚠️ الأولى بالرعاية</button>
     <button class="school-tab" onclick="switchSchoolTab('ranking')">🏆 ترتيب الفصول</button>
     <button class="school-tab" onclick="switchSchoolTab('bulkprint')">🖨️ طباعة جماعية</button>
+    <button class="school-tab" onclick="switchSchoolTab('interventions')">📋 سجل الإجراءات</button>
   </div>
 
   <div class="main-content">
@@ -934,21 +935,71 @@ select.input { cursor:pointer; }
           </div>
         </div>
       </div>
+
+      <!-- تحليل بحسب المعلم -->
+      <div class="card" style="margin-top:20px;">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div class="card-title">👨‍🏫 تحليل النتائج بحسب المعلم</div>
+          <select id="teacher-analysis-select" class="input" style="width:220px;padding:7px 12px;" onchange="renderTeacherAnalysis()">
+            <option value="">اختر المعلم</option>
+          </select>
+        </div>
+        <div class="card-body">
+          <div id="teacher-analysis-content">
+            <div style="text-align:center;padding:30px;color:var(--text-muted);font-size:0.9rem;">اختر معلماً لعرض تحليل نتائجه</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Care Tab -->
     <div id="tab-care" class="school-tab-content">
-      <div class="alert alert-warning">⚠️ الطلاب الموضحون أدناه حصلوا على أقل من 50% في مادة واحدة أو أكثر</div>
-      <div class="care-filters" id="care-filters"></div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;align-items:end;">
+            <div>
+              <div class="input-label">الصف</div>
+              <select id="care-grade" class="input" onchange="onCareFilterChange()">
+                <option value="">كل الصفوف</option>
+              </select>
+            </div>
+            <div>
+              <div class="input-label">الفصل</div>
+              <select id="care-class" class="input" onchange="onCareFilterChange()">
+                <option value="">كل الفصول</option>
+              </select>
+            </div>
+            <div>
+              <div class="input-label">المادة</div>
+              <select id="care-subject" class="input" onchange="onCareFilterChange()">
+                <option value="">كل المواد</option>
+              </select>
+            </div>
+            <div>
+              <div class="input-label">المعلم</div>
+              <select id="care-teacher" class="input" onchange="onCareFilterChange()">
+                <option value="">كل المعلمين</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
-        <div class="card-header">
-          <div class="card-title">⚠️ قائمة الطلاب الأولى بالرعاية</div>
-          <span id="care-count" style="color:var(--red);font-size:0.85rem;font-weight:700;"></span>
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="card-title">⚠️ قائمة الطلاب الأولى بالرعاية</div>
+            <span id="care-count" style="color:var(--red);font-size:0.85rem;font-weight:700;"></span>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline" style="font-size:0.82rem;padding:7px 14px;" onclick="printCareTable()">🖨️ طباعة</button>
+            <button class="btn btn-primary" style="font-size:0.82rem;padding:7px 14px;background:linear-gradient(135deg,#dc2626,#9333ea);" onclick="exportCarePDF()">📥 تصدير PDF</button>
+          </div>
         </div>
         <div class="card-body" style="padding:0;">
           <div class="table-wrap">
             <table>
-              <thead><tr><th>#</th><th>الاسم</th><th>الصف</th><th>الفصل</th><th>المواد الضعيفة</th><th>عدد المواد الضعيفة</th><th>النسبة الكلية</th></tr></thead>
+              <thead><tr><th>#</th><th>الاسم</th><th>الصف</th><th>الفصل</th><th>المواد</th><th>عدد المواد</th><th>النسبة الكلية</th></tr></thead>
               <tbody id="care-tbody"></tbody>
             </table>
           </div>
@@ -1049,6 +1100,126 @@ select.input { cursor:pointer; }
         </div>
       </div>
 
+    </div>
+
+    <!-- سجل الإجراءات -->
+    <div id="tab-interventions" class="school-tab-content">
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><div class="card-title">➕ إضافة إجراء جديد</div></div>
+        <div class="card-body">
+          <!-- الخطوة 1: الصف والفصل والمادة -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;margin-bottom:14px;">
+            <div>
+              <div class="input-label">1️⃣ الصف</div>
+              <select id="int-grade" class="input" onchange="onIntGradeChange()">
+                <option value="">اختر الصف</option>
+                <option value="الأول الثانوي">الأول الثانوي</option>
+                <option value="الثاني الثانوي">الثاني الثانوي</option>
+                <option value="الثالث الثانوي">الثالث الثانوي</option>
+              </select>
+            </div>
+            <div>
+              <div class="input-label">2️⃣ الفصل</div>
+              <select id="int-class" class="input" onchange="onIntClassChange()">
+                <option value="">اختر الفصل</option>
+              </select>
+            </div>
+            <div>
+              <div class="input-label">3️⃣ المادة</div>
+              <select id="int-subject" class="input" onchange="onIntSubjectChange()">
+                <option value="">اختر المادة</option>
+              </select>
+            </div>
+            <div>
+              <div class="input-label">4️⃣ الطالب</div>
+              <select id="int-student" class="input" onchange="onIntStudentChange()">
+                <option value="">— الأولى بالرعاية —</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- معلومات الطالب المختار -->
+          <div id="int-student-info" style="display:none;background:rgba(220,38,38,0.07);border:1px solid rgba(220,38,38,0.2);border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:0.85rem;">
+            <span id="int-student-info-text"></span>
+          </div>
+
+          <!-- بقية النموذج -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px;">
+            <div>
+              <div class="input-label">اسم المعلم / المرشد</div>
+              <select id="int-teacher" class="input">
+                <option value="">اختر المعلم</option>
+              </select>
+            </div>
+            <div>
+              <div class="input-label">نوع الإجراء</div>
+              <select id="int-type" class="input">
+                <option value="اتصال ولي الأمر">📞 اتصال ولي الأمر</option>
+                <option value="استدعاء ولي الأمر">👥 استدعاء ولي الأمر</option>
+                <option value="جلسة إرشاد فردية">🗣️ جلسة إرشاد فردية</option>
+                <option value="خطة دعم أكاديمي">📚 خطة دعم أكاديمي</option>
+                <option value="تحويل للمرشد الطلابي">🔄 تحويل للمرشد الطلابي</option>
+                <option value="متابعة دورية">👁️ متابعة دورية</option>
+                <option value="إجراء آخر">✏️ إجراء آخر</option>
+              </select>
+            </div>
+            <div>
+              <div class="input-label">تاريخ الإجراء</div>
+              <input id="int-date" type="date" class="input">
+            </div>
+          </div>
+          <div style="margin-bottom:14px;">
+            <div class="input-label">ملاحظات / نتيجة الإجراء</div>
+            <textarea id="int-notes" class="input" rows="3" placeholder="اكتب ملاحظاتك هنا..." style="resize:vertical;"></textarea>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-primary" onclick="addIntervention()" style="background:linear-gradient(135deg,#16a34a,#0ea5e9);">✅ حفظ الإجراء</button>
+            <button class="btn btn-outline" onclick="clearIntForm()">🗑️ مسح</button>
+          </div>
+          <div id="int-msg" style="display:none;margin-top:10px;padding:10px;border-radius:8px;font-size:0.85rem;"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div class="card-title">📋 سجل الإجراءات</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <select id="int-filter-type" class="input" style="width:auto;font-size:0.82rem;padding:6px 10px;" onchange="renderInterventions()">
+              <option value="">كل الإجراءات</option>
+              <option value="اتصال ولي الأمر">اتصال ولي الأمر</option>
+              <option value="استدعاء ولي الأمر">استدعاء ولي الأمر</option>
+              <option value="جلسة إرشاد فردية">جلسة إرشاد فردية</option>
+              <option value="خطة دعم أكاديمي">خطة دعم أكاديمي</option>
+              <option value="تحويل للمرشد الطلابي">تحويل للمرشد الطلابي</option>
+              <option value="متابعة دورية">متابعة دورية</option>
+              <option value="إجراء آخر">إجراء آخر</option>
+            </select>
+            <button class="btn btn-primary btn-sm" onclick="exportInterventionsPDF()" style="background:linear-gradient(135deg,#dc2626,#f59e0b);">📄 تصدير PDF</button>
+            <button class="btn btn-danger btn-sm" onclick="clearAllInterventions()">🗑️ مسح الكل</button>
+          </div>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <div id="interventions-table-wrap" style="overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+              <thead>
+                <tr style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;">
+                  <th style="padding:10px 12px;text-align:right;">الطالب</th>
+                  <th style="padding:10px 12px;text-align:center;">الفصل</th>
+                  <th style="padding:10px 12px;text-align:center;">المادة</th>
+                  <th style="padding:10px 12px;text-align:center;">نوع الإجراء</th>
+                  <th style="padding:10px 12px;text-align:center;">التاريخ</th>
+                  <th style="padding:10px 12px;text-align:right;">المعلم</th>
+                  <th style="padding:10px 12px;text-align:right;">الملاحظات</th>
+                  <th style="padding:10px 12px;text-align:center;">حذف</th>
+                </tr>
+              </thead>
+              <tbody id="interventions-tbody">
+                <tr><td colspan="7" style="text-align:center;padding:30px;color:var(--text-muted);">لا توجد إجراءات مسجلة بعد</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
 
   </div>
@@ -1242,6 +1413,30 @@ select.input { cursor:pointer; }
           <div id="pass-change-msg" style="margin-top:10px;"></div>
         </div>
       </div>
+
+      <!-- قسم المعلمين -->
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-header"><div class="card-title">👨‍🏫 إدارة المعلمين</div></div>
+        <div class="card-body">
+          <!-- رفع ملف Excel -->
+          <div style="margin-bottom:16px;">
+            <div class="input-label" style="margin-bottom:8px;">📂 رفع ملف المعلمين (Excel)</div>
+            <div style="background:rgba(14,165,233,0.06);border:1px dashed rgba(14,165,233,0.3);border-radius:10px;padding:14px;font-size:0.82rem;color:var(--text-muted);margin-bottom:10px;">
+              الأعمدة المطلوبة: <strong>اسم المعلم | المادة | الصف | الفصل</strong> — كل سطر يمثل معلم + فصل واحد
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+              <label class="btn btn-primary" style="cursor:pointer;background:linear-gradient(135deg,#0ea5e9,#6366f1);">
+                📥 رفع ملف Excel
+                <input type="file" accept=".xlsx,.xls" style="display:none;" onchange="uploadTeachersFile(this)">
+              </label>
+              <button class="btn btn-danger btn-sm" onclick="clearTeachers()">🗑️ مسح الكل</button>
+              <span id="teachers-upload-status" style="font-size:0.82rem;color:var(--text-muted);"></span>
+            </div>
+          </div>
+          <div id="teachers-msg" style="display:none;margin-bottom:10px;padding:8px 12px;border-radius:8px;font-size:0.85rem;"></div>
+          <div id="teachers-list"></div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -1335,6 +1530,7 @@ function checkPassword() {
     document.getElementById('control-password').value = '';
     loadAllState();
     populateControlSelects();
+    renderTeachersList();
   } else {
     const err = document.getElementById('login-error');
     err.textContent = '❌ كلمة المرور غير صحيحة';
@@ -1871,7 +2067,36 @@ function renderParentResult(s, el) {
       <div class="card-header"><div class="card-title">📚 درجات المواد</div></div>
       <div class="card-body">
         <div class="subjects-grid">
-          ${subEntries.map(([name, sub]) => `
+          ${subEntries.map(([name, sub]) => {
+            // البحث عن المعلم
+            const teachers = getTeachers();
+            const normalize = v => String(v||'').trim().replace(/\s+/g,'')
+              .replace(/[إأآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي');
+            // تحويل الصف لرقم
+            const gradeToNum = v => {
+              const s = String(v||'').trim();
+              if (s.includes('الأول')  || s === '1') return '1';
+              if (s.includes('الثاني') || s === '2') return '2';
+              if (s.includes('الثالث') || s === '3') return '3';
+              return s;
+            };
+            // استخرج رقم الفصل — يأخذ الرقم الأخير
+            const extractClsNum = v => {
+              const m = String(v||'').match(/\d+/g);
+              return m ? m[m.length-1] : String(v||'').trim();
+            };
+            const sGradeNum = gradeToNum(s.grade);
+            const sClsNum   = extractClsNum(s.class);
+            const teacherMatch = teachers.find(t =>
+              normalize(t.subject) === normalize(name) &&
+              gradeToNum(t.grade)  === sGradeNum &&
+              extractClsNum(t.cls) === sClsNum
+            ) || teachers.find(t =>
+              normalize(t.subject) === normalize(name) &&
+              gradeToNum(t.grade)  === sGradeNum
+            );
+            const teacherName = teacherMatch ? teacherMatch.name : '';
+            return `
             <div class="subject-card">
               <div class="subject-card-header">
                 <div class="subject-name">${name}</div>
@@ -1888,11 +2113,16 @@ function renderParentResult(s, el) {
                 </div>
                 <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
                   <div style="font-size:0.75rem;color:var(--text-muted);">${sub.percentage}%</div>
-                  <div style="font-size:0.72rem;color:var(--accent2);font-weight:600;">⚖️ ${sub.total} × ${sub.hours} حصة = <span style="color:var(--accent);font-weight:700;">${Math.round(sub.total * sub.hours * 10)/10}</span></div>
+                  <div style="font-size:0.72rem;color:var(--accent2);font-weight:600;">الدرجة التراكمية = ${sub.total} × ${sub.hours} = <span style="color:var(--accent);font-weight:700;">${Math.round(sub.total * sub.hours * 10)/10}</span></div>
                 </div>
               </div>
-            </div>
-          `).join('')}
+              ${teacherName ? `
+              <div style="margin-top:10px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.07);display:flex;align-items:center;gap:6px;">
+                <span style="font-size:1rem;">👨‍🏫</span>
+                <span style="font-size:0.78rem;color:var(--text-muted);">المعلم:</span>
+                <span style="font-size:0.82rem;font-weight:600;color:var(--accent2);">${teacherName}</span>
+              </div>` : ''}
+            </div>`; }).join('')}
         </div>
       </div>
     </div>
@@ -2286,6 +2516,382 @@ function switchSchoolTab(tab) {
   if (tab === 'care') renderCare();
   if (tab === 'ranking') renderRanking();
   if (tab === 'bulkprint') initBulkPrint();
+  if (tab === 'interventions') initInterventions();
+}
+
+// ===== سجل الإجراءات =====
+function getInterventions() {
+  try { return JSON.parse(localStorage.getItem('nrs_interventions') || '[]'); } catch(e) { return []; }
+}
+function saveInterventions(arr) {
+  localStorage.setItem('nrs_interventions', JSON.stringify(arr));
+}
+
+// ===== المعلمون =====
+function getTeachers() {
+  try { return JSON.parse(localStorage.getItem('nrs_teachers') || '[]'); } catch(e) { return []; }
+}
+function saveTeachers(arr) {
+  localStorage.setItem('nrs_teachers', JSON.stringify(arr));
+}
+function uploadTeachersFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const status = document.getElementById('teachers-upload-status');
+  status.textContent = '⏳ جاري القراءة...';
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:''});
+      const arr = [];
+      // تخطى الصف الأول إذا كان رأس جدول
+      const start = (String(rows[0]?.[0]||'').includes('اسم') || String(rows[0]?.[0]||'').includes('معلم')) ? 1 : 0;
+      for (let i = start; i < rows.length; i++) {
+        const row = rows[i];
+        const name    = String(row[0]||'').trim();
+        const subject = String(row[1]||'').trim();
+        const grade   = String(row[2]||'').trim();
+        const cls     = String(row[3]||'').trim();
+        if (!name) continue;
+        arr.push({ id: Date.now() + i, name, subject, grade, cls });
+      }
+      saveTeachers(arr);
+      status.textContent = `✅ تم رفع ${arr.length} سطر`;
+      status.style.color = '#22c55e';
+      renderTeachersList();
+    } catch(err) {
+      status.textContent = '❌ خطأ في قراءة الملف';
+      status.style.color = '#ef4444';
+    }
+    input.value = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function clearTeachers() {
+  if (!confirm('هل تريد مسح جميع بيانات المعلمين؟')) return;
+  saveTeachers([]);
+  document.getElementById('teachers-upload-status').textContent = '';
+  renderTeachersList();
+}
+
+function deleteTeacher(id) {
+  saveTeachers(getTeachers().filter(t => t.id !== id));
+  renderTeachersList();
+}
+
+function renderTeachersList() {
+  const el = document.getElementById('teachers-list');
+  if (!el) return;
+  const arr = getTeachers();
+  if (!arr.length) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;padding:10px 0;">لا يوجد معلمون مضافون — ارفع ملف Excel</div>';
+    return;
+  }
+  el.innerHTML = `
+    <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:8px;">إجمالي: ${arr.length} سطر</div>
+    <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:0.83rem;">
+      <thead><tr style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;">
+        <th style="padding:8px 12px;text-align:right;">#</th>
+        <th style="padding:8px 12px;text-align:right;">اسم المعلم</th>
+        <th style="padding:8px 12px;text-align:right;">المادة</th>
+        <th style="padding:8px 12px;text-align:center;">الصف</th>
+        <th style="padding:8px 12px;text-align:center;">الفصل</th>
+        <th style="padding:8px 12px;text-align:center;">حذف</th>
+      </tr></thead>
+      <tbody>${arr.map((t,i) => `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.06);background:${i%2===0?'rgba(255,255,255,0.02)':'transparent'}">
+          <td style="padding:7px 12px;color:var(--text-muted);">${i+1}</td>
+          <td style="padding:7px 12px;font-weight:600;">${t.name}</td>
+          <td style="padding:7px 12px;color:var(--accent2);">${t.subject||'—'}</td>
+          <td style="padding:7px 12px;text-align:center;color:var(--text-dim);">${t.grade||'—'}</td>
+          <td style="padding:7px 12px;text-align:center;color:var(--text-dim);">${t.cls||'—'}</td>
+          <td style="padding:7px 12px;text-align:center;">
+            <button onclick="deleteTeacher(${t.id})" style="background:rgba(220,38,38,0.15);color:#ef4444;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.78rem;">🗑️</button>
+          </td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>`;
+}
+
+function initInterventions() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('int-date').value = today;
+  // reset
+  document.getElementById('int-class').innerHTML = '<option value="">اختر الفصل</option>';
+  document.getElementById('int-subject').innerHTML = '<option value="">اختر المادة</option>';
+  document.getElementById('int-student').innerHTML = '<option value="">— الأولى بالرعاية —</option>';
+  document.getElementById('int-student-info').style.display = 'none';
+  // عبّئ قائمة المعلمين
+  const teacherSel = document.getElementById('int-teacher');
+  teacherSel.innerHTML = '<option value="">اختر المعلم</option>';
+  getTeachers().forEach(t => {
+    const o = document.createElement('option');
+    o.value = t.name;
+    let label = t.name;
+    if (t.subject) label += ` — ${t.subject}`;
+    if (t.grade)   label += ` | ${t.grade}`;
+    if (t.cls)     label += `-${t.cls}`;
+    o.textContent = label;
+    teacherSel.appendChild(o);
+  });
+  renderInterventions();
+}
+
+function onIntGradeChange() {
+  const grade = document.getElementById('int-grade').value;
+  const clsSel = document.getElementById('int-class');
+  const subSel = document.getElementById('int-subject');
+  const stuSel = document.getElementById('int-student');
+  clsSel.innerHTML = '<option value="">اختر الفصل</option>';
+  subSel.innerHTML = '<option value="">اختر المادة</option>';
+  stuSel.innerHTML = '<option value="">— الأولى بالرعاية —</option>';
+  document.getElementById('int-student-info').style.display = 'none';
+  if (!grade) return;
+  const allStudents = appState.computedStudents || [];
+  // الفصول
+  const classes = [...new Set(allStudents.filter(s=>s.grade===grade).map(s=>s.class))].sort();
+  classes.forEach(c => {
+    const o = document.createElement('option'); o.value=c; o.textContent=c; clsSel.appendChild(o);
+  });
+  // المواد
+  const subjects = [...new Set(allStudents.filter(s=>s.grade===grade).flatMap(s=>Object.keys(s.subjects||{})))];
+  subjects.forEach(sub => {
+    const o = document.createElement('option'); o.value=sub; o.textContent=sub; subSel.appendChild(o);
+  });
+}
+
+function onIntClassChange() {
+  onIntSubjectChange();
+}
+
+function onIntSubjectChange() {
+  const grade   = document.getElementById('int-grade').value;
+  const cls     = document.getElementById('int-class').value;
+  const subject = document.getElementById('int-subject').value;
+  const stuSel  = document.getElementById('int-student');
+  stuSel.innerHTML = '<option value="">— الأولى بالرعاية —</option>';
+  document.getElementById('int-student-info').style.display = 'none';
+  if (!grade || !subject) return;
+
+  const allStudents = appState.computedStudents || [];
+  let students = allStudents.filter(s => s.grade === grade);
+  if (cls) students = students.filter(s => s.class === cls);
+
+  const weak = students.filter(s => {
+    const sub = (s.subjects||{})[subject];
+    if (!sub) return false;
+    return sub.total < 50;
+  }).sort((a,b) => {
+    const pa = (a.subjects[subject]||{}).total || 0;
+    const pb = (b.subjects[subject]||{}).total || 0;
+    return pa - pb;
+  });
+
+  if (!weak.length) {
+    stuSel.innerHTML = '<option value="">لا يوجد طلاب أولى بالرعاية في هذه المادة ✅</option>';
+  } else {
+    weak.forEach(s => {
+      const sub = s.subjects[subject];
+      const pct = Math.round(sub.total);
+      const o = document.createElement('option');
+      o.value = s.name;
+      o.dataset.cls = s.class;
+      o.dataset.score = pct;
+      o.textContent = `${s.name} — ${pct}%`;
+      stuSel.appendChild(o);
+    });
+  }
+
+  // ربط المعلم تلقائياً
+  const teacherSel = document.getElementById('int-teacher');
+  const gradeToNum = v => {
+    const s = String(v||'').trim();
+    if (s.includes('الأول')  || s === '1') return '1';
+    if (s.includes('الثاني') || s === '2') return '2';
+    if (s.includes('الثالث') || s === '3') return '3';
+    return s;
+  };
+  const extractClsNum = v => { const m = String(v||'').match(/\d+/g); return m ? m[m.length-1] : String(v||'').trim(); };
+  const normalizeT = v => String(v||'').trim().replace(/\s+/g,'').replace(/[إأآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي');
+  const sGradeNum = gradeToNum(grade);
+  const sClsNum   = extractClsNum(cls);
+  const teachers  = getTeachers();
+
+  // فلتر المعلمين المناسبين للمادة والصف والفصل
+  const matched = teachers.filter(t =>
+    normalizeT(t.subject) === normalizeT(subject) &&
+    gradeToNum(t.grade)   === sGradeNum &&
+    (!cls || extractClsNum(t.cls) === sClsNum)
+  );
+
+  teacherSel.innerHTML = '<option value="">اختر المعلم</option>';
+  if (matched.length) {
+    matched.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.name;
+      o.textContent = t.name;
+      teacherSel.appendChild(o);
+    });
+    if (matched.length === 1) teacherSel.value = matched[0].name;
+  } else {
+    // إذا ما في تطابق كامل، أضف كل المعلمين
+    teachers.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.name;
+      o.textContent = t.subject ? `${t.name} — ${t.subject}` : t.name;
+      teacherSel.appendChild(o);
+    });
+  }
+}
+
+function onIntStudentChange() {
+  const sel = document.getElementById('int-student');
+  const opt = sel.options[sel.selectedIndex];
+  const info = document.getElementById('int-student-info');
+  if (!opt || !opt.value) { info.style.display='none'; return; }
+  const subject = document.getElementById('int-subject').value;
+  info.style.display = 'block';
+  info.querySelector('#int-student-info-text').innerHTML =
+    `⚠️ <strong>${opt.value}</strong> — فصل: <strong>${opt.dataset.cls}</strong> — درجة <strong>${subject}</strong>: <strong style="color:#ef4444">${opt.dataset.score}%</strong>`;
+}
+
+function addIntervention() {
+  const stuSel  = document.getElementById('int-student');
+  const stuOpt  = stuSel.options[stuSel.selectedIndex];
+  const student = stuSel.value.trim();
+  const cls     = stuOpt ? (stuOpt.dataset.cls || '') : '';
+  const subject = document.getElementById('int-subject').value;
+  const teacherSel = document.getElementById('int-teacher');
+  const teacher = teacherSel.value.trim();
+  const type    = document.getElementById('int-type').value;
+  const date    = document.getElementById('int-date').value;
+  const notes   = document.getElementById('int-notes').value.trim();
+  const msg     = document.getElementById('int-msg');
+
+  if (!student || !teacher || !date) {
+    msg.style.display = 'block';
+    msg.style.background = 'rgba(220,38,38,0.1)';
+    msg.style.color = '#ef4444';
+    msg.textContent = '⚠️ يرجى اختيار الطالب وتعبئة اسم المعلم والتاريخ';
+    return;
+  }
+  const arr = getInterventions();
+  arr.unshift({ id: Date.now(), student, cls, subject, teacher, type, date, notes });
+  saveInterventions(arr);
+  msg.style.display = 'block';
+  msg.style.background = 'rgba(34,197,94,0.1)';
+  msg.style.color = '#22c55e';
+  msg.textContent = '✅ تم حفظ الإجراء بنجاح';
+  setTimeout(() => { msg.style.display='none'; }, 2500);
+  clearIntForm();
+  renderInterventions();
+}
+
+function clearIntForm() {
+  document.getElementById('int-grade').value = '';
+  document.getElementById('int-class').innerHTML = '<option value="">اختر الفصل</option>';
+  document.getElementById('int-subject').innerHTML = '<option value="">اختر المادة</option>';
+  document.getElementById('int-student').innerHTML = '<option value="">— الأولى بالرعاية —</option>';
+  document.getElementById('int-student-info').style.display = 'none';
+  document.getElementById('int-teacher').value = '';
+  document.getElementById('int-type').value = 'اتصال ولي الأمر';
+  document.getElementById('int-date').value = new Date().toISOString().split('T')[0];
+  document.getElementById('int-notes').value = '';
+  document.getElementById('int-msg').style.display = 'none';
+}
+
+function deleteIntervention(id) {
+  if (!confirm('هل تريد حذف هذا الإجراء؟')) return;
+  saveInterventions(getInterventions().filter(i => i.id !== id));
+  renderInterventions();
+}
+
+function clearAllInterventions() {
+  if (!confirm('هل تريد مسح جميع الإجراءات؟')) return;
+  saveInterventions([]);
+  renderInterventions();
+}
+
+function renderInterventions() {
+  const tbody = document.getElementById('interventions-tbody');
+  if (!tbody) return;
+  const filter = document.getElementById('int-filter-type').value;
+  let arr = getInterventions();
+  if (filter) arr = arr.filter(i => i.type === filter);
+  if (!arr.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text-muted);">لا توجد إجراءات مسجلة</td></tr>';
+    return;
+  }
+  tbody.innerHTML = arr.map((i, idx) => `
+    <tr style="border-bottom:1px solid rgba(255,255,255,0.05);background:${idx%2===0?'rgba(255,255,255,0.02)':'transparent'}">
+      <td style="padding:9px 12px;font-weight:600;">${i.student}</td>
+      <td style="padding:9px 12px;text-align:center;color:var(--text-dim);">${i.cls}</td>
+      <td style="padding:9px 12px;text-align:center;color:var(--accent2);">${i.subject||'—'}</td>
+      <td style="padding:9px 12px;text-align:center;">
+        <span style="background:rgba(14,165,233,0.12);color:var(--accent);padding:3px 10px;border-radius:20px;font-size:0.78rem;">${i.type}</span>
+      </td>
+      <td style="padding:9px 12px;text-align:center;color:var(--text-dim);">${i.date}</td>
+      <td style="padding:9px 12px;">${i.teacher}</td>
+      <td style="padding:9px 12px;color:var(--text-dim);max-width:180px;white-space:normal;">${i.notes||'—'}</td>
+      <td style="padding:9px 12px;text-align:center;">
+        <button onclick="deleteIntervention(${i.id})" style="background:rgba(220,38,38,0.15);color:#ef4444;border:none;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:0.8rem;">🗑️</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function exportInterventionsPDF() {
+  const filter = document.getElementById('int-filter-type').value;
+  let arr = getInterventions();
+  if (filter) arr = arr.filter(i => i.type === filter);
+  if (!arr.length) { alert('لا توجد إجراءات للتصدير'); return; }
+
+  const rows = arr.map(i => `
+    <tr>
+      <td>${i.student}</td>
+      <td>${i.cls}</td>
+      <td>${i.subject||'—'}</td>
+      <td>${i.type}</td>
+      <td>${i.date}</td>
+      <td>${i.teacher}</td>
+      <td>${i.notes||'—'}</td>
+    </tr>
+  `).join('');
+
+  const html = `<!DOCTYPE html><html dir="rtl" lang="ar">
+  <head><meta charset="UTF-8">
+  <style>
+    body{font-family:Tahoma,Arial,sans-serif;padding:30px;color:#1a1a2e;font-size:12px;}
+    h2{text-align:center;color:#0369a1;margin-bottom:4px;}
+    .sub{text-align:center;color:#666;margin-bottom:20px;font-size:11px;}
+    table{width:100%;border-collapse:collapse;}
+    th{background:#0369a1;color:#fff;padding:8px 10px;text-align:right;}
+    td{padding:7px 10px;border-bottom:1px solid #e5e7eb;}
+    tr:nth-child(even){background:#f8faff;}
+    .footer{text-align:center;margin-top:20px;font-size:11px;color:#999;}
+  </style></head>
+  <body>
+    <h2>📋 سجل الإجراءات — ثانوية الظهران</h2>
+    <div class="sub">تاريخ التصدير: ${new Date().toLocaleDateString('ar-SA')}</div>
+    <table>
+      <thead><tr><th>الطالب</th><th>الفصل</th><th>المادة</th><th>نوع الإجراء</th><th>التاريخ</th><th>المعلم</th><th>الملاحظات</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="footer">إجمالي الإجراءات: ${arr.length}</div>
+    <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+
+  const blob = new Blob([html], {type: 'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.target = '_blank';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 let schoolCharts = {};
@@ -2567,11 +3173,286 @@ function renderStudentsTable(students) {
   `).join('');
 }
 
+function printCareTable() { exportCarePDF(true); }
+
+function exportCarePDF(printOnly=false) {
+  const tbody = document.getElementById('care-tbody');
+  if (!tbody || tbody.querySelector('td[colspan]')) { alert('لا توجد بيانات للتصدير'); return; }
+
+  const grade   = document.getElementById('care-grade').value;
+  const cls     = document.getElementById('care-class').value;
+  const subject = document.getElementById('care-subject').value;
+  const teacher = document.getElementById('care-teacher').value;
+
+  const filterDesc = [
+    grade   ? `الصف: ${grade}` : '',
+    cls     ? `الفصل: ${cls}` : '',
+    subject ? `المادة: ${subject}` : '',
+    teacher ? `المعلم: ${teacher}` : '',
+  ].filter(Boolean).join(' | ') || 'كل الطلاب';
+
+  const count = document.getElementById('care-count').textContent;
+
+  // استخرج صفوف الجدول
+  const rows = [...tbody.querySelectorAll('tr')].map((tr, idx) => {
+    const tds = [...tr.querySelectorAll('td')];
+    const cells = tds.map((td, i) => {
+      if (i === 4) {
+        const badges = [...td.querySelectorAll('span')].map(s => s.innerText.trim()).filter(Boolean);
+        const badgeHTML = badges.map(b => `<span style="display:inline-block;background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:5px;padding:2px 8px;margin:2px 3px;font-size:10px;white-space:nowrap;">${b}</span>`).join('');
+        return `<td style="vertical-align:middle;">${badgeHTML}</td>`;
+      }
+      return `<td>${td.innerText}</td>`;
+    });
+    const bg = idx % 2 === 0 ? '' : 'background:#fff5f5;';
+    return `<tr style="${bg}">${cells.join('')}</tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html dir="rtl" lang="ar">
+  <head><meta charset="UTF-8">
+  <style>
+    body{font-family:Tahoma,Arial,sans-serif;padding:24px;color:#1a1a2e;font-size:12px;direction:rtl;}
+    .header{text-align:center;margin-bottom:18px;border-bottom:2px solid #dc2626;padding-bottom:12px;}
+    .header h2{color:#dc2626;margin:0 0 4px;font-size:16px;}
+    .header .sub{color:#555;font-size:11px;}
+    .meta{display:flex;justify-content:space-between;margin-bottom:14px;font-size:11px;color:#666;}
+    table{width:100%;border-collapse:collapse;}
+    th{background:#dc2626;color:#fff;padding:8px 10px;text-align:right;font-size:11px;}
+    td{padding:7px 10px;border-bottom:1px solid #e5e7eb;font-size:11px;vertical-align:middle;}
+    td:nth-child(5){min-width:120px;line-height:1.8;}
+    td:nth-child(5) div{background:#fee2e2;color:#b91c1c;border-radius:4px;padding:1px 7px;margin:2px 0;display:inline-block;font-size:10px;}
+    .footer{text-align:center;margin-top:16px;font-size:10px;color:#999;border-top:1px solid #e5e7eb;padding-top:8px;}
+    @media print{body{padding:10px;}}
+  </style></head>
+  <body>
+    <div class="header">
+      <h2>⚠️ قائمة الطلاب الأولى بالرعاية — ثانوية الظهران</h2>
+      <div class="sub">الفلتر: ${filterDesc}</div>
+    </div>
+    <div class="meta">
+      <span>إجمالي الطلاب: <strong>${count}</strong></span>
+      <span>تاريخ التصدير: ${new Date().toLocaleDateString('ar-SA')}</span>
+    </div>
+    <table>
+      <thead><tr><th>#</th><th>الاسم</th><th>الصف</th><th>الفصل</th><th>المواد</th><th>عدد المواد</th><th>النسبة الكلية</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="footer">ثانوية الظهران — الإدارة العامة للتعليم بالمنطقة الشرقية</div>
+    ${printOnly ? '<script>window.onload=function(){window.print();}<\/script>' : '<script>window.onload=function(){window.print();}<\/script>'}
+  </body></html>`;
+
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+function renderTeacherAnalysis() {
+  const teacherName = document.getElementById('teacher-analysis-select').value;
+  const el = document.getElementById('teacher-analysis-content');
+  if (!teacherName || !appState.computedStudents) {
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:0.9rem;">اختر معلماً لعرض تحليل نتائجه</div>';
+    return;
+  }
+
+  // الحصول على فصول المعلم ومادته
+  const gradeToNum = v => { const s=String(v||''); if(s.includes('الأول')||s==='1')return'1'; if(s.includes('الثاني')||s==='2')return'2'; if(s.includes('الثالث')||s==='3')return'3'; return s; };
+  const extractClsNum = v => { const m=String(v||'').match(/\d+/g); return m?m[m.length-1]:String(v||''); };
+  const normalizeT = v => String(v||'').trim().replace(/\s+/g,'').replace(/[إأآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي');
+
+  const teacherRows = getTeachers().filter(t => t.name === teacherName);
+  if (!teacherRows.length) { el.innerHTML = '<div style="color:var(--text-muted);padding:20px;">لا توجد بيانات لهذا المعلم</div>'; return; }
+
+  const subject = teacherRows[0].subject;
+
+  // إزالة التكرار: فصل واحد فقط لكل مجموعة (صف + فصل)
+  const seen = new Set();
+  const uniqueRows = teacherRows.filter(t => {
+    const key = `${gradeToNum(t.grade)}-${extractClsNum(t.cls)}`;
+    if (seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+
+  // تحليل كل فصل يدرسه المعلم
+  const classResults = uniqueRows.map(t => {
+    const gNum = gradeToNum(t.grade);
+    const cNum = extractClsNum(t.cls);
+    // ابحث عن الطلاب المناسبين
+    const classStudents = appState.computedStudents.filter(s => {
+      const subData = (s.subjects||{})[subject] || Object.entries(s.subjects||{}).find(([k])=> normalizeT(k)===normalizeT(subject))?.[1];
+      return gradeToNum(s.grade) === gNum && extractClsNum(s.class) === cNum && subData;
+    });
+    if (!classStudents.length) return null;
+    const subKey = Object.keys(classStudents[0].subjects).find(k => normalizeT(k)===normalizeT(subject)) || subject;
+    const scores = classStudents.map(s => (s.subjects[subKey]||{}).percentage || 0);
+    const avg    = Math.round(scores.reduce((a,b)=>a+b,0)/scores.length * 10)/10;
+    const weak   = scores.filter(v=>v<50).length;
+    const pass   = scores.filter(v=>v>=50).length;
+    const passRate = Math.round(pass/scores.length*100);
+    const shortGrade = String(t.grade||'')
+      .replace(/^(السنة المشتركة|المسار العام|المسار الأكاديمي|العام|المشترك)\s*[-–]\s*/,'')
+      .replace(/\s*[-–]\s*(السنة المشتركة|المسار العام|المسار الأكاديمي|العام|المشترك)/,'')
+      .replace('الأول الثانوي','أول ثانوي')
+      .replace('الثاني الثانوي','ثاني ثانوي')
+      .replace('الثالث الثانوي','ثالث ثانوي')
+      .trim();
+    return { label: `${shortGrade} - ${t.cls}`, avg, weak, pass, total: scores.length, passRate };
+  }).filter(Boolean);
+
+  if (!classResults.length) {
+    el.innerHTML = '<div style="color:var(--text-muted);padding:20px;">لا توجد بيانات طلاب مرتبطة بهذا المعلم</div>';
+    return;
+  }
+
+  // إجماليات
+  const totalStudents = classResults.reduce((a,r)=>a+r.total,0);
+  const totalWeak     = classResults.reduce((a,r)=>a+r.weak,0);
+  const totalPass     = classResults.reduce((a,r)=>a+r.pass,0);
+  const overallPassRate = Math.round(totalPass/totalStudents*100);
+  const overallAvg    = Math.round(classResults.reduce((a,r)=>a+r.avg*r.total,0)/totalStudents*10)/10;
+  const bestClass     = classResults.reduce((a,b)=>a.avg>b.avg?a:b);
+  const worstClass    = classResults.reduce((a,b)=>a.avg<b.avg?a:b);
+  const sortedResults = [...classResults].sort((a,b)=>b.avg-a.avg);
+
+  const passColor  = overallPassRate >= 80 ? '#22c55e' : overallPassRate >= 60 ? '#f59e0b' : '#ef4444';
+  const weakColor  = totalWeak === 0 ? '#22c55e' : totalWeak <= 5 ? '#f59e0b' : '#ef4444';
+
+  el.innerHTML = `
+    <!-- بطاقات الإجماليات -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px;">
+      <div style="background:rgba(14,165,233,0.08);border:1px solid rgba(14,165,233,0.2);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:6px;">المادة</div>
+        <div style="font-size:1rem;font-weight:700;color:var(--accent);">${subject}</div>
+      </div>
+      <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:6px;">نسبة النجاح الكلية</div>
+        <div style="font-size:1.6rem;font-weight:800;color:${passColor};">${overallPassRate}%</div>
+      </div>
+      <div style="background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:6px;">متوسط الدرجات</div>
+        <div style="font-size:1.6rem;font-weight:800;color:var(--accent2);">${overallAvg}%</div>
+      </div>
+      <div style="background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.2);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:6px;">الأولى بالرعاية</div>
+        <div style="font-size:1.6rem;font-weight:800;color:${weakColor};">${totalWeak}</div>
+        <div style="font-size:0.72rem;color:var(--text-muted);">من ${totalStudents} طالب</div>
+      </div>
+      <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:12px;padding:16px;text-align:center;">
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:6px;">عدد الفصول</div>
+        <div style="font-size:1.6rem;font-weight:800;color:#f59e0b;">${classResults.length}</div>
+      </div>
+    </div>
+
+    <!-- رسم بياني -->
+    <div style="margin-bottom:20px;">
+      <div style="font-weight:700;font-size:0.9rem;margin-bottom:12px;color:var(--accent);">📈 متوسط الدرجات ونسبة النجاح لكل فصل</div>
+      <div style="position:relative;height:220px;"><canvas id="chart-teacher-analysis"></canvas></div>
+    </div>
+
+    <!-- مقارنة الفصول -->
+    <div style="margin-bottom:16px;">
+      <div style="font-weight:700;font-size:0.9rem;margin-bottom:12px;color:var(--accent);">📊 مقارنة الفصول</div>
+      <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:0.83rem;">
+        <thead><tr style="background:linear-gradient(135deg,#0369a1,#0891b2);color:#fff;">
+          <th style="padding:9px 14px;text-align:right;">الفصل</th>
+          <th style="padding:9px 14px;text-align:center;">عدد الطلاب</th>
+          <th style="padding:9px 14px;text-align:center;">متوسط الدرجات</th>
+          <th style="padding:9px 14px;text-align:center;">نسبة النجاح</th>
+          <th style="padding:9px 14px;text-align:center;">الأولى بالرعاية</th>
+          <th style="padding:9px 14px;text-align:center;">الشريط</th>
+        </tr></thead>
+        <tbody>${sortedResults.map((r,i)=>{
+          const barColor = r.avg>=70?'#22c55e':r.avg>=50?'#f59e0b':'#ef4444';
+          const isBest  = r.label===bestClass.label;
+          const isWorst = r.label===worstClass.label && sortedResults.length>1;
+          return `<tr style="border-bottom:1px solid rgba(255,255,255,0.06);background:${i%2===0?'rgba(255,255,255,0.02)':'transparent'}">
+            <td style="padding:9px 14px;font-weight:600;">
+              ${r.label}
+              ${isBest?'<span style="background:rgba(34,197,94,0.15);color:#22c55e;font-size:0.72rem;padding:2px 8px;border-radius:20px;margin-right:6px;">🏆 الأفضل</span>':''}
+              ${isWorst?'<span style="background:rgba(220,38,38,0.15);color:#ef4444;font-size:0.72rem;padding:2px 8px;border-radius:20px;margin-right:6px;">⚠️ يحتاج دعم</span>':''}
+            </td>
+            <td style="padding:9px 14px;text-align:center;">${r.total}</td>
+            <td style="padding:9px 14px;text-align:center;font-weight:700;color:${barColor};">${r.avg}%</td>
+            <td style="padding:9px 14px;text-align:center;font-weight:700;color:${r.passRate>=80?'#22c55e':r.passRate>=60?'#f59e0b':'#ef4444'};">${r.passRate}%</td>
+            <td style="padding:9px 14px;text-align:center;color:${r.weak>0?'#ef4444':'#22c55e'};font-weight:600;">${r.weak}</td>
+            <td style="padding:9px 14px;min-width:120px;">
+              <div style="background:rgba(255,255,255,0.08);border-radius:6px;height:8px;overflow:hidden;">
+                <div style="width:${r.avg}%;height:100%;background:${barColor};border-radius:6px;"></div>
+              </div>
+            </td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>
+    </div>
+  `;
+
+  // ارسم الرسم البياني بعد إدراج HTML
+  setTimeout(() => {
+    destroyChart('chart-teacher-analysis');
+    const ctx = document.getElementById('chart-teacher-analysis');
+    if (!ctx) return;
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: sortedResults.map(r => r.label),
+        datasets: [
+          {
+            label: 'متوسط الدرجات %',
+            data: sortedResults.map(r => r.avg),
+            backgroundColor: sortedResults.map(r => r.avg>=70?'rgba(34,197,94,0.7)':r.avg>=50?'rgba(245,158,11,0.7)':'rgba(239,68,68,0.7)'),
+            borderColor: sortedResults.map(r => r.avg>=70?'#22c55e':r.avg>=50?'#f59e0b':'#ef4444'),
+            borderWidth: 2, borderRadius: 6, yAxisID: 'y'
+          },
+          {
+            label: 'نسبة النجاح %',
+            data: sortedResults.map(r => r.passRate),
+            type: 'line',
+            borderColor: '#818cf8', backgroundColor: 'rgba(129,140,248,0.15)',
+            borderWidth: 2.5, pointRadius: 5, pointBackgroundColor: '#818cf8',
+            tension: 0.3, fill: false, yAxisID: 'y'
+          }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#94a3b8', font: { family: 'Tajawal' } } } },
+        scales: {
+          x: { ticks: { color: '#94a3b8', font: { family: 'Tajawal' } }, grid: { color: 'rgba(255,255,255,0.05)' } },
+          y: { min: 0, max: 100, ticks: { color: '#94a3b8', font: { family: 'Tajawal' } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+      }
+    });
+  }, 50);
+}
+
 function renderAnalysis() {
   if (!appState.gradesData) return;
   const selGrade = document.getElementById('analysis-grade').value;
   let students = appState.computedStudents;
   if (selGrade) students = students.filter(s=>s.grade===selGrade);
+
+  // عبّئ قائمة المعلمين — مفلترة حسب الصف المختار
+  const teacherSel = document.getElementById('teacher-analysis-select');
+  if (teacherSel) {
+    const prev = teacherSel.value;
+    teacherSel.innerHTML = '<option value="">اختر المعلم</option>';
+    const gradeToNumLocal = v => { const s=String(v||''); if(s.includes('الأول')||s==='1')return'1'; if(s.includes('الثاني')||s==='2')return'2'; if(s.includes('الثالث')||s==='3')return'3'; return s; };
+    const allTeachers = getTeachers();
+    const filtered = selGrade
+      ? allTeachers.filter(t => gradeToNumLocal(t.grade) === gradeToNumLocal(selGrade))
+      : allTeachers;
+    const uniqueTeachers = [...new Map(filtered.map(t=>[t.name,t])).values()];
+    uniqueTeachers.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.name;
+      o.textContent = t.subject ? `${t.name} — ${t.subject}` : t.name;
+      teacherSel.appendChild(o);
+    });
+    if (prev && uniqueTeachers.find(t=>t.name===prev)) { teacherSel.value = prev; renderTeacherAnalysis(); }
+    else { document.getElementById('teacher-analysis-content').innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:0.9rem;">اختر معلماً لعرض تحليل نتائجه</div>'; }
+  }
 
   // Subjects avg
   const allSubjects = {};
@@ -2651,42 +3532,107 @@ function renderCare() {
   const students = appState.computedStudents;
   const careStudents = students.filter(s => s.weakSubjects && s.weakSubjects.length > 0);
 
-  document.getElementById('care-count').textContent = careStudents.length + ' طالب';
+  // عبّئ الصفوف
+  const gradeSel = document.getElementById('care-grade');
+  const prevGrade = gradeSel.value;
+  gradeSel.innerHTML = '<option value="">كل الصفوف</option>';
+  [...new Set(careStudents.map(s=>s.grade))].forEach(g => {
+    const o = document.createElement('option'); o.value=g; o.textContent=g; gradeSel.appendChild(o);
+  });
+  if (prevGrade) gradeSel.value = prevGrade;
 
-  // Filters
-  const grades = [...new Set(careStudents.map(s=>s.grade))];
-  const filtersEl = document.getElementById('care-filters');
-  filtersEl.innerHTML = `<button class="filter-chip active" onclick="filterCare('')">الكل (${careStudents.length})</button>` +
-    grades.map(g => `<button class="filter-chip" onclick="filterCare('${g}')">${g} (${careStudents.filter(s=>s.grade===g).length})</button>`).join('');
+  // عبّئ المواد
+  const subSel = document.getElementById('care-subject');
+  const prevSub = subSel.value;
+  subSel.innerHTML = '<option value="">كل المواد</option>';
+  [...new Set(careStudents.flatMap(s=>s.weakSubjects||[]))].sort().forEach(sub => {
+    const o = document.createElement('option'); o.value=sub; o.textContent=sub; subSel.appendChild(o);
+  });
+  if (prevSub) subSel.value = prevSub;
 
-  renderCareTable(careStudents);
+  // عبّئ المعلمين
+  const teacherSel = document.getElementById('care-teacher');
+  const prevTeacher = teacherSel.value;
+  teacherSel.innerHTML = '<option value="">كل المعلمين</option>';
+  [...new Map(getTeachers().map(t=>[t.name,t])).values()].forEach(t => {
+    const o = document.createElement('option'); o.value=t.name; o.textContent=t.name; teacherSel.appendChild(o);
+  });
+  if (prevTeacher) teacherSel.value = prevTeacher;
+
+  onCareFilterChange();
 }
 
-function filterCare(grade) {
-  document.querySelectorAll('#care-filters .filter-chip').forEach(c => c.classList.remove('active'));
-  event.target.classList.add('active');
+function onCareFilterChange() {
+  const grade   = document.getElementById('care-grade').value;
+  const cls     = document.getElementById('care-class').value;
+  const subject = document.getElementById('care-subject').value;
+  const teacher = document.getElementById('care-teacher').value;
+
   const students = appState.computedStudents.filter(s => s.weakSubjects && s.weakSubjects.length > 0);
-  const filtered = grade ? students.filter(s=>s.grade===grade) : students;
-  renderCareTable(filtered);
+
+  // عبّئ الفصول بناءً على الصف
+  const clsSel = document.getElementById('care-class');
+  const prevCls = clsSel.value;
+  clsSel.innerHTML = '<option value="">كل الفصول</option>';
+  const gradeStudents = grade ? students.filter(s=>s.grade===grade) : students;
+  [...new Set(gradeStudents.map(s=>s.class))].sort().forEach(c => {
+    const o = document.createElement('option'); o.value=c; o.textContent=c; clsSel.appendChild(o);
+  });
+  if (prevCls) clsSel.value = prevCls;
+
+  // المعلم → استخرج مادته
+  let teacherSubject = '';
+  if (teacher) {
+    const tRow = getTeachers().find(t => t.name === teacher);
+    if (tRow) teacherSubject = tRow.subject;
+  }
+
+  const normalizeT = v => String(v||'').trim().replace(/\s+/g,'').replace(/[إأآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي');
+  const gradeToNum = v => { const s=String(v||''); if(s.includes('الأول')||s==='1')return'1'; if(s.includes('الثاني')||s==='2')return'2'; if(s.includes('الثالث')||s==='3')return'3'; return s; };
+  const extractClsNum = v => { const m=String(v||'').match(/\d+/g); return m?m[m.length-1]:String(v||''); };
+
+  let filtered = students;
+  if (grade)   filtered = filtered.filter(s => s.grade === grade);
+  if (cls)     filtered = filtered.filter(s => s.class === cls);
+  if (subject) filtered = filtered.filter(s => (s.weakSubjects||[]).some(ws => normalizeT(ws)===normalizeT(subject)));
+  if (teacher && teacherSubject) {
+    // فلتر: الطالب في فصل يدرسه هذا المعلم لهذه المادة
+    const teacherRows = getTeachers().filter(t => t.name === teacher);
+    filtered = filtered.filter(s => {
+      return teacherRows.some(t =>
+        normalizeT(t.subject) === normalizeT(teacherSubject) &&
+        gradeToNum(t.grade) === gradeToNum(s.grade) &&
+        extractClsNum(t.cls) === extractClsNum(s.class)
+      ) && (s.weakSubjects||[]).some(ws => normalizeT(ws)===normalizeT(teacherSubject));
+    });
+  }
+
+  renderCareTable(filtered, subject || teacherSubject);
 }
 
-function renderCareTable(students) {
+function renderCareTable(students, highlightSubject='') {
   const tbody = document.getElementById('care-tbody');
+  document.getElementById('care-count').textContent = students.length + ' طالب';
   if (!students.length) {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px;">🎉 لا يوجد طلاب في قائمة الرعاية</td></tr>';
     return;
   }
-  tbody.innerHTML = students.map((s,i) => `
-    <tr>
+  const normalizeT = v => String(v||'').trim().replace(/\s+/g,'').replace(/[إأآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي');
+  tbody.innerHTML = students.map((s,i) => {
+    const weakBadges = s.weakSubjects.map(sub => {
+      const isHighlight = highlightSubject && normalizeT(sub)===normalizeT(highlightSubject);
+      return `<span class="badge badge-weak" style="margin:2px;${isHighlight?'background:rgba(220,38,38,0.3);border:1px solid #ef4444;':''}">${sub}</span>`;
+    }).join('');
+    return `<tr>
       <td style="color:var(--text-muted)">${i+1}</td>
       <td style="font-weight:600">${s.name}</td>
       <td>${s.grade}</td>
       <td>${s.class}</td>
-      <td>${s.weakSubjects.map(sub=>`<span class="badge badge-weak" style="margin:2px;">${sub}</span>`).join('')}</td>
+      <td>${weakBadges}</td>
       <td style="color:var(--red);font-weight:700">${s.weakSubjects.length}</td>
       <td style="color:${getColorForPercent(s.cumulativePercent)};font-weight:700">${s.cumulativePercent}%</td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 }
 
 function renderRanking() {
