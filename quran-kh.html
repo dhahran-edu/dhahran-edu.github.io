@@ -349,6 +349,7 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--off);color:
 <div class="page" id="page-kpi">
   <button class="back-btn" onclick="showPage('landing')">← الرئيسية</button>
   <div class="sec-hdr"><h2>مؤشرات الأداء — الخطة الاستراتيجية</h2><div class="sec-div"></div><div class="sec-badge" id="kpi-badge">—</div></div>
+  <div id="kpi-yr-toggle"></div>
   <div class="stats-grid" style="margin-bottom:20px">
     <div class="stat-card ac"><div class="stat-lbl">مؤشرات متحققة (100%+)</div><div class="stat-val" id="kpi-exceed">—</div></div>
     <div class="stat-card"><div class="stat-lbl">مؤشرات قريبة (90-99%)</div><div class="stat-val" id="kpi-ok">—</div></div>
@@ -551,14 +552,21 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--off);color:
   <div class="ctrl-sec">
     <div class="ctrl-head"><span style="font-size:20px">📊</span><h3>تعديل مؤشرات الأداء (KPI)</h3></div>
     <div class="ctrl-body">
-      <p style="font-size:12px;color:var(--tl);margin-bottom:14px">عدّل قيمة المحقق لأي مؤشر وسيُحسب التحقق تلقائياً — يُحدِّث صفحة مؤشرات الأداء فوراً.</p>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+        <div id="kpi-ctrl-yr-toggle" class="yr-toggle" style="margin-bottom:0"></div>
+        <button onclick="openAddKpiYearModal()" style="padding:7px 14px;border:2px dashed var(--cyan);border-radius:20px;background:rgba(96,196,228,.06);color:var(--primary);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer">＋ إضافة عام مؤشرات</button>
+      </div>
+      <p style="font-size:12px;color:var(--tl);margin-bottom:14px">عدّل قيمة المحقق لأي مؤشر وسيُحسب التحقق تلقائياً.</p>
       <div style="overflow-x:auto">
         <table class="kpi-et">
-          <thead><tr><th>الكود</th><th>المؤشر</th><th>المحور</th><th>الهدف</th><th>المحقق</th><th>%</th></tr></thead>
+          <thead><tr><th>الكود</th><th>المؤشر</th><th>المحور</th><th>الهدف</th><th>المحقق</th><th>%</th><th></th></tr></thead>
           <tbody id="kpi-edit-body"></tbody>
         </table>
       </div>
-      <button class="ctrl-save" onclick="saveKpis()">💾 حفظ مؤشرات الأداء</button>
+      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+        <button class="ctrl-save" onclick="saveKpis()">💾 حفظ مؤشرات الأداء</button>
+        <button onclick="openAddKpiModal()" style="padding:11px 22px;border:2px dashed var(--cyan);border-radius:var(--rs);background:rgba(96,196,228,.06);color:var(--primary);font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;transition:all .18s">＋ إضافة مؤشر جديد</button>
+      </div>
     </div>
   </div>
 </div>
@@ -609,6 +617,80 @@ body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:var(--off);color:
       <div class="fg"><label>عدد الأجزاء</label><select class="fi"><option>30 جزءاً كاملاً</option><option>20 جزءاً</option><option>10 أجزاء</option><option>5 أجزاء</option></select></div>
     </div>
     <div class="modal-foot"><button class="btn btn-g" onclick="closeForm('huffaz')">إلغاء</button><button class="btn btn-p" onclick="submitForm('huffaz')">📤 إنشاء الشهادة</button></div>
+  </div>
+</div>
+
+<!-- MODAL: إضافة عام مؤشرات KPI -->
+<div class="overlay" id="modal-add-kpi-year">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-head">
+      <h3>📅 إضافة عام مؤشرات جديد</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-kpi-year')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg">
+        <label>رقم السنة <span>*</span></label>
+        <input class="fi" type="number" id="kpi-year-input" placeholder="مثال: 2026" min="1300" max="2100"
+          onkeydown="if(event.key==='Enter') confirmAddKpiYear()">
+      </div>
+      <div class="info-box" style="margin-bottom:0">
+        <span>💡</span><span>سيتم إنشاء عام فارغ — أضف المؤشرات يدوياً أو ارفع ملف Excel</span>
+      </div>
+      <p id="kpi-year-err" style="color:var(--danger);font-size:12px;font-weight:700;display:none;margin-top:8px"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-g" onclick="closeModal('modal-add-kpi-year')">إلغاء</button>
+      <button class="btn btn-p" onclick="confirmAddKpiYear()">✅ إضافة</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: إضافة مؤشر KPI -->
+<div class="overlay" id="modal-add-kpi">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-head">
+      <h3>📊 إضافة مؤشر أداء جديد</h3>
+      <button class="modal-close" onclick="closeModal('modal-add-kpi')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="info-box" style="margin-bottom:14px">
+        <span>📅</span><span>سيُضاف المؤشر لعام: <strong id="kpi-modal-year-label">—</strong></span>
+      </div>
+      <div class="f-row">
+        <div class="fg">
+          <label>كود المؤشر <span>*</span></label>
+          <input class="fi" type="text" id="kpi-new-code" placeholder="مثال: (ع5-1)">
+        </div>
+        <div class="fg">
+          <label>المحور <span>*</span></label>
+          <select class="fi" id="kpi-new-cat">
+            <option value="edu">تعليمي</option>
+            <option value="ops">تشغيلي</option>
+            <option value="fin">مالي</option>
+            <option value="hr">بشري</option>
+          </select>
+        </div>
+      </div>
+      <div class="fg">
+        <label>اسم المؤشر <span>*</span></label>
+        <input class="fi" type="text" id="kpi-new-name" placeholder="وصف المؤشر">
+      </div>
+      <div class="f-row">
+        <div class="fg">
+          <label>الهدف <span>*</span></label>
+          <input class="fi" type="number" id="kpi-new-target" min="0" placeholder="0">
+        </div>
+        <div class="fg">
+          <label>المحقق</label>
+          <input class="fi" type="number" id="kpi-new-achieved" min="0" placeholder="0">
+        </div>
+      </div>
+      <p id="kpi-new-err" style="color:var(--danger);font-size:12px;font-weight:700;display:none"></p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-g" onclick="closeModal('modal-add-kpi')">إلغاء</button>
+      <button class="btn btn-p" onclick="confirmAddKpi()">✅ إضافة المؤشر</button>
+    </div>
   </div>
 </div>
 
@@ -674,34 +756,34 @@ const DB = {
     }
   },
   kpis: [
-    {code:'(ع1-1)', name:'دارسو البرامج التعليمية — ذكور', cat:'edu', target:1519, achieved:1560, pct:102.7},
-    {code:'(ع1-2)', name:'دارسو البرامج التعليمية — إناث', cat:'edu', target:1977, achieved:1980, pct:100.2},
-    {code:'(ع1-3)', name:'دارسو البرامج الإلكترونية', cat:'edu', target:175, achieved:172, pct:98.4},
-    {code:'(ع1-4)', name:'الدارسون في البرامج المجتمعية', cat:'edu', target:398, achieved:399, pct:100.3},
-    {code:'(ع1-5)', name:'عدد برامج الجمعية المقدمة للمجتمع', cat:'edu', target:18, achieved:22, pct:119.6},
-    {code:'(ع1-6)', name:'المستفيدون من برامج الجمعية', cat:'edu', target:2818, achieved:2820, pct:100.1},
-    {code:'(ع2-1)', name:'نسبة النجاح في طلاب الجمعية', cat:'edu', target:95, achieved:88.75, pct:93.4},
-    {code:'(ع2-2)', name:'الحفظة الذين اجتازوا الاختبار الختامي', cat:'edu', target:36, achieved:64, pct:177.8},
-    {code:'(ع2-4)', name:'الأجزاء المحفوظة خلال العام', cat:'edu', target:7000, achieved:7500, pct:107.1},
-    {code:'(ع3-1)', name:'نسبة رضا المستفيدين عن البرامج التعليمية', cat:'edu', target:95, achieved:97.25, pct:102.4},
-    {code:'(ع3-2)', name:'المستفيدون من الزيارات الميدانية', cat:'edu', target:437, achieved:500, pct:114.4},
-    {code:'(ع3-3)', name:'نسبة الزيادة في اللقاءات مع أولياء الأمور', cat:'edu', target:23, achieved:24, pct:104.3},
-    {code:'(ع4-1)', name:'أساليب وطرق التعلم الفاعلة المستخدمة', cat:'edu', target:14, achieved:16, pct:115.9},
-    {code:'(ع4-2)', name:'الأساليب التعليمية المستحدثة', cat:'edu', target:8, achieved:8, pct:100},
-    {code:'(د1-2)', name:'نسبة أتمتة العمليات والأنظمة التعليمية', cat:'ops', target:3, achieved:3, pct:100},
-    {code:'(د1-3)', name:'اللوائح والأنظمة التي تم تحديثها', cat:'ops', target:3, achieved:3, pct:100},
-    {code:'(د2-3)', name:'العمليات التي تم تحسينها', cat:'ops', target:4, achieved:4, pct:100},
-    {code:'(د3-1)', name:'نسبة الزيادة في عدد المتطوعين', cat:'ops', target:85, achieved:100, pct:117.5},
-    {code:'(د3-2)', name:'نسبة رضا المتطوعين', cat:'ops', target:98, achieved:98, pct:100},
-    {code:'(د4-2)', name:'عدد المناسبات الاجتماعية', cat:'ops', target:3, achieved:4, pct:133.3},
-    {code:'(د4-3)', name:'البيئات والخدمات المحسّنة', cat:'ops', target:11, achieved:11, pct:100},
-    {code:'(م2-1)', name:'نسبة الزيادة في الموارد المالية الثابتة', cat:'fin', target:4000000, achieved:3092493, pct:77.3},
-    {code:'(م2-2)', name:'الزيادة في إيرادات الخدمات', cat:'fin', target:650000, achieved:550137, pct:84.6},
-    {code:'(م3-1)', name:'الشراكات المبرمة', cat:'fin', target:8, achieved:9, pct:111.8},
-    {code:'(ن1-1)', name:'ساعات التدريب للعاملين', cat:'hr', target:2, achieved:2, pct:100},
-    {code:'(ن1-2)', name:'ساعات برامج المتطوعين', cat:'hr', target:75, achieved:80, pct:107.0},
-    {code:'(ن2-1)', name:'اللقاءات والبرامج لتحقيق الرضا الوظيفي', cat:'hr', target:22, achieved:22, pct:100.7},
-    {code:'(ن2-2)', name:'الرسائل البريدية المتضمنة للأداء', cat:'hr', target:3, achieved:1, pct:33.3}
+    {code:'(ع1-1)', name:'دارسو البرامج التعليمية — ذكور', cat:'edu', target:1519, achieved:1560, pct:102.7, year:2025},
+    {code:'(ع1-2)', name:'دارسو البرامج التعليمية — إناث', cat:'edu', target:1977, achieved:1980, pct:100.2, year:2025},
+    {code:'(ع1-3)', name:'دارسو البرامج الإلكترونية', cat:'edu', target:175, achieved:172, pct:98.4, year:2025},
+    {code:'(ع1-4)', name:'الدارسون في البرامج المجتمعية', cat:'edu', target:398, achieved:399, pct:100.3, year:2025},
+    {code:'(ع1-5)', name:'عدد برامج الجمعية المقدمة للمجتمع', cat:'edu', target:18, achieved:22, pct:119.6, year:2025},
+    {code:'(ع1-6)', name:'المستفيدون من برامج الجمعية', cat:'edu', target:2818, achieved:2820, pct:100.1, year:2025},
+    {code:'(ع2-1)', name:'نسبة النجاح في طلاب الجمعية', cat:'edu', target:95, achieved:88.75, pct:93.4, year:2025},
+    {code:'(ع2-2)', name:'الحفظة الذين اجتازوا الاختبار الختامي', cat:'edu', target:36, achieved:64, pct:177.8, year:2025},
+    {code:'(ع2-4)', name:'الأجزاء المحفوظة خلال العام', cat:'edu', target:7000, achieved:7500, pct:107.1, year:2025},
+    {code:'(ع3-1)', name:'نسبة رضا المستفيدين عن البرامج التعليمية', cat:'edu', target:95, achieved:97.25, pct:102.4, year:2025},
+    {code:'(ع3-2)', name:'المستفيدون من الزيارات الميدانية', cat:'edu', target:437, achieved:500, pct:114.4, year:2025},
+    {code:'(ع3-3)', name:'نسبة الزيادة في اللقاءات مع أولياء الأمور', cat:'edu', target:23, achieved:24, pct:104.3, year:2025},
+    {code:'(ع4-1)', name:'أساليب وطرق التعلم الفاعلة المستخدمة', cat:'edu', target:14, achieved:16, pct:115.9, year:2025},
+    {code:'(ع4-2)', name:'الأساليب التعليمية المستحدثة', cat:'edu', target:8, achieved:8, pct:100, year:2025},
+    {code:'(د1-2)', name:'نسبة أتمتة العمليات والأنظمة التعليمية', cat:'ops', target:3, achieved:3, pct:100, year:2025},
+    {code:'(د1-3)', name:'اللوائح والأنظمة التي تم تحديثها', cat:'ops', target:3, achieved:3, pct:100, year:2025},
+    {code:'(د2-3)', name:'العمليات التي تم تحسينها', cat:'ops', target:4, achieved:4, pct:100, year:2025},
+    {code:'(د3-1)', name:'نسبة الزيادة في عدد المتطوعين', cat:'ops', target:85, achieved:100, pct:117.5, year:2025},
+    {code:'(د3-2)', name:'نسبة رضا المتطوعين', cat:'ops', target:98, achieved:98, pct:100, year:2025},
+    {code:'(د4-2)', name:'عدد المناسبات الاجتماعية', cat:'ops', target:3, achieved:4, pct:133.3, year:2025},
+    {code:'(د4-3)', name:'البيئات والخدمات المحسّنة', cat:'ops', target:11, achieved:11, pct:100, year:2025},
+    {code:'(م2-1)', name:'نسبة الزيادة في الموارد المالية الثابتة', cat:'fin', target:4000000, achieved:3092493, pct:77.3, year:2025},
+    {code:'(م2-2)', name:'الزيادة في إيرادات الخدمات', cat:'fin', target:650000, achieved:550137, pct:84.6, year:2025},
+    {code:'(م3-1)', name:'الشراكات المبرمة', cat:'fin', target:8, achieved:9, pct:111.8, year:2025},
+    {code:'(ن1-1)', name:'ساعات التدريب للعاملين', cat:'hr', target:2, achieved:2, pct:100, year:2025},
+    {code:'(ن1-2)', name:'ساعات برامج المتطوعين', cat:'hr', target:75, achieved:80, pct:107.0, year:2025},
+    {code:'(ن2-1)', name:'اللقاءات والبرامج لتحقيق الرضا الوظيفي', cat:'hr', target:22, achieved:22, pct:100.7, year:2025},
+    {code:'(ن2-2)', name:'الرسائل البريدية المتضمنة للأداء', cat:'hr', target:3, achieved:1, pct:33.3, year:2025}
   ]
 };
 
@@ -720,6 +802,13 @@ const emptyYear   = () => ({
   halaqSupported:0,halaqUnsupported:0,halaqStopped:0,supervisors:0,
   rev1:0,rev2:0,rev3:0,rev4:0,exp1:0,exp2:0,exp3:0,exp4:0,hoods:[]
 });
+const kpisForYear = y => DB.kpis.filter(k => k.year === +y);
+const kpiYears    = () => {
+  const fromKpis = DB.kpis.map(k=>k.year);
+  const manual   = DB.kpiYears||[];
+  return [...new Set([...fromKpis,...manual])].filter(Boolean).sort((a,b)=>a-b);
+};
+let kpiYear = latestYear();
 
 function getPctCls(p){ if(p>=100)return 'exceed'; if(p>=90)return 'ok'; if(p>=70)return 'wn'; return 'low'; }
 function showToast(msg){ const t=document.getElementById('toast');t.textContent='✅ '+msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500); }
@@ -991,10 +1080,10 @@ function renderFinance(y) {
   const surplus=totRev-totExp;
   const maxQ=Math.max(d.rev1||0,d.rev2||0,d.rev3||0,d.rev4||0,d.exp1||0,d.exp2||0,d.exp3||0,d.exp4||0,1);
   const bh=v=>Math.max(4,Math.round(v/maxQ*100));
-  const finKpis=DB.kpis.filter(k=>k.cat==='fin');
+  const finKpis=kpisForYear(y).filter(k=>k.cat==='fin');
 
   // مؤشر هدف الإيرادات من KPI (م2-1)
-  const revKpi = DB.kpis.find(k=>k.code==='(م2-1)');
+  const revKpi = kpisForYear(y).find(k=>k.code==='(م2-1)');
   const revTarget = revKpi ? revKpi.target : 0;
   const revPct = revTarget>0 ? Math.min((totRev/revTarget*100),100).toFixed(1) : 0;
 
@@ -1138,22 +1227,43 @@ function renderFinance(y) {
 // ═══════════════════════════════════════════════════════
 // KPI PAGE
 // ═══════════════════════════════════════════════════════
+function buildKpiYrToggle() {
+  const el = document.getElementById('kpi-yr-toggle'); if(!el) return;
+  const yrs = kpiYears();
+  if(yrs.length <= 1) { el.innerHTML=''; return; }
+  el.className = 'yr-toggle';
+  el.innerHTML = yrs.map(y =>
+    `<button class="yr-btn${y===kpiYear?' active':''}" onclick="selectKpiYear(${y})">${y}</button>`
+  ).join('');
+}
+
+function selectKpiYear(y) {
+  kpiYear = y;
+  buildKpiYrToggle();
+  renderKpis('all');
+  document.querySelectorAll('.cat-btn').forEach((b,i) => b.classList.toggle('active', i===0));
+}
+
 function renderKpis(cat) {
   const container=document.getElementById('kpi-container'); if(!container) return;
-  const filtered=cat==='all'?DB.kpis:DB.kpis.filter(k=>k.cat===cat);
+  // تأكد أن kpiYear موجود فيه مؤشرات، وإلا خذ الأحدث
+  if(!kpiYears().includes(kpiYear)) kpiYear = kpiYears().slice(-1)[0] || latestYear();
+  buildKpiYrToggle();
+  const pool = kpisForYear(kpiYear);
+  const filtered = cat==='all' ? pool : pool.filter(k=>k.cat===cat);
   const fN=n=>typeof n==='number'&&n>999?n.toLocaleString('en-US'):n;
-  container.innerHTML=filtered.map(k=>{
+  container.innerHTML = filtered.length ? filtered.map(k=>{
     const pc=getPctCls(k.pct);
     return `<div class="kpi-card ${k.cat}">
       <div class="kpi-top"><div class="kpi-name">${k.name}</div><div class="kpi-code">${k.code}</div></div>
       <div class="kpi-nums"><span>هدف: <strong>${fN(k.target)}</strong></span><span>تحقق: <strong>${fN(k.achieved)}</strong></span><span class="kpi-pct ${pc}">${k.pct}%</span></div>
       <div class="prog-track"><div class="prog-fill ${pc}" style="width:${Math.min(k.pct,100)}%"></div></div>
     </div>`;
-  }).join('');
-  const e=document.getElementById('kpi-exceed'); if(e) e.textContent=DB.kpis.filter(k=>k.pct>=100).length;
-  const o=document.getElementById('kpi-ok');    if(o) o.textContent=DB.kpis.filter(k=>k.pct>=90&&k.pct<100).length;
-  const l=document.getElementById('kpi-low');   if(l) l.textContent=DB.kpis.filter(k=>k.pct<90).length;
-  const b=document.getElementById('kpi-badge'); if(b) b.textContent=DB.kpis.length+' مؤشراً';
+  }).join('') : `<p style="color:var(--tl);font-size:14px;padding:20px">لا توجد مؤشرات لعام ${kpiYear}</p>`;
+  const e=document.getElementById('kpi-exceed'); if(e) e.textContent=pool.filter(k=>k.pct>=100).length;
+  const o=document.getElementById('kpi-ok');    if(o) o.textContent=pool.filter(k=>k.pct>=90&&k.pct<100).length;
+  const l=document.getElementById('kpi-low');   if(l) l.textContent=pool.filter(k=>k.pct<90).length;
+  const b=document.getElementById('kpi-badge'); if(b) b.textContent=pool.length+' مؤشراً — '+kpiYear;
 }
 
 function filterKpi(cat,btn) {
@@ -1177,8 +1287,32 @@ function initCtrl() {
 function rebuildCtrlYrToggle() {
   const el=document.getElementById('ctrl-yr-toggle'); if(!el) return;
   el.innerHTML=sortedYears().map(y=>`
-    <button class="yr-btn${y===ctrlYear?' active':''}" onclick="selectCtrlYear(${y})">${y}</button>
+    <div style="display:inline-flex;align-items:center;gap:0;background:${y===ctrlYear?'var(--primary)':'transparent'};border-radius:20px;${y===ctrlYear?'box-shadow:0 2px 8px rgba(50,51,102,.3)':''}">
+      <button class="yr-btn${y===ctrlYear?' active':''}" onclick="selectCtrlYear(${y})" style="${y===ctrlYear?'background:transparent;color:#fff;padding-left:6px':''}">${y}</button>
+      <button onclick="deleteDataYear(${y})" title="حذف عام ${y}" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 8px 0 2px;color:${y===ctrlYear?'rgba(255,255,255,.7)':'var(--tl)'};line-height:1;transition:color .18s" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='${y===ctrlYear?'rgba(255,255,255,.7)':'var(--tl)'}'">✕</button>
+    </div>
   `).join('');
+}
+
+function deleteKpiYear(y) {
+  if(kpiYears().length <= 1) { showToast('لا يمكن حذف السنة الوحيدة'); return; }
+  if(!confirm('حذف عام ' + y + ' وجميع مؤشراته؟\nهذا الإجراء لا يمكن التراجع عنه.')) return;
+  DB.kpis = DB.kpis.filter(k => k.year !== +y);
+  if(DB.kpiYears) DB.kpiYears = DB.kpiYears.filter(yr => yr !== +y);
+  if(ctrlKpiYear === +y) ctrlKpiYear = kpiYears().slice(-1)[0] || latestYear();
+  if(kpiYear === +y) kpiYear = ctrlKpiYear;
+  buildKpiEditTable();
+  showToast('تم حذف مؤشرات عام ' + y);
+}
+
+function deleteDataYear(y) {
+  if(sortedYears().length <= 1) { showToast('لا يمكن حذف السنة الوحيدة'); return; }
+  if(!confirm('حذف عام ' + y + ' وجميع بياناته؟\nهذا الإجراء لا يمكن التراجع عنه.')) return;
+  delete DB.years[y];
+  if(ctrlYear === y) ctrlYear = latestYear();
+  rebuildCtrlYrToggle();
+  loadCtrlFields(ctrlYear);
+  showToast('تم حذف عام ' + y);
 }
 
 function selectCtrlYear(y) {
@@ -1293,20 +1427,121 @@ function confirmAddYear() {
   showToast('تمت إضافة عام ' + yNum + ' — يمكنك الآن إدخال البيانات');
 }
 
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  document.body.style.overflow='';
+}
+
+function openAddKpiYearModal() {
+  const inp=document.getElementById('kpi-year-input');
+  const err=document.getElementById('kpi-year-err');
+  if(inp) inp.value='';
+  if(err) err.style.display='none';
+  document.getElementById('modal-add-kpi-year').classList.add('open');
+  document.body.style.overflow='hidden';
+  setTimeout(()=>{ if(inp) inp.focus(); },100);
+}
+
+function confirmAddKpiYear() {
+  const inp=document.getElementById('kpi-year-input');
+  const err=document.getElementById('kpi-year-err');
+  const yNum=+inp.value;
+  if(!inp.value||isNaN(yNum)||yNum<1300||yNum>2100) {
+    err.textContent='أدخل سنة صحيحة'; err.style.display='block'; return;
+  }
+  if(kpiYears().includes(yNum)) {
+    err.textContent='هذا العام موجود مسبقاً'; err.style.display='block'; return;
+  }
+  // إضافة العام — لا نضيف مؤشرات، فقط نجعله متاحاً
+  // نضيف مؤشراً مؤقتاً ثم نحذفه لضمان ظهور العام في القائمة
+  // الأفضل: نخزّن السنوات بشكل منفصل
+  if(!DB.kpiYears) DB.kpiYears=[];
+  DB.kpiYears.push(yNum);
+  ctrlKpiYear=yNum;
+  closeModal('modal-add-kpi-year');
+  buildKpiEditTable();
+  showToast('تمت إضافة عام '+yNum+' للمؤشرات');
+}
+
+function openAddKpiModal() {
+  ['kpi-new-code','kpi-new-name','kpi-new-target','kpi-new-achieved'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  const err=document.getElementById('kpi-new-err'); if(err) err.style.display='none';
+  const lbl=document.getElementById('kpi-modal-year-label'); if(lbl) lbl.textContent=ctrlKpiYear;
+  document.getElementById('modal-add-kpi').classList.add('open');
+  document.body.style.overflow='hidden';
+  setTimeout(()=>{ const el=document.getElementById('kpi-new-code'); if(el) el.focus(); },100);
+}
+
+function confirmAddKpi() {
+  const code    = document.getElementById('kpi-new-code')?.value.trim();
+  const name    = document.getElementById('kpi-new-name')?.value.trim();
+  const cat     = document.getElementById('kpi-new-cat')?.value;
+  const target  = +document.getElementById('kpi-new-target')?.value||0;
+  const achieved= +document.getElementById('kpi-new-achieved')?.value||0;
+  const err     = document.getElementById('kpi-new-err');
+
+  if(!code||!name) { err.textContent='الكود والاسم مطلوبان'; err.style.display='block'; return; }
+  if(DB.kpis.find(k=>k.code===code && k.year===kpiYear)) { err.textContent='هذا الكود موجود مسبقاً في عام '+kpiYear; err.style.display='block'; return; }
+
+  const pct = target>0 ? Math.round(achieved/target*1000)/10 : 0;
+  DB.kpis.push({code, name, cat, target, achieved, pct, year: kpiYear});
+
+  document.getElementById('modal-add-kpi').classList.remove('open');
+  document.body.style.overflow='';
+  buildKpiEditTable();
+  showToast('تمت إضافة المؤشر ' + code);
+}
+
+function deleteKpi(i) {
+  const k = DB.kpis[i];
+  if(!confirm('حذف المؤشر: ' + k.name + '؟')) return;
+  DB.kpis.splice(i,1);
+  buildKpiEditTable();
+  showToast('تم حذف المؤشر');
+}
+
 function buildKpiEditTable() {
   const tb=document.getElementById('kpi-edit-body'); if(!tb) return;
   const catL={edu:'تعليمي',ops:'تشغيلي',fin:'مالي',hr:'بشري'};
-  tb.innerHTML=DB.kpis.map((k,i)=>{
+
+  // بناء toggle السنوات فوق الجدول
+  const toggleEl = document.getElementById('kpi-ctrl-yr-toggle');
+  if(toggleEl) {
+    const yrs = kpiYears();
+    if(!yrs.includes(ctrlKpiYear)) ctrlKpiYear = yrs.slice(-1)[0] || latestYear();
+    toggleEl.innerHTML = yrs.map(y =>`
+      <div style="display:inline-flex;align-items:center;gap:0;background:${y===ctrlKpiYear?'var(--primary)':'transparent'};border-radius:20px;${y===ctrlKpiYear?'box-shadow:0 2px 8px rgba(50,51,102,.3)':''}">
+        <button class="yr-btn${y===ctrlKpiYear?' active':''}" onclick="selectCtrlKpiYear(${y})" style="${y===ctrlKpiYear?'background:transparent;color:#fff;padding-left:6px':''}">${y}</button>
+        <button onclick="deleteKpiYear(${y})" title="حذف عام ${y}" style="background:none;border:none;cursor:pointer;font-size:12px;padding:0 8px 0 2px;color:${y===ctrlKpiYear?'rgba(255,255,255,.7)':'var(--tl)'};line-height:1;transition:color .18s" onmouseover="this.style.color='var(--danger)'" onmouseout="this.style.color='${y===ctrlKpiYear?'rgba(255,255,255,.7)':'var(--tl)'}'">✕</button>
+      </div>
+    `).join('');
+  }
+
+  const pool = DB.kpis.map((k,i)=>({...k,_i:i})).filter(k=>k.year===ctrlKpiYear);
+  tb.innerHTML = pool.map(({_i:i, ...k})=>{
     const clr={exceed:'var(--success)',ok:'var(--primary)',wn:'var(--warn)',low:'var(--danger)'}[getPctCls(k.pct)];
     return `<tr>
       <td><strong>${k.code}</strong></td>
       <td style="min-width:160px;font-size:11px;line-height:1.4">${k.name}</td>
-      <td><span class="cat-bdg ${k.cat}">${catL[k.cat]}</span></td>
+      <td><span class="cat-bdg ${k.cat}">${catL[k.cat]||k.cat}</span></td>
       <td style="text-align:center">${k.target>999?k.target.toLocaleString('en-US'):k.target}</td>
       <td><input type="number" id="kpi-a-${i}" value="${k.achieved}" min="0" onchange="recalcKpi(${i})"></td>
       <td><strong id="kpi-p-${i}" style="color:${clr}">${k.pct}%</strong></td>
+      <td><button onclick="deleteKpi(${i})" class="del-btn" title="حذف">✕</button></td>
     </tr>`;
   }).join('');
+
+  if(!pool.length) tb.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--tl);padding:20px">لا توجد مؤشرات لعام ${ctrlKpiYear}</td></tr>`;
+}
+
+let ctrlKpiYear = latestYear();
+
+function selectCtrlKpiYear(y) {
+  ctrlKpiYear = y;
+  kpiYear = y; // مزامنة مع صفحة العرض
+  buildKpiEditTable();
 }
 
 function recalcKpi(i) {
@@ -1318,7 +1553,9 @@ function recalcKpi(i) {
 
 function saveKpis() {
   DB.kpis.forEach((k,i)=>{
-    const ach=+document.getElementById('kpi-a-'+i)?.value||0;
+    const inp=document.getElementById('kpi-a-'+i);
+    if(!inp) return;
+    const ach=+inp.value||0;
     k.achieved=ach; k.pct=k.target>0?Math.round(ach/k.target*1000)/10:0;
   });
   showToast('تم حفظ مؤشرات الأداء — صفحة KPI محدَّثة');
@@ -1396,17 +1633,44 @@ function parseStatsFile(wb) {
 function parseKpiFile(wb) {
   const ws=wb.Sheets[wb.SheetNames[0]]; if(!ws) return 'لم يُعثر على بيانات.';
   const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
-  let updated=0;
+
+  // حاول استخراج السنة من الملف (الصف 2 أو 3)، وإلا استخدم ctrlKpiYear
+  let fileYear = ctrlKpiYear;
+  for(let r=0; r<4; r++) {
+    const row=rows[r]||[];
+    for(let c=0; c<row.length; c++) {
+      const v=+row[c];
+      if(v>=1400&&v<=2200) { fileYear=v; break; }
+    }
+  }
+
+  let updated=0, added=0;
   rows.slice(4).forEach(row=>{
     const code=row[0]?String(row[0]).trim():null; if(!code) return;
-    const idx=DB.kpis.findIndex(k=>k.code.replace(/[\(\)\s]/g,'')===code.replace(/[\(\)\s]/g,''));
-    if(idx===-1) return;
-    if(typeof row[6]==='number') DB.kpis[idx].target=Math.round(row[6]*100)/100;
-    if(typeof row[7]==='number') DB.kpis[idx].achieved=row[7];
-    if(typeof row[8]==='number') DB.kpis[idx].pct=Math.round(row[8]*1000)/10;
-    updated++;
+    const idx=DB.kpis.findIndex(k=>k.code.replace(/[\(\)\s]/g,'')===code.replace(/[\(\)\s]/g,'') && k.year===fileYear);
+    if(idx!==-1) {
+      // تحديث موجود
+      if(typeof row[6]==='number') DB.kpis[idx].target=Math.round(row[6]*100)/100;
+      if(typeof row[7]==='number') DB.kpis[idx].achieved=row[7];
+      if(typeof row[8]==='number') DB.kpis[idx].pct=Math.round(row[8]*1000)/10;
+      updated++;
+    } else {
+      // إضافة مؤشر جديد لهذا العام
+      const name = row[2]?String(row[2]).trim():'';
+      if(!name) return;
+      const catMap={'تعليمي':'edu','تشغيلي':'ops','مالي':'fin','بشري':'hr'};
+      const catAr = row[1]?String(row[1]).trim():'';
+      const cat = catMap[catAr] || (code.startsWith('(ع')?'edu':code.startsWith('(د')?'ops':code.startsWith('(م')?'fin':'hr');
+      const target  = typeof row[6]==='number'?Math.round(row[6]*100)/100:0;
+      const achieved= typeof row[7]==='number'?row[7]:0;
+      const pct     = typeof row[8]==='number'?Math.round(row[8]*1000)/10:(target>0?Math.round(achieved/target*1000)/10:0);
+      DB.kpis.push({code, name, cat, target, achieved, pct, year:fileYear});
+      added++;
+    }
   });
-  return 'تم تحديث '+updated+' مؤشراً';
+  ctrlKpiYear = fileYear;
+  kpiYear     = fileYear;
+  return `عام ${fileYear}: تحديث ${updated} + إضافة ${added} مؤشراً`;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1523,52 +1787,36 @@ function exportKpiExcel() {
 
   const wb = XLSX.utils.book_new();
   const catL = {edu:'تعليمي', ops:'تشغيلي', fin:'مالي', hr:'بشري'};
+  const pool = kpisForYear(ctrlKpiYear);
 
   // الصفوف الأولى كـ header (لتتطابق مع parseKpiFile التي تبدأ من الصف 5)
   const rows = [
     ['جمعية تحفيظ القرآن الكريم بالمنطقة الشرقية — فرع الخبر'],
-    ['رصد مستهدفات الخطة الاستراتيجية'],
+    ['رصد مستهدفات الخطة الاستراتيجية — عام ' + ctrlKpiYear, ctrlKpiYear],
     [''],
     [''],
     // الصف 5 (index 4) — العناوين
     ['الكود','المحور','اسم المؤشر','','','','الهدف','المحقق','نسبة التحقق','الحالة']
   ];
 
-  DB.kpis.forEach(k => {
-    const pct = k.pct / 100; // نخزّن كـ 0-1 لأن parseKpiFile يضرب ×1000/10
+  pool.forEach(k => {
+    const pct = k.pct / 100;
     const status = k.pct>=100?'متحقق':k.pct>=90?'قريب':'تحت المتابعة';
-    rows.push([
-      k.code,          // A - col 0
-      catL[k.cat]||'', // B
-      k.name,          // C
-      '','','',
-      k.target,        // G - col 6
-      k.achieved,      // H - col 7
-      pct,             // I - col 8 (0-1)
-      status
-    ]);
+    rows.push([k.code, catL[k.cat]||'', k.name, '','','', k.target, k.achieved, pct, status]);
   });
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
-
-  // تنسيق عمود نسبة التحقق كنسبة مئوية
   const range = XLSX.utils.decode_range(ws['!ref']);
   for(let r=5; r<=range.e.r; r++) {
     const cell = ws[XLSX.utils.encode_cell({r, c:8})];
     if(cell) cell.z = '0.0%';
   }
-
-  ws['!cols'] = [
-    {wch:10},{wch:10},{wch:45},{wch:5},{wch:5},{wch:5},
-    {wch:14},{wch:14},{wch:14},{wch:14}
-  ];
-
-  // دمج خلية العنوان
+  ws['!cols'] = [{wch:10},{wch:10},{wch:45},{wch:5},{wch:5},{wch:5},{wch:14},{wch:14},{wch:14},{wch:14}];
   ws['!merges'] = [{s:{r:0,c:0},e:{r:0,c:9}},{s:{r:1,c:0},e:{r:1,c:9}}];
 
   XLSX.utils.book_append_sheet(wb, ws, 'فرع الخبر');
-  XLSX.writeFile(wb, 'رصد_مستهدفات_الخطة_الاستراتيجية.xlsx');
-  showToast('تم تصدير ملف مؤشرات الأداء بنجاح');
+  XLSX.writeFile(wb, `رصد_مستهدفات_الخطة_${ctrlKpiYear}.xlsx`);
+  showToast('تم تصدير مؤشرات عام ' + ctrlKpiYear);
 }
 
 // ═══════════════════════════════════════════════════════
