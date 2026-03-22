@@ -991,10 +991,10 @@ body{font-family:var(--font-body);background:var(--off);color:var(--text);min-he
   <div class="modal">
     <div class="modal-head"><h3>🏆 شهادة شكر — طالب</h3><button class="modal-close" onclick="closeForm('student-cert')">✕</button></div>
     <div class="modal-body">
-      <div class="fg"><label>اسم الطالب <span>*</span></label><input class="fi" type="text"></div>
-      <div class="fg"><label>اسم الجامع</label><input class="fi" type="text"></div>
-      <div class="fg"><label>المناسبة</label><input class="fi" type="text"></div>
-      <div class="fg"><label>البريد الإلكتروني</label><input class="fi" type="email"></div>
+      <div class="fg"><label>اسم الطالب <span>*</span></label><input class="fi" id="sc-name" type="text"></div>
+      <div class="fg"><label>اسم الجامع</label><input class="fi" id="sc-mosque" type="text"></div>
+      <div class="fg"><label>المناسبة</label><input class="fi" id="sc-occasion" type="text"></div>
+      <div class="fg"><label>البريد الإلكتروني</label><input class="fi" id="sc-email" type="email"></div>
     </div>
     <div class="modal-foot"><button class="btn btn-g" onclick="closeForm('student-cert')">إلغاء</button><button class="btn" onclick="exportStudentCert()" style="background:#0f6e56;color:#fff;border-radius:var(--rs)">📄 تصدير PDF</button><button class="btn btn-p" onclick="submitForm('student-cert')">📤 إنشاء</button></div>
   </div>
@@ -1003,10 +1003,10 @@ body{font-family:var(--font-body);background:var(--off);color:var(--text);min-he
   <div class="modal">
     <div class="modal-head"><h3>🎖️ شهادة شكر — معلم</h3><button class="modal-close" onclick="closeForm('teacher-cert')">✕</button></div>
     <div class="modal-body">
-      <div class="fg"><label>اسم المعلم <span>*</span></label><input class="fi" type="text"></div>
-      <div class="fg"><label>اسم الجامع</label><input class="fi" type="text"></div>
-      <div class="fg"><label>المناسبة</label><input class="fi" type="text"></div>
-      <div class="fg"><label>البريد الإلكتروني</label><input class="fi" type="email"></div>
+      <div class="fg"><label>اسم المعلم <span>*</span></label><input class="fi" id="tc-name" type="text"></div>
+      <div class="fg"><label>اسم الجامع</label><input class="fi" id="tc-mosque" type="text"></div>
+      <div class="fg"><label>المناسبة</label><input class="fi" id="tc-occasion" type="text"></div>
+      <div class="fg"><label>البريد الإلكتروني</label><input class="fi" id="tc-email" type="email"></div>
     </div>
     <div class="modal-foot"><button class="btn btn-g" onclick="closeForm('teacher-cert')">إلغاء</button><button class="btn" onclick="exportTeacherCert()" style="background:#0f6e56;color:#fff;border-radius:var(--rs)">📄 تصدير PDF</button><button class="btn btn-p" onclick="submitForm('teacher-cert')">📤 إنشاء</button></div>
   </div>
@@ -3421,9 +3421,9 @@ html,body{width:210mm;font-family:'Segoe UI',Tahoma,Arial,sans-serif;color:${BRA
 
 // ── شهادة شكر طالب ──
 function exportStudentCert() {
-  const name    = document.querySelector('#modal-student-cert .fi:nth-of-type(1)')?.value || '—';
-  const mosque  = document.querySelector('#modal-student-cert .fi:nth-of-type(2)')?.value || '—';
-  const occasion= document.querySelector('#modal-student-cert .fi:nth-of-type(3)')?.value || '—';
+  const name    = document.getElementById('sc-name')?.value || '—';
+  const mosque  = document.getElementById('sc-mosque')?.value || '—';
+  const occasion= document.getElementById('sc-occasion')?.value || '—';
 
   const html = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
 <style>${certPageStyle()}</style></head><body>
@@ -3464,9 +3464,9 @@ ${reportHeader('شهادة شكر وتقدير','الطلاب المتميزون
 
 // ── شهادة شكر معلم ──
 function exportTeacherCert() {
-  const name    = document.querySelector('#modal-teacher-cert .fi:nth-of-type(1)')?.value || '—';
-  const mosque  = document.querySelector('#modal-teacher-cert .fi:nth-of-type(2)')?.value || '—';
-  const occasion= document.querySelector('#modal-teacher-cert .fi:nth-of-type(3)')?.value || '—';
+  const name    = document.getElementById('tc-name')?.value || '—';
+  const mosque  = document.getElementById('tc-mosque')?.value || '—';
+  const occasion= document.getElementById('tc-occasion')?.value || '—';
 
   const html = `<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">
 <style>${certPageStyle()}</style></head><body>
@@ -3962,19 +3962,21 @@ function collectFormData(id) {
     };
   }
   if (id === 'student-cert') {
-    const inputs = document.querySelectorAll('#modal-student-cert .fi');
     return {
       type: 'studentCert', _label: 'شهادة طالب',
-      name: inputs[0]?.value || '', mosque: inputs[1]?.value || '',
-      occasion: inputs[2]?.value || '', email: inputs[3]?.value || ''
+      name:     document.getElementById('sc-name')?.value || '',
+      mosque:   document.getElementById('sc-mosque')?.value || '',
+      occasion: document.getElementById('sc-occasion')?.value || '',
+      email:    document.getElementById('sc-email')?.value || ''
     };
   }
   if (id === 'teacher-cert') {
-    const inputs = document.querySelectorAll('#modal-teacher-cert .fi');
     return {
       type: 'teacherCert', _label: 'شهادة معلم',
-      name: inputs[0]?.value || '', mosque: inputs[1]?.value || '',
-      occasion: inputs[2]?.value || '', email: inputs[3]?.value || ''
+      name:     document.getElementById('tc-name')?.value || '',
+      mosque:   document.getElementById('tc-mosque')?.value || '',
+      occasion: document.getElementById('tc-occasion')?.value || '',
+      email:    document.getElementById('tc-email')?.value || ''
     };
   }
   if (id === 'huffaz') return {
