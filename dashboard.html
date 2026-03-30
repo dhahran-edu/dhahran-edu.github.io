@@ -289,7 +289,7 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
     <div>
       <h1>وزارة التعليم - الادارة العامة للتعليم بالمنطقة الشرقية</h1>
       <p id="header-sub" style="font-size:15px;font-weight:700;margin-top:6px;">🗄️ 2,127 مدرسة | 👦 13 بنين 👧 16 بنات</p>
-      <p id="last-update" class="last-update" style="display: block;">آخر تحديث: ٠٧:١١&nbsp;م</p>
+      <p id="last-update" class="last-update" style="display: block;">آخر تحديث: ٠٧:١٧&nbsp;م</p>
     </div>
   </div>
   <div class="header-actions">
@@ -443,7 +443,7 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
     <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center;width:100%;max-width:460px;">
 
       <!-- زر الدخول - تحديث تلقائي -->
-      <button onclick="quickEnter()" id="btn-quick-enter" style="flex: 1 1 0%; min-width: 180px; background: linear-gradient(135deg, rgb(13, 207, 218), rgb(33, 140, 170)); color: rgb(0, 0, 0); border: medium; padding: 18px 24px; border-radius: 16px; cursor: pointer; font-family: Cairo, sans-serif; font-size: 16px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: 0.2s; box-shadow: rgba(13, 207, 218, 0.4) 0px 4px 24px; opacity: 0.7;" disabled="">
+      <button onclick="quickEnter()" id="btn-quick-enter" style="flex: 1 1 0%; min-width: 180px; background: linear-gradient(135deg, rgb(13, 207, 218), rgb(33, 140, 170)); color: rgb(0, 0, 0); border: medium; padding: 18px 24px; border-radius: 16px; cursor: pointer; font-family: Cairo, sans-serif; font-size: 16px; font-weight: 800; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: 0.2s; box-shadow: rgba(13, 207, 218, 0.4) 0px 4px 24px; opacity: 1;">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
         <span>دخول</span>
         <span style="font-size:11px;font-weight:500;opacity:.8;">تحديث تلقائي من Sheets</span>
@@ -459,7 +459,7 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
     </div>
 
     <!-- حالة التحديث -->
-    <div id="welcome-status" style="font-size:12px;color:var(--text2);min-height:20px;text-align:center;">⏳ جاري التحديث من Google Sheets...</div>
+    <div id="welcome-status" style="font-size:12px;color:var(--text2);min-height:20px;text-align:center;">✅ تم التحديث — جاري فتح اللوحة...</div>
 
   </div>
 
@@ -1919,41 +1919,46 @@ function quickEnter(){
   btn.style.opacity = '.7';
   if(st) st.textContent = '⏳ جاري التحديث من Google Sheets...';
 
-  var loaded = 0;
-  var errors = 0;
-  var types = ['بنين','بنات'];
+  var done = false;
 
-  function tryLoad(type){
-    loadFromGoogleSheets(type);
-  }
+  // نراقب srcData كل ثانية — نفتح اللوحة فور نجاح التحميل
+  var checkInterval = setInterval(function(){
+    var hasBanin = srcData && srcData['بنين'] && srcData['بنين'].loaded;
+    var haBanat  = srcData && srcData['بنات']  && srcData['بنات'].loaded;
+    if((hasBanin || haBanat) && !done){
+      done = true;
+      clearInterval(checkInterval);
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      if(st) st.textContent = '✅ تم التحديث — جاري فتح اللوحة...';
+      setTimeout(showDashboard, 600);
+    }
+  }, 800);
 
-  // نحاول نحمّل البنين والبنات معاً
+  // نكتم alert أثناء التحميل
   var origAlert = window.alert;
-  var messages = [];
-  window.alert = function(msg){ messages.push(msg); };
+  window.alert = function(){};
 
+  loadFromGoogleSheets('بنين');
+  setTimeout(function(){ loadFromGoogleSheets('بنات'); }, 300);
+
+  // timeout بعد 30 ثانية
   setTimeout(function(){
-    tryLoad('بنين');
-    setTimeout(function(){
-      tryLoad('بنات');
-      setTimeout(function(){
-        window.alert = origAlert;
-        btn.disabled = false;
-        btn.style.opacity = '1';
-        // نشوف إذا حملت بيانات
-        var hasBanin = srcData && srcData['بنين'] && srcData['بنين'].loaded;
-        var haBanat = srcData && srcData['بنات'] && srcData['بنات'].loaded;
-        if(hasBanin || haBanat){
-          if(st) st.textContent = '✅ تم التحديث — جاري فتح اللوحة...';
-          setTimeout(function(){
-            showDashboard();
-          }, 800);
-        } else {
-          if(st) st.innerHTML = '⚠️ تعذّر التحديث — <a href="#" onclick="showControlPanel();return false;" style="color:#0DCFDA;">رفع يدوي</a>';
-        }
-      }, 35000);
-    }, 500);
-  }, 100);
+    clearInterval(checkInterval);
+    window.alert = origAlert;
+    if(done) return;
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    var hasBanin = srcData && srcData['بنين'] && srcData['بنين'].loaded;
+    var haBanat  = srcData && srcData['بنات']  && srcData['بنات'].loaded;
+    if(hasBanin || haBanat){
+      done = true;
+      if(st) st.textContent = '✅ تم التحديث';
+      setTimeout(showDashboard, 400);
+    } else {
+      if(st) st.innerHTML = '⚠️ تعذّر الاتصال — <a href="#" onclick="showControlPanel();return false;" style="color:#0DCFDA;">رفع يدوي</a>';
+    }
+  }, 30000);
 }
 
 function showControlPanel(){
