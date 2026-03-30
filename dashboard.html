@@ -320,7 +320,7 @@ tr:hover td{background:rgba(112,48,160,.06);}
         </div>
         <div>
           <label style="font-size:12px;color:var(--text2);display:block;margin-bottom:4px;">📄 اسم الملف</label>
-          <input id="gh-filename" type="text" placeholder="dashboard.html" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'Cairo',sans-serif;font-size:13px;outline:none;box-sizing:border-box;direction:ltr;">
+          <input id="gh-filename" type="text" placeholder="dashboard.html" oninput="updateGhPagesUrl()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-family:'Cairo',sans-serif;font-size:13px;outline:none;box-sizing:border-box;direction:ltr;">
         </div>
       </div>
       <div id="gh-status" style="font-size:12px;color:var(--text2);min-height:18px;text-align:center;"></div>
@@ -331,11 +331,15 @@ tr:hover td{background:rgba(112,48,160,.06);}
       <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;">
         <div style="font-size:11px;color:var(--text2);text-align:center;margin-bottom:8px;">أو الطريقة السهلة — بدون Token</div>
         <button onclick="downloadForGithub()" style="width:100%;background:linear-gradient(135deg,#0DCFDA,#218CAA);color:#fff;border:none;padding:11px;border-radius:8px;cursor:pointer;font-family:'Cairo',sans-serif;font-size:13px;font-weight:700;">⬇️ تحميل الملف ← ارفعه يدوياً على GitHub</button>
-        <div style="font-size:11px;color:var(--text2);margin-top:8px;line-height:1.8;text-align:right;">
-          ١. حمّل الملف<br>
-          ٢. افتح <b>dhahran-edu.github.io</b> على GitHub<br>
-          ٣. اضغط <b>Add file ← Upload files</b><br>
-          ٤. اسحب الملف وارفعه ✅
+        <div style="font-size:11px;color:var(--text2);margin-top:8px;line-height:1.9;text-align:right;">
+          ١. حمّل الملف 👆<br>
+          ٢. افتح <a href="https://github.com/dhahran-edu/dhahran-edu.github.io/upload/main" target="_blank" style="color:#0DCFDA;">رابط الرفع على GitHub ↗</a><br>
+          ٣. اسحب الملف وارفعه<br>
+          ٤. بعد الرفع افتح الرابط:
+        </div>
+        <div id="gh-pages-link-box" style="margin-top:6px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <span id="gh-pages-url" style="font-size:11px;color:#0DCFDA;direction:ltr;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">https://dhahran-edu.github.io/dashboard.html</span>
+          <button onclick="openGhPages()" style="background:#0DCFDA;color:#000;border:none;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:11px;white-space:nowrap;font-family:'Cairo',sans-serif;">فتح ↗</button>
         </div>
       </div>
     </div>
@@ -1692,6 +1696,20 @@ function saveGithubSettings(){
   }catch(e){}
 }
 
+function updateGhPagesUrl(){
+  var owner = document.getElementById('gh-owner').value.trim() || 'dhahran-edu';
+  var filename = document.getElementById('gh-filename').value.trim() || 'dashboard.html';
+  var url = 'https://'+owner+'.github.io/'+filename;
+  var el = document.getElementById('gh-pages-url');
+  if(el) el.textContent = url;
+}
+
+function openGhPages(){
+  var owner = document.getElementById('gh-owner').value.trim() || 'dhahran-edu';
+  var filename = document.getElementById('gh-filename').value.trim() || 'dashboard.html';
+  window.open('https://'+owner+'.github.io/'+filename, '_blank');
+}
+
 function downloadForGithub(){
   var filename = document.getElementById('gh-filename').value.trim() || 'dashboard.html';
   var html = document.documentElement.outerHTML;
@@ -1703,6 +1721,7 @@ function downloadForGithub(){
   URL.revokeObjectURL(a.href);
   document.getElementById('gh-status').textContent = '✅ تم التحميل — ارفعه الآن على GitHub';
   document.getElementById('gh-status').style.color = '#0DCFDA';
+  updateGhPagesUrl();
 }
 
 async function uploadToGithub(){
