@@ -2075,6 +2075,9 @@ async function doLogin() {
   document.getElementById('login-btn-text').textContent = 'دخول →';
   showToast(`مرحباً ${user.name}`, 'success');
 
+  // مزامنة الصلاحيات من Sheets في الخلفية
+  setTimeout(() => syncPermsFromSheets(), 1000);
+
   if (user.role === 'parent') goTo('parent');
   else {
     const firstPage = ['home','school','operational','activity','reports','parent'].find(p => canAccess(p));
@@ -2189,15 +2192,38 @@ async function syncTeachersFromSheets() {
     if (data.ok && Array.isArray(data.teachers) && data.teachers.length) {
       S.teachersData = data.teachers;
       save('teachers', data.teachers);
-      // أعد تطبيق نطاق المعلم بعد التحديث
       if (S.user?.role === 'teacher' && S.user.linkedId) {
         applyTeacherScope();
-        // أعد رسم الصفحة الحالية إذا كانت school
         const schoolPage = document.getElementById('page-school');
         if (schoolPage?.classList.contains('active')) renderSchoolPage();
       }
     }
-  } catch(e) { /* تجاهل أخطاء الشبكة */ }
+  } catch(e) {}
+}
+
+async function syncPermsFromSheets() {
+  const url = CFG.scriptUrl;
+  if (!url || !S.user) return;
+  try {
+    const res  = await fetch(`${url}?action=getUserPerms&username=${encodeURIComponent(S.user.username)}&t=${Date.now()}`);
+    const data = await res.json();
+    if (data.ok && data.perms) {
+      try {
+        const perms = typeof data.perms === 'string' ? JSON.parse(data.perms) : data.perms;
+        if (perms && typeof perms === 'object') {
+          saveUserPerms(S.user.username, perms);
+          // أعد رسم الصفحة الحالية لتطبيق الصلاحيات الجديدة
+          const active = document.querySelector('.page.active');
+          if (active && active.id !== 'page-login') {
+            const page = active.id.replace('page-','');
+            if (typeof window[`render${page.charAt(0).toUpperCase()+page.slice(1)}Page`] === 'function') {
+              window[`render${page.charAt(0).toUpperCase()+page.slice(1)}Page`]();
+            }
+          }
+        }
+      } catch(e) {}
+    }
+  } catch(e) {}
 }
 
 /* ════════════════════════════════════════════
