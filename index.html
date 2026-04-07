@@ -2075,8 +2075,8 @@ async function doLogin() {
   document.getElementById('login-btn-text').textContent = 'دخول →';
   showToast(`مرحباً ${user.name}`, 'success');
 
-  // مزامنة الصلاحيات من Sheets في الخلفية
-  setTimeout(() => syncPermsFromSheets(), 1000);
+  // مزامنة الصلاحيات من Sheets أولاً ثم التنقل
+  await syncPermsFromSheets();
 
   if (user.role === 'parent') goTo('parent');
   else {
@@ -2205,22 +2205,14 @@ async function syncPermsFromSheets() {
   const url = CFG.scriptUrl;
   if (!url || !S.user) return;
   try {
-    const res  = await fetch(`${url}?action=getUserPerms&username=${encodeURIComponent(S.user.username)}&t=${Date.now()}`);
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 5000);
+    const res  = await fetch(`${url}?action=getUserPerms&username=${encodeURIComponent(S.user.username)}&t=${Date.now()}`, { signal: ctrl.signal });
     const data = await res.json();
     if (data.ok && data.perms) {
       try {
         const perms = typeof data.perms === 'string' ? JSON.parse(data.perms) : data.perms;
-        if (perms && typeof perms === 'object') {
-          saveUserPerms(S.user.username, perms);
-          // أعد رسم الصفحة الحالية لتطبيق الصلاحيات الجديدة
-          const active = document.querySelector('.page.active');
-          if (active && active.id !== 'page-login') {
-            const page = active.id.replace('page-','');
-            if (typeof window[`render${page.charAt(0).toUpperCase()+page.slice(1)}Page`] === 'function') {
-              window[`render${page.charAt(0).toUpperCase()+page.slice(1)}Page`]();
-            }
-          }
-        }
+        if (perms && typeof perms === 'object') saveUserPerms(S.user.username, perms);
       } catch(e) {}
     }
   } catch(e) {}
