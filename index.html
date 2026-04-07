@@ -5659,101 +5659,141 @@ function printTop10PerGrade() {
   const school = CFG.school || 'مدرسة الظهران الثانوية الحكومية';
   const term   = CFG.term  || 'الفصل الدراسي الأول 1446/1447';
 
-  // تجميع حسب الصف (المرحلة)
+  // تجميع حسب الصف
   const gradeMap = {};
   S.computed.forEach(s => {
     if (!gradeMap[s.grade]) gradeMap[s.grade] = [];
     gradeMap[s.grade].push(s);
   });
 
-  const rankColors = [
-    { bg:'linear-gradient(135deg,#fef9c3,#fde68a)', border:'#d97706', text:'#92400e', medal:'🥇' },
-    { bg:'linear-gradient(135deg,#f1f5f9,#e2e8f0)', border:'#64748b', text:'#334155', medal:'🥈' },
-    { bg:'linear-gradient(135deg,#fff7ed,#fed7aa)', border:'#c2410c', text:'#7c2d12', medal:'🥉' },
+  // تصاميم المراكز
+  const ranks = [
+    { grad:'linear-gradient(145deg,#f59e0b,#d97706)', shadow:'rgba(245,158,11,.4)', medal:'🥇', rank:'الأول', num:'01' },
+    { grad:'linear-gradient(145deg,#94a3b8,#64748b)', shadow:'rgba(100,116,139,.35)', medal:'🥈', rank:'الثاني', num:'02' },
+    { grad:'linear-gradient(145deg,#cd7f32,#a05c28)', shadow:'rgba(160,92,40,.35)', medal:'🥉', rank:'الثالث', num:'03' },
+    { grad:'linear-gradient(145deg,#3b82f6,#1d4ed8)', shadow:'rgba(59,130,246,.3)', medal:'④', rank:'الرابع', num:'04' },
+    { grad:'linear-gradient(145deg,#8b5cf6,#6d28d9)', shadow:'rgba(139,92,246,.3)', medal:'⑤', rank:'الخامس', num:'05' },
+    { grad:'linear-gradient(145deg,#ec4899,#be185d)', shadow:'rgba(236,72,153,.3)', medal:'⑥', rank:'السادس', num:'06' },
+    { grad:'linear-gradient(145deg,#14b8a6,#0f766e)', shadow:'rgba(20,184,166,.3)', medal:'⑦', rank:'السابع', num:'07' },
+    { grad:'linear-gradient(145deg,#f97316,#c2410c)', shadow:'rgba(249,115,22,.3)', medal:'⑧', rank:'الثامن', num:'08' },
+    { grad:'linear-gradient(145deg,#10b981,#047857)', shadow:'rgba(16,185,129,.3)', medal:'⑨', rank:'التاسع', num:'09' },
+    { grad:'linear-gradient(145deg,#06b6d4,#0e7490)', shadow:'rgba(6,182,212,.3)', medal:'⑩', rank:'العاشر', num:'10' },
   ];
 
   const pages = Object.entries(gradeMap)
     .sort(([a],[b]) => a.localeCompare(b))
     .map(([grade, students], pageIdx, arr) => {
       const top10 = [...students].sort((a,b) => a.gradeRank - b.gradeRank).slice(0,10);
+      const avg   = (students.reduce((a,b)=>a+b.cumPct,0)/students.length).toFixed(1);
 
-      const rows = top10.map((s, i) => {
-        const c = rankColors[i] || { bg:'#f8fafc', border:'#cbd5e1', text:'#1e293b', medal: i+1 };
-        const barWidth = Math.round(s.cumPct);
-        const barColor = s.cumPct >= 90 ? '#22c55e' : s.cumPct >= 75 ? '#3b82f6' : '#f59e0b';
+      const cards = top10.map((s, i) => {
+        const r = ranks[i] || ranks[9];
+        const pct = fmtPct(s.cumPct);
+        const bar = Math.min(100, Math.round(s.cumPct));
         return `
-        <tr style="background:${c.bg};border-bottom:1px solid ${c.border}22">
-          <td style="text-align:center;font-size:1.5rem;padding:10px 8px;width:50px">${c.medal}</td>
-          <td style="font-weight:800;font-size:.92rem;color:${c.text};padding:10px 12px">${s.name}</td>
-          <td style="text-align:center;color:#555;font-size:.82rem;padding:10px 8px">${s.class}</td>
-          <td style="text-align:center;padding:10px 8px">
-            <div style="display:flex;align-items:center;gap:8px">
-              <div style="flex:1;height:10px;background:#e2e8f0;border-radius:10px;overflow:hidden">
-                <div style="height:100%;width:${barWidth}%;background:${barColor};border-radius:10px"></div>
+        <div style="background:#fff;border-radius:20px;overflow:hidden;
+          box-shadow:0 6px 24px ${r.shadow};position:relative;
+          display:flex;flex-direction:column;height:100%">
+          <!-- شريط اللون العلوي -->
+          <div style="background:${r.grad};padding:20px 18px 16px;position:relative;overflow:hidden;flex-shrink:0">
+            <!-- زخرفة دائرية -->
+            <div style="position:absolute;top:-20px;left:-20px;width:90px;height:90px;
+              border-radius:50%;background:rgba(255,255,255,.1)"></div>
+            <div style="position:absolute;bottom:-30px;right:-10px;width:110px;height:110px;
+              border-radius:50%;background:rgba(255,255,255,.07)"></div>
+            <!-- رقم الترتيب -->
+            <div style="position:absolute;top:8px;left:12px;
+              font-size:3rem;font-weight:900;color:rgba(255,255,255,.15);
+              font-family:Arial,sans-serif;line-height:1">${r.num}</div>
+            <!-- الميدالية والترتيب -->
+            <div style="display:flex;align-items:center;gap:10px;position:relative">
+              <div style="font-size:2.2rem;line-height:1">${r.medal}</div>
+              <div>
+                <div style="color:rgba(255,255,255,.8);font-size:.68rem;font-weight:600">المركز</div>
+                <div style="color:#fff;font-size:1.05rem;font-weight:900">${r.rank}</div>
               </div>
-              <span style="font-size:.88rem;font-weight:900;color:${c.text};min-width:48px">${fmtPct(s.cumPct)}</span>
+              <!-- النسبة -->
+              <div style="margin-right:auto;text-align:center">
+                <div style="color:#fff;font-size:1.8rem;font-weight:900;line-height:1">${pct}</div>
+                <div style="color:rgba(255,255,255,.75);font-size:.62rem">النسبة التراكمية</div>
+              </div>
             </div>
-          </td>
-          <td style="text-align:center;padding:10px 8px">
-            <span style="background:${barColor}22;color:${barColor};border:1px solid ${barColor}44;
-              border-radius:20px;padding:3px 12px;font-size:.78rem;font-weight:700">${s.overallGrade}</span>
-          </td>
-          <td style="text-align:center;color:#555;font-size:.8rem;padding:10px 8px">${s.behaviorScore}/500</td>
-        </tr>`;
+          </div>
+          <!-- بيانات الطالب -->
+          <div style="padding:16px 18px;flex:1;display:flex;flex-direction:column;justify-content:space-between">
+            <div style="font-size:1rem;font-weight:900;color:#0f172a;line-height:1.4;margin-bottom:10px">${s.name}</div>
+            <div>
+              <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+                <span style="background:#f1f5f9;color:#475569;border-radius:8px;
+                  padding:3px 10px;font-size:.72rem;font-weight:600">فصل ${s.class}</span>
+                <span style="background:${s.cumPct>=90?'#dcfce7':s.cumPct>=75?'#dbeafe':'#fef9c3'};
+                  color:${s.cumPct>=90?'#166534':s.cumPct>=75?'#1d4ed8':'#92400e'};
+                  border-radius:8px;padding:3px 10px;font-size:.72rem;font-weight:700">${s.overallGrade}</span>
+              </div>
+              <!-- شريط النسبة -->
+              <div style="background:#f1f5f9;border-radius:99px;height:8px;overflow:hidden">
+                <div style="height:100%;width:${bar}%;background:${r.grad};border-radius:99px"></div>
+              </div>
+            </div>
+          </div>
+        </div>`;
       }).join('');
 
       const isLast = pageIdx === arr.length - 1;
       return `
       <div style="page-break-after:${isLast?'avoid':'always'};
-        width:100%;min-height:100vh;padding:24px 32px;box-sizing:border-box;
-        font-family:'Tajawal',Arial,sans-serif;direction:rtl;background:#fff">
+        width:100vw;height:100vh;box-sizing:border-box;padding:24px 32px;
+        font-family:'Tajawal',Arial,sans-serif;direction:rtl;
+        background:linear-gradient(160deg,#e8f4f8 0%,#dbeafe 40%,#ede9fe 100%);
+        display:flex;flex-direction:column;overflow:hidden">
 
-        <!-- رأس الصفحة -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-          <div>
-            <div style="font-size:1.15rem;font-weight:900;color:#0f172a">${school}</div>
-            <div style="font-size:.78rem;color:#64748b;margin-top:2px">${term}</div>
-          </div>
-          <div style="text-align:center;background:linear-gradient(135deg,#1e3a5f,#2563eb);
-            color:#fff;border-radius:16px;padding:10px 24px;box-shadow:0 4px 12px #2563eb44">
-            <div style="font-size:.7rem;opacity:.8;margin-bottom:2px">المرحلة الدراسية</div>
-            <div style="font-size:1.1rem;font-weight:900">${grade}</div>
-          </div>
-        </div>
-
-        <!-- عنوان -->
-        <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb);border-radius:14px;
-          padding:14px 24px;margin-bottom:20px;display:flex;align-items:center;gap:16px;
-          box-shadow:0 4px 16px #2563eb33">
-          <div style="font-size:2.2rem">🏆</div>
-          <div>
-            <div style="color:#fff;font-size:1.1rem;font-weight:900">العشرة الأوائل أكاديمياً</div>
-            <div style="color:#93c5fd;font-size:.78rem;margin-top:2px">
-              إجمالي طلاب المرحلة: ${students.length} طالب — 
-              متوسط المرحلة: ${(students.reduce((a,b)=>a+b.cumPct,0)/students.length).toFixed(1)}%
+        <!-- رأس الصفحة + العنوان في صف واحد -->
+        <div style="display:flex;align-items:stretch;justify-content:space-between;gap:16px;margin-bottom:16px">
+          <!-- اسم المدرسة -->
+          <div style="display:flex;align-items:center;gap:12px;flex:1">
+            <div style="width:4px;align-self:stretch;background:linear-gradient(180deg,#f59e0b,#3b82f6);border-radius:4px"></div>
+            <div>
+              <div style="color:#1e3a5f;font-size:1rem;font-weight:900">${school}</div>
+              <div style="color:#64748b;font-size:.72rem;margin-top:2px">${term}</div>
             </div>
           </div>
+
+          <!-- العنوان + المرحلة بنفس الارتفاع -->
+          <div style="display:flex;gap:12px;align-items:stretch">
+            <!-- العنوان -->
+            <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb);
+              border-radius:14px;padding:10px 22px;
+              box-shadow:0 4px 16px rgba(37,99,235,.3);
+              display:flex;align-items:center;gap:10px">
+              <span style="font-size:1.3rem">🏆</span>
+              <span style="color:#fff;font-size:1rem;font-weight:900">العشرة الأوائل أكاديمياً</span>
+              <span style="font-size:1.3rem">🏆</span>
+            </div>
+            <!-- المرحلة -->
+            <div style="background:linear-gradient(135deg,#1e3a5f,#2563eb);
+              border-radius:14px;padding:10px 22px;
+              box-shadow:0 4px 20px rgba(37,99,235,.3);
+              display:flex;flex-direction:column;align-items:center;justify-content:center">
+              <div style="color:rgba(255,255,255,.8);font-size:.65rem;font-weight:600">المرحلة</div>
+              <div style="color:#fff;font-size:1rem;font-weight:900">${grade}</div>
+            </div>
+          </div>
+
+          <!-- الإحصائيات -->
+          <div style="display:flex;flex-direction:column;justify-content:center;align-items:flex-start;flex:1">
+            <div style="color:#475569;font-size:.68rem">إجمالي الطلاب: <b style="color:#1e3a5f">${students.length}</b></div>
+            <div style="color:#475569;font-size:.68rem;margin-top:4px">متوسط المرحلة: <b style="color:#d97706">${avg}%</b></div>
+          </div>
         </div>
 
-        <!-- الجدول -->
-        <table style="width:100%;border-collapse:collapse;border-radius:14px;overflow:hidden;
-          box-shadow:0 2px 12px rgba(0,0,0,.08)">
-          <thead>
-            <tr style="background:linear-gradient(135deg,#1e3a5f,#2563eb)">
-              <th style="color:#fff;padding:12px 8px;font-size:.82rem;text-align:center">الترتيب</th>
-              <th style="color:#fff;padding:12px 12px;font-size:.82rem;text-align:right">اسم الطالب</th>
-              <th style="color:#fff;padding:12px 8px;font-size:.82rem;text-align:center">الفصل</th>
-              <th style="color:#fff;padding:12px 12px;font-size:.82rem;text-align:center">النسبة التراكمية</th>
-              <th style="color:#fff;padding:12px 8px;font-size:.82rem;text-align:center">التقدير</th>
-              <th style="color:#fff;padding:12px 8px;font-size:.82rem;text-align:center">السلوك</th>
-            </tr>
-          </thead>
-          <tbody>${rows}</tbody>
-        </table>
+        <!-- البطاقات -->
+        <div style="flex:1;display:grid;grid-template-columns:repeat(5,1fr);grid-template-rows:1fr 1fr;gap:14px;min-height:0">
+          ${cards}
+        </div>
 
         <!-- ذيل -->
-        <div style="margin-top:18px;padding-top:10px;border-top:1px solid #e2e8f0;
-          display:flex;justify-content:space-between;font-size:.7rem;color:#94a3b8">
+        <div style="margin-top:10px;display:flex;justify-content:space-between;
+          font-size:.65rem;color:#94a3b8">
           <span>تاريخ الإصدار: ${new Date().toLocaleDateString('ar-SA')}</span>
           <span>صفحة ${pageIdx+1} من ${arr.length}</span>
         </div>
@@ -5765,10 +5805,10 @@ function printTop10PerGrade() {
     <style>
       @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800;900&display=swap');
       @page { size: A4 landscape; margin: 0; }
-      @media print { body { margin: 0; } }
+      @media print { html,body { margin:0;padding:0;width:100%;height:100%; } }
     </style>
     ${pages}`;
-  setTimeout(() => window.print(), 600);
+  setTimeout(() => window.print(), 700);
 }
 
 function renderParentPage() {
