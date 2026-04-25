@@ -2980,6 +2980,9 @@ function showDashboard(){
   if(fs) fs.style.display='flex';
   if(ss) ss.style.display='flex';
   if(ws) ws.style.display='none';
+  // إعادة بناء الفلاتر (مدارس/قطاعات/مراحل) بأحدث بيانات
+  try{ if(typeof buildFilters === 'function') buildFilters(); }catch(e){}
+  try{ if(typeof applyFilters === 'function') applyFilters(); }catch(e){}
 }
 
 function quickEnter(){
@@ -2991,11 +2994,13 @@ function quickEnter(){
 
   var done = false;
 
-  // نراقب srcData كل ثانية — نفتح اللوحة فور نجاح التحميل
+  // نراقب srcData ومدارس قاعدة البيانات — نفتح اللوحة فور نجاح أي مصدر
   var checkInterval = setInterval(function(){
-    var hasBanin = srcData && srcData['بنين'] && srcData['بنين'].loaded;
-    var haBanat  = srcData && srcData['بنات']  && srcData['بنات'].loaded;
-    if((hasBanin || haBanat) && !done){
+    var hasBanin   = srcData && srcData['بنين'] && srcData['بنين'].loaded;
+    var haBanat    = srcData && srcData['بنات']  && srcData['بنات'].loaded;
+    var hasMaster  = masterLoaded && masterDB.length > 0;
+    // نفتح فقط بعد توفر قاعدة المدارس + أحد مصادر الفورم (لضمان ظهور الفلتر كاملاً)
+    if(hasMaster && (hasBanin || haBanat) && !done){
       done = true;
       clearInterval(checkInterval);
       btn.disabled = false;
@@ -3009,19 +3014,24 @@ function quickEnter(){
   var origAlert = window.alert;
   window.alert = function(){};
 
+  // ضمان تحميل قاعدة بيانات المدارس (إن لم تكن محمّلة بعد)
+  if(!masterLoaded || !masterDB.length){
+    if(typeof loadMasterDBFromCSV === 'function') loadMasterDBFromCSV(null, true);
+  }
   loadFromGoogleSheets('بنين');
   setTimeout(function(){ loadFromGoogleSheets('بنات'); }, 300);
 
-  // timeout بعد 30 ثانية
+  // timeout بعد 30 ثانية — ندخل بأي بيانات متوفرة (مدارس أو فورم)
   setTimeout(function(){
     clearInterval(checkInterval);
     window.alert = origAlert;
     if(done) return;
     btn.disabled = false;
     btn.style.opacity = '1';
-    var hasBanin = srcData && srcData['بنين'] && srcData['بنين'].loaded;
-    var haBanat  = srcData && srcData['بنات']  && srcData['بنات'].loaded;
-    if(hasBanin || haBanat){
+    var hasBanin  = srcData && srcData['بنين'] && srcData['بنين'].loaded;
+    var haBanat   = srcData && srcData['بنات']  && srcData['بنات'].loaded;
+    var hasMaster = masterLoaded && masterDB.length > 0;
+    if(hasMaster || hasBanin || haBanat){
       done = true;
       if(st) st.textContent = '✅ تم التحديث';
       setTimeout(showDashboard, 400);
