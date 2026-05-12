@@ -920,6 +920,7 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
                 <div style="display:flex;gap:6px;">
                   <button id="db-refresh-btn" onclick="loadMasterDBFromCSV(null, true)" class="src-upload-btn primary" style="margin:0;font-size:11px;padding:6px 10px;">🔄 تحديث</button>
                   <label onclick="document.getElementById('fileDB').click()" class="src-upload-btn" style="margin:0;font-size:11px;padding:6px 10px;cursor:pointer;">📂 ملف</label>
+                  <button id="db-save-btn" onclick="saveMasterDBToSupabase()" class="src-upload-btn" style="margin:0;font-size:11px;padding:6px 10px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border-color:transparent;" title="حفظ المدارس المحملة في قاعدة البيانات">💾 حفظ</button>
                 </div>
               </div>
             </div>
@@ -1307,6 +1308,7 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
         <h3>🎫 الدعم الموحد</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
           <!-- فلاتر الدعم الموحد -->
+          <input type="text" id="usc-school-search" placeholder="🔍 ابحث باسم المدرسة..." oninput="applyUscFilters()" autocomplete="off" class="filter-select" style="min-width:200px;cursor:text;">
           <select id="usc-status" onchange="applyUscFilters()" class="filter-select" style="min-width:130px;">
             <option value="">كل الحالات</option>
           </select>
@@ -3217,6 +3219,7 @@ function updateTopBottom(comp){
   var bottom=scored.filter(function(r){return r.score<=3;})
     .sort(function(a,b){return a.score-b.score;})
     .slice(0,count);
+  window._lastNeedsSupport = bottom;
 
   function makeList(arr,isTop){
     if(!arr.length) return '<div style="color:var(--text2);font-size:13px;padding:16px;text-align:center;">لا توجد مدارس في هذا النطاق</div>';
@@ -3245,12 +3248,49 @@ function updateTopBottom(comp){
         makeList(top,true)+
       '</div>'+
       '<div>'+
-        '<div style="font-size:13px;font-weight:700;color:#ef4444;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid rgba(239,68,68,.2);">'+
-          '⚠️ تحتاج دعم (0 — 3.0) — '+bottom.length+' مدرسة'+
+        '<div style="font-size:13px;font-weight:700;color:#ef4444;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid rgba(239,68,68,.2);display:flex;justify-content:space-between;align-items:center;gap:8px;">'+
+          '<span>⚠️ تحتاج دعم (0 — 3.0) — '+bottom.length+' مدرسة</span>'+
+          '<button class="export-btn" onclick="exportNeedsSupport()" style="padding:4px 10px;font-size:11px;">📥 تصدير إكسل</button>'+
         '</div>'+
         makeList(bottom,false)+
       '</div>'+
     '</div>';
+}
+
+function exportNeedsSupport(){
+  var arr = window._lastNeedsSupport || [];
+  if(!arr.length){ alert('لا توجد مدارس بحاجة دعم للتصدير'); return; }
+  try{
+    var hdrs = ['#','اسم المدرسة','القطاع','المدينة','متوسط الأداء','التقييم'];
+    var allRows = [hdrs];
+    arr.forEach(function(r,i){
+      var rLabel = '';
+      if(typeof getRatingInfo === 'function'){
+        var ri = getRatingInfo(r.score);
+        if(Array.isArray(ri)) rLabel = String(ri[0]);
+      }
+      allRows.push([i+1, r.school||'', r.sector||'', r.city||'',
+        Math.round(r.score*100)/100, rLabel]);
+    });
+    var html='<html xmlns:o="urn:schemas-microsoft-com:office:office"><head><meta charset="UTF-8"></head><body><table>';
+    for(var ri=0;ri<allRows.length;ri++){
+      html+='<tr>';
+      for(var ci=0;ci<allRows[ri].length;ci++){
+        var val=allRows[ri][ci];
+        if(val===null||val===undefined) val='';
+        else val=String(val).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        html+=(ri===0?'<th>':'<td>')+val+(ri===0?'</th>':'</td>');
+      }
+      html+='</tr>';
+    }
+    html+='</table></body></html>';
+    var blob=new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
+    var url=URL.createObjectURL(blob), a=document.createElement('a');
+    var d=new Date();
+    a.href=url; a.download='Needs_Support_'+d.getFullYear()+'_'+(d.getMonth()+1)+'_'+d.getDate()+'.xls';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
+  }catch(e){ alert('خطأ في التصدير: '+e.message); }
 }
 
 /* ============================================================
@@ -3371,6 +3411,79 @@ function loadUscFromSheets(){
     if(st) st.textContent = '❌ فشل الاتصال — افتح Console (F12) للتفاصيل';
   });
 }
+
+function saveMasterDBToSupabase(){
+  if(!controlPanelUnlocked){
+    alert('🔒 يجب فتح لوحة التحكم بكلمة السر أولاً');
+    return;
+  }
+  if(!masterDB || !masterDB.length){
+    alert('⚠️ لا توجد مدارس محملة للحفظ — ارفع ملف أولاً');
+    return;
+  }
+  if(!confirm('سيتم حفظ '+masterDB.length+' مدرسة في قاعدة البيانات (تحديث الموجود وإضافة الجديد). متابعة؟')) return;
+
+  var btn = document.getElementById('db-save-btn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ جاري الحفظ...'; }
+
+  var payload = masterDB.filter(function(r){ return r.code && r.school; })
+    .map(function(r){
+      return {
+        ministry_code:  (r.code||'').toString().trim(),
+        school_name:    (r.school||'').toString().trim(),
+        education_type: (r.type||'').toString().trim(),
+        stage:          (r.stage||'').toString().trim(),
+        email:          (r.email||'').toString().trim(),
+        sector:         (r.sector||'').toString().trim(),
+        province:       (r.govArea||'').toString().trim(),
+        city:           (r.city||'').toString().trim()
+      };
+    });
+
+  if(!payload.length){
+    if(btn){ btn.disabled = false; btn.textContent = '💾 حفظ'; }
+    alert('⚠️ لا توجد سجلات صالحة (يجب توفر الرقم الوزاري واسم المدرسة)');
+    return;
+  }
+
+  // تقسيم على دفعات (Supabase يقبل دفعات كبيرة، لكن نقسم لاحتمال فشل جزئي)
+  var BATCH = 500;
+  var batches = [];
+  for(var i=0; i<payload.length; i+=BATCH) batches.push(payload.slice(i, i+BATCH));
+  var done = 0, failed = 0, total = payload.length;
+
+  function sendBatch(idx){
+    if(idx >= batches.length){
+      if(btn){ btn.disabled = false; btn.textContent = '💾 حفظ'; }
+      var msg = '✅ تم حفظ '+done+' من '+total+' مدرسة';
+      if(failed) msg += ' (فشل '+failed+')';
+      alert(msg);
+      return;
+    }
+    var batch = batches[idx];
+    fetch(SUPABASE_URL + '/rest/v1/schools?on_conflict=ministry_code', {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        'Prefer': 'resolution=merge-duplicates,return=minimal'
+      },
+      body: JSON.stringify(batch)
+    }).then(function(r){
+      if(!r.ok) return r.text().then(function(t){ throw new Error(t || ('HTTP '+r.status)); });
+      done += batch.length;
+      if(btn) btn.textContent = '⏳ '+done+'/'+total;
+      sendBatch(idx+1);
+    }).catch(function(e){
+      console.error('Save batch failed:', e);
+      failed += batch.length;
+      sendBatch(idx+1);
+    });
+  }
+  sendBatch(0);
+}
+
 /* ============================================================
    جلب المدارس مباشرة من Google Sheets كـ CSV (الطريقة المفضلة)
    ============================================================ */
@@ -4279,6 +4392,10 @@ function cpSubmitSchool(e){
     if(!r.ok) return r.text().then(function(t){ throw new Error(t || ('HTTP '+r.status)); });
     return r.json();
   }).then(function(res){
+    // تحقق من أن Supabase حفظت السجل فعلاً (RLS قد تمنع الكتابة بصمت)
+    if(Array.isArray(res) && res.length === 0){
+      throw new Error('RLS_BLOCKED: السجل لم يُحفظ في Supabase (RLS Policy تمنع الإضافة) — راجع سياسات الجدول');
+    }
     btn.disabled = false;
     btn.textContent = isEdit ? '💾 حفظ التعديلات' : '💾 إضافة';
     document.getElementById('cp-school-form-modal').style.display = 'none';
@@ -5349,6 +5466,7 @@ function applyUscFilters(){
   var cat2F       = (document.getElementById('usc-cat2')      ||{}).value||'';
   var teamF       = (document.getElementById('usc-team')      ||{}).value||'';
   var specialistF = (document.getElementById('usc-specialist')||{}).value||'';
+  var schoolSearchF = ((document.getElementById('usc-school-search')||{}).value||'').trim().toLowerCase();
 
   // بناء فهرس رقم المدرسة → masterDB
   if(!window._uscCodeMap && masterDB.length){
@@ -5373,6 +5491,13 @@ function applyUscFilters(){
     if(cat2F       && !eqStr(r.cat2,       cat2F))       return false;
     if(teamF       && !eqStr(r.team,       teamF))       return false;
     if(specialistF && !eqStr(r.specialist, specialistF)) return false;
+
+    // بحث جزئي باسم المدرسة أو الرقم
+    if(schoolSearchF){
+      var sName = (r.school||'').toString().toLowerCase();
+      var sCode = (r.schoolCode||'').toString().toLowerCase();
+      if(sName.indexOf(schoolSearchF) < 0 && sCode.indexOf(schoolSearchF) < 0) return false;
+    }
 
     // ربط باسم المدرسة من الفلتر الرئيسي
     if(schoolF && r.school !== schoolF) return false;
