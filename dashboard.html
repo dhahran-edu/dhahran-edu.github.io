@@ -1233,6 +1233,12 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
       <div class="table-header">
         <h3>📋 تفاصيل المدارس</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="export-btn" onclick="openBulkMessageModal('done')" style="background:linear-gradient(135deg,#10b981,#059669);" title="شكر للمدارس المكملة">
+            <span>✉️</span> شكر للمكملة
+          </button>
+          <button class="export-btn" onclick="openBulkMessageModal('not')" style="background:linear-gradient(135deg,#f59e0b,#d97706);" title="تذكير للمدارس غير المكملة">
+            <span>📨</span> تذكير لغير المكملة
+          </button>
           <button class="export-btn" onclick="sendWeeklySummary()" style="background:linear-gradient(135deg,#7030A0,#382972);" title="ملخص أعلى/أقل المدارس والمؤشرات">
             <span>📊</span> ملخص أسبوعي
           </button>
@@ -1805,7 +1811,11 @@ async function loadFromGoogleSheets(eduType){
           week: r.week,
           date: r.assessment_date,
           assessor_email: r.assessor_email,
-          start_time: r.start_time
+          start_time: r.start_time,
+          principal_name: r.principal_name,
+          principal_phone: r.principal_phone,
+          quality_officer: r.quality_officer,
+          quality_officer_phone: r.quality_officer_phone
         };
       });
       processRowsForType(rows, eduType);
@@ -6198,6 +6208,258 @@ function printSectorTable(){
 }
 
 /* ============================================================
+   📧 الرسائل الجماعية (واتساب / بريد)
+   ============================================================ */
+function normalizeSaudiPhone(p){
+  if(!p) return '';
+  var d = (''+p).replace(/[^\d]/g,'');
+  if(!d) return '';
+  // 9665XXXXXXXX (12 رقم) — يبقى كما هو
+  if(d.length === 12 && d.indexOf('966') === 0) return d;
+  // 9665XX... ناقص → نتركها لو ابتدت 966
+  if(d.indexOf('966') === 0) return d;
+  // 05XXXXXXXX → 9665XXXXXXXX
+  if(d.length === 10 && d.indexOf('05') === 0) return '966' + d.substring(1);
+  // 5XXXXXXXX → 9665XXXXXXXX
+  if(d.length === 9 && d.indexOf('5') === 0) return '966' + d;
+  // 5XX... أكبر — تركها
+  return d;
+}
+
+function getSchoolContacts(schoolName){
+  // اجمع آخر معلومات اتصال للمدرسة من كل تقييماتها (أحدثها أولاً)
+  var best = { email:'', principal_phone:'', officer_phone:'', principal_name:'', officer_name:'' };
+  ['بنين','بنات'].forEach(function(g){
+    var rows = (srcData[g] && srcData[g].rows) ? srcData[g].rows : [];
+    rows.forEach(function(r){
+      if((r.school||'') !== schoolName) return;
+      if(!best.email && r.assessor_email) best.email = r.assessor_email;
+      if(!best.principal_phone && r.principal_phone) best.principal_phone = r.principal_phone;
+      if(!best.officer_phone && r.quality_officer_phone) best.officer_phone = r.quality_officer_phone;
+      if(!best.principal_name && r.principal_name) best.principal_name = r.principal_name;
+      if(!best.officer_name && r.quality_officer) best.officer_name = r.quality_officer;
+    });
+  });
+  // بريد المدرسة من قاعدة البيانات
+  if(!best.email && typeof masterDB !== 'undefined'){
+    var m = masterDB.find(function(x){return x.school === schoolName;});
+    if(m && m.email) best.email = m.email;
+  }
+  return best;
+}
+
+function buildBulkRecipients(audience){
+  // audience: 'done' | 'not'
+  var schools = (typeof searchData !== 'undefined' ? searchData : []);
+  var filtered = schools.filter(function(r){ return audience==='done' ? r.status==='done' : r.status==='not'; });
+  return filtered.map(function(r){
+    var c = getSchoolContacts(r.school);
+    var avg = getScore(r);
+    return {
+      school: r.school || '',
+      code: r.code || '',
+      sector: r.sector || r.govArea || '',
+      city: r.city || '',
+      avg: avg,
+      email: c.email,
+      phone: normalizeSaudiPhone(c.principal_phone || c.officer_phone),
+      principal_name: c.principal_name,
+      officer_name: c.officer_name
+    };
+  });
+}
+
+function renderTemplate(tpl, rec){
+  return tpl
+    .replace(/\{المدرسة\}/g, rec.school || '')
+    .replace(/\{المحافظة\}/g, rec.sector || '')
+    .replace(/\{المدينة\}/g, rec.city || '')
+    .replace(/\{المتوسط\}/g, rec.avg!==null && rec.avg!==undefined ? rec.avg.toFixed(2) : '')
+    .replace(/\{المدير\}/g, rec.principal_name || '')
+    .replace(/\{مسؤول_الجودة\}/g, rec.officer_name || '');
+}
+
+var BULK_TEMPLATES = {
+  thanks: 'السلام عليكم ورحمة الله وبركاته\n\nنشكر إدارة *{المدرسة}* على إتمام رابط استمارة جودة الخدمات بمتوسط أداء *{المتوسط}/5*.\nنقدّر تعاونكم ونتطلّع لاستمرار التميّز.\n\nمع الشكر والتقدير.',
+  remind: 'السلام عليكم ورحمة الله وبركاته\n\nنذكّر إدارة *{المدرسة}* بأهمية إكمال رابط استمارة جودة الخدمات للأسبوع الحالي.\nالاستجابة في الوقت المحدد تساعدنا على تحسين الخدمات المقدّمة لمدرستكم.\n\nنشكر لكم تعاونكم.'
+};
+
+function openBulkMessageModal(audience){
+  var modal = document.getElementById('bulk-msg-modal');
+  if(!modal) return;
+  var recipients = buildBulkRecipients(audience);
+  window._bulkAudience = audience;
+  window._bulkRecipients = recipients;
+  var defaultTpl = audience === 'done' ? BULK_TEMPLATES.thanks : BULK_TEMPLATES.remind;
+  document.getElementById('bulk-msg-textarea').value = defaultTpl;
+  document.getElementById('bulk-msg-title').textContent = audience === 'done'
+    ? '✉️ رسالة شكر للمدارس المكملة'
+    : '✉️ رسالة تذكير للمدارس غير المكملة';
+  renderBulkRecipientsList();
+  updateBulkPreview();
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function updateBulkPreview(){
+  var pre = document.getElementById('bulk-msg-preview');
+  if(!pre) return;
+  var recs = window._bulkRecipients || [];
+  var tpl = document.getElementById('bulk-msg-textarea').value || '';
+  if(!recs.length){ pre.textContent = '—'; return; }
+  pre.textContent = renderTemplate(tpl, recs[0]);
+}
+
+function closeBulkMessageModal(){
+  var m = document.getElementById('bulk-msg-modal');
+  if(m) m.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function renderBulkRecipientsList(){
+  var listEl = document.getElementById('bulk-recipients-list');
+  var statsEl = document.getElementById('bulk-stats');
+  if(!listEl) return;
+  var recs = window._bulkRecipients || [];
+  var withEmail = recs.filter(function(r){return r.email;}).length;
+  var withPhone = recs.filter(function(r){return r.phone;}).length;
+  if(statsEl) statsEl.innerHTML = '👥 <b>'+recs.length+'</b> مدرسة • 📧 <b>'+withEmail+'</b> بريد • 📱 <b>'+withPhone+'</b> جوال';
+  if(!recs.length){
+    listEl.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text2);font-size:12px;">لا توجد مدارس في هذا التصنيف</div>';
+    return;
+  }
+  listEl.innerHTML = recs.slice(0,200).map(function(r){
+    var emailBadge = r.email ? '<span style="color:#10b981;" title="'+r.email+'">📧</span>' : '<span style="color:var(--text2);opacity:.4;">📧</span>';
+    var phoneBadge = r.phone ? '<span style="color:#10b981;" title="'+r.phone+'">📱</span>' : '<span style="color:var(--text2);opacity:.4;">📱</span>';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--border);font-size:11px;">'+
+      '<div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.school+'</div>'+
+      '<div style="color:var(--text2);font-size:10px;">'+(r.sector||'-')+'</div>'+
+      '<div style="display:flex;gap:4px;">'+emailBadge+phoneBadge+'</div>'+
+    '</div>';
+  }).join('') + (recs.length>200 ? '<div style="text-align:center;padding:8px;color:var(--text2);font-size:11px;">... و '+(recs.length-200)+' مدرسة أخرى</div>' : '');
+}
+
+function bulkSendEmail(){
+  var recs = window._bulkRecipients || [];
+  var emails = recs.map(function(r){return r.email;}).filter(Boolean);
+  if(!emails.length){ alert('لا توجد عناوين بريد متاحة لهذه المدارس'); return; }
+  var tpl = document.getElementById('bulk-msg-textarea').value || '';
+  // البريد لا يدعم تخصيص لكل مستلم — نستخدم القالب كنص عام (الرموز {المدرسة}... تُمحى)
+  var generic = tpl.replace(/\{[^}]+\}/g, '').replace(/\n{3,}/g,'\n\n').trim();
+  var subject = window._bulkAudience === 'done' ? 'شكراً على إكمال استمارة جودة الخدمات' : 'تذكير: إكمال استمارة جودة الخدمات';
+  var BATCH = 80;
+  var batches = [];
+  for(var i=0;i<emails.length;i+=BATCH) batches.push(emails.slice(i, i+BATCH));
+  if(batches.length > 1){
+    if(!confirm('سيتم فتح '+batches.length+' نافذة بريد (كل دفعة '+BATCH+' عنوان). متابعة؟')) return;
+  }
+  batches.forEach(function(b, idx){
+    setTimeout(function(){
+      var href = 'mailto:?bcc=' + encodeURIComponent(b.join(',')) +
+                 '&subject=' + encodeURIComponent(subject) +
+                 '&body=' + encodeURIComponent(generic);
+      window.location.href = href;
+    }, idx * 800);
+  });
+}
+
+function bulkCopyEmails(){
+  var recs = window._bulkRecipients || [];
+  var emails = recs.map(function(r){return r.email;}).filter(Boolean);
+  if(!emails.length){ alert('لا توجد عناوين بريد متاحة'); return; }
+  copyToClipboard(emails.join(', '));
+  alert('✅ تم نسخ '+emails.length+' عنوان بريد');
+}
+
+function bulkCopyPhones(){
+  var recs = window._bulkRecipients || [];
+  var phones = recs.map(function(r){return r.phone;}).filter(Boolean);
+  if(!phones.length){ alert('لا توجد أرقام جوال متاحة'); return; }
+  copyToClipboard(phones.join('\n'));
+  alert('✅ تم نسخ '+phones.length+' رقم جوال');
+}
+
+function bulkCopyMessage(){
+  // نسخ الرسالة بعد استبدال الرموز لأول مدرسة (نموذج)
+  var tpl = document.getElementById('bulk-msg-textarea').value || '';
+  var recs = window._bulkRecipients || [];
+  if(!recs.length){ alert('لا توجد مدارس'); return; }
+  var sample = renderTemplate(tpl, recs[0]);
+  copyToClipboard(sample);
+  alert('✅ تم نسخ نموذج الرسالة للمدرسة: '+recs[0].school);
+}
+
+function bulkCopyAllMessages(){
+  // نسخ رسالة مخصصة لكل مدرسة (للصق في قروب واتساب أو ملاحظات)
+  var tpl = document.getElementById('bulk-msg-textarea').value || '';
+  var recs = window._bulkRecipients || [];
+  if(!recs.length){ alert('لا توجد مدارس'); return; }
+  var blocks = recs.map(function(r){
+    return '━━━ '+r.school+' ━━━\n' + renderTemplate(tpl, r);
+  });
+  var text = blocks.join('\n\n');
+  copyToClipboard(text);
+  alert('✅ تم نسخ '+recs.length+' رسالة مخصصة (كل مدرسة باسمها)');
+}
+
+function bulkExportCSV(){
+  var recs = window._bulkRecipients || [];
+  if(!recs.length){ alert('لا توجد مدارس'); return; }
+  var tpl = document.getElementById('bulk-msg-textarea').value || '';
+  var headers = ['اسم المدرسة','الرقم الوزاري','المحافظة','المدينة','المتوسط','البريد','الجوال','الرسالة المخصصة'];
+  var lines = [headers.join(',')];
+  recs.forEach(function(r){
+    var msg = renderTemplate(tpl, r).replace(/"/g,'""').replace(/\n/g,' \\n ');
+    lines.push([
+      '"'+(r.school||'').replace(/"/g,'""')+'"',
+      r.code||'',
+      '"'+(r.sector||'')+'"',
+      '"'+(r.city||'')+'"',
+      r.avg!==null&&r.avg!==undefined?r.avg.toFixed(2):'',
+      r.email||'',
+      r.phone||'',
+      '"'+msg+'"'
+    ].join(','));
+  });
+  var blob = new Blob(['﻿'+lines.join('\n')], {type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'مدارس_للتواصل_'+(window._bulkAudience==='done'?'مكملة':'غير_مكملة')+'_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  setTimeout(function(){URL.revokeObjectURL(url);}, 500);
+}
+
+function bulkOpenWhatsAppLinks(){
+  var recs = (window._bulkRecipients || []).filter(function(r){return r.phone;});
+  if(!recs.length){ alert('لا توجد أرقام جوال متاحة'); return; }
+  if(recs.length > 5){
+    if(!confirm('سيتم فتح '+recs.length+' نافذة واتساب بفاصل ثانيتين بين كل واحدة.\n\nقد يحظر المتصفح النوافذ المتعددة — اسمح بها عند الطلب.\n\nمتابعة؟')) return;
+  }
+  var tpl = document.getElementById('bulk-msg-textarea').value || '';
+  recs.forEach(function(r, i){
+    setTimeout(function(){
+      var msg = renderTemplate(tpl, r);
+      var url = 'https://wa.me/'+r.phone+'?text='+encodeURIComponent(msg);
+      window.open(url, '_blank');
+    }, i * 2000);
+  });
+}
+
+function copyToClipboard(text){
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).catch(function(){_fallbackCopy(text);});
+  } else _fallbackCopy(text);
+}
+function _fallbackCopy(text){
+  var ta = document.createElement('textarea');
+  ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); }catch(e){}
+  document.body.removeChild(ta);
+}
+
+/* ============================================================
    ④ مقارنة القطاعات
    ============================================================ */
 function buildSectorTable(comp){
@@ -7693,6 +7955,65 @@ document.addEventListener('keydown', function(e){
       <button onclick="closeSectorModal()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:10px;cursor:pointer;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;">✕</button>
     </div>
     <div id="sector-modal-content" style="padding:20px 24px;overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- ✉️ الرسائل الجماعية -->
+<div id="bulk-msg-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9997;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:20px;" onclick="if(event.target===this)closeBulkMessageModal()">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;width:min(820px,96vw);max-height:94vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <div id="bulk-msg-title" style="font-weight:800;font-size:15px;color:var(--text);">✉️ رسائل جماعية</div>
+      <button onclick="closeBulkMessageModal()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:10px;cursor:pointer;font-size:16px;font-weight:700;">✕</button>
+    </div>
+    <div style="padding:18px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;">
+
+      <div id="bulk-stats" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:12px;">—</div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <label style="font-size:12px;font-weight:700;color:var(--text);">نص الرسالة</label>
+          <div style="font-size:10px;color:var(--text2);">رموز قابلة للاستبدال: <code style="color:#0DCFDA;">{المدرسة}</code> <code style="color:#0DCFDA;">{المحافظة}</code> <code style="color:#0DCFDA;">{المتوسط}</code> <code style="color:#0DCFDA;">{المدير}</code></div>
+        </div>
+        <textarea id="bulk-msg-textarea" rows="5" oninput="updateBulkPreview()" style="width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:10px;font-family:'Cairo',sans-serif;font-size:13px;outline:none;resize:vertical;box-sizing:border-box;direction:rtl;"></textarea>
+        <div style="margin-top:8px;background:rgba(16,185,129,.08);border:1px dashed #10b981;border-radius:8px;padding:10px 12px;">
+          <div style="font-size:10px;font-weight:700;color:#10b981;margin-bottom:4px;">👁️ معاينة (كيف ستظهر الرسالة لأول مدرسة):</div>
+          <div id="bulk-msg-preview" style="font-size:12px;color:var(--text);white-space:pre-wrap;line-height:1.6;">—</div>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px;">📋 قائمة المستلمين <span style="font-weight:500;color:var(--text2);font-size:11px;">(📧 = بريد متاح، 📱 = جوال متاح)</span></div>
+        <div id="bulk-recipients-list" style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;max-height:220px;overflow-y:auto;"></div>
+      </div>
+
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px;">🚀 طرق الإرسال</div>
+
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">📧 البريد الإلكتروني</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button onclick="bulkSendEmail()" style="background:linear-gradient(135deg,#0DCFDA,#0891b2);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:12px;font-weight:700;">📨 فتح برنامج البريد (BCC)</button>
+            <button onclick="bulkCopyEmails()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:12px;">📋 نسخ كل العناوين</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">📱 واتساب</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button onclick="bulkOpenWhatsAppLinks()" style="background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:12px;font-weight:700;">📲 فتح روابط واتساب فردية</button>
+            <button onclick="bulkCopyAllMessages()" style="background:linear-gradient(135deg,#0DCFDA,#0891b2);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:12px;font-weight:700;" title="رسالة مخصصة لكل مدرسة (مع اسمها)">📋 نسخ كل الرسائل (باسم كل مدرسة)</button>
+            <button onclick="bulkCopyPhones()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:12px;">📋 نسخ كل الأرقام</button>
+            <button onclick="bulkCopyMessage()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:12px;" title="نموذج رسالة واحدة فقط">📋 نسخ نموذج رسالة</button>
+          </div>
+        </div>
+
+        <div>
+          <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">📊 ملف Excel/CSV (للاستيراد في أدوات الإرسال)</div>
+          <button onclick="bulkExportCSV()" style="background:linear-gradient(135deg,#7030A0,#382972);color:#fff;border:none;padding:8px 14px;border-radius:8px;cursor:pointer;font-family:Cairo,sans-serif;font-size:12px;font-weight:700;">📥 تصدير قائمة + رسائل مخصصة</button>
+        </div>
+      </div>
+
+    </div>
   </div>
 </div>
 
