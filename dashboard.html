@@ -431,18 +431,8 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
     </div>
   </div>
   <div class="header-actions">
-    <!-- Source status pills (shown after load) -->
+    <!-- Header actions (shown after load) -->
     <div class="src-status" id="src-status" style="display: none;">
-      <div class="src-pill loaded" id="pill-db" onclick="document.getElementById('fileDB').click()" title="انقر للتحديث">
-        <span>🗄️</span><span id="pill-db-lbl">🗄️ 1,597 مدرسة</span>
-      </div>
-      <div class="src-pill loaded" id="pill-banin" onclick="document.getElementById('fileBanin').click()" title="انقر للتحديث">
-        <span>👦</span><span id="pill-banin-lbl">بنين ✓</span>
-      </div>
-      <div class="src-pill loaded" id="pill-banat" onclick="document.getElementById('fileBanat').click()" title="انقر للتحديث">
-        <span>👧</span><span id="pill-banat-lbl">بنات ✓</span>
-      </div>
-      <button class="reset-btn" id="btn-refresh-sheets" onclick="refreshAllSheets()" style="font-size:12px;padding:5px 12px;" title="تحديث من أكسل">🔄 تحديث أكسل</button>
       <button class="reset-btn" onclick="goHome()" style="font-size:12px;padding:5px 12px;" title="الصفحة الرئيسية">🏠 الرئيسية</button>
     </div>
     <div class="theme-switcher">
