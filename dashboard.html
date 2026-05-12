@@ -86,12 +86,13 @@ function renderIndTable(){
     return;
   }
 
+  window._indSlice = slice;
   tbody.innerHTML=slice.map(function(r,i){
     var avg=getScore(r);
     var avgColor=avg!==null?getColor(avg):'#64748b';
-    var html='<tr>';
+    var html='<tr style="cursor:pointer;" onclick="showSchoolCard(window._indSlice['+i+'])">';
     html+='<td style="color:var(--text2)">'+(start+i+1)+'</td>';
-    html+='<td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+r.school+'</td>';
+    html+='<td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--accent2)">'+r.school+'</td>';
     html+='<td>'+(r.sector||'-')+'</td>';
     html+='<td style="font-weight:900;color:'+avgColor+';text-align:center">'+(avg!==null?avg.toFixed(2):'-')+'</td>';
     INDICATORS.forEach(function(ind){
@@ -148,7 +149,7 @@ function exportIndTable(){
   setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},1000);
 }
 
-</script><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</script><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script><script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 /* هوية وزارة التعليم البصرية */
 :root{--bg:#0d0820;--surface:#150d2e;--surface2:#1e1340;--accent:#7030A0;--accent2:#0DCFDA;--accent3:#218CAA;--danger:#ef4444;--text:#f1f5f9;--text2:#b8aed4;--border:#2d1f52;--card-shadow:0 4px 24px rgba(56,41,114,0.4);--radius:14px;}
@@ -435,6 +436,11 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
     <div class="src-status" id="src-status" style="display: none;">
       <button class="reset-btn" onclick="goHome()" style="font-size:12px;padding:5px 12px;" title="الصفحة الرئيسية">🏠 الرئيسية</button>
     </div>
+    <!-- جرس الإشعارات -->
+    <button id="notif-bell" onclick="toggleNotifPanel()" class="reset-btn" style="position:relative;font-size:14px;padding:5px 10px;color:rgba(255,255,255,.9);border-color:rgba(255,255,255,.3);" title="الإشعارات">
+      🔔
+      <span id="notif-badge" style="display:none;position:absolute;top:-4px;left:-4px;background:#ef4444;color:#fff;font-size:10px;font-weight:900;min-width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;padding:0 4px;">0</span>
+    </button>
     <div class="theme-switcher">
       <button class="theme-btn theme-btn-dark active" id="btn-dark" onclick="setTheme('dark','btn-dark')"></button>
       <button class="theme-btn theme-btn-light" id="btn-light" onclick="setTheme('light','btn-light')"></button>
@@ -1147,6 +1153,31 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
       </div>
     </div>
 
+    <!-- 📈 مقارنة الأداء عبر الزمن -->
+    <div class="comparison-section" id="comparison-section" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px;">📈 مقارنة الأداء عبر الزمن</h3>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <select id="cmp-period" onchange="onCmpModeChange()" class="filter-select" style="min-width:140px;font-size:12px;">
+            <option value="week">أسبوع ↔ أسبوع</option>
+            <option value="term">فصل ↔ فصل</option>
+          </select>
+          <span style="font-size:11px;color:var(--text2);">الحالي:</span>
+          <select id="cmp-curr" onchange="onCmpPickChange('curr')" class="filter-select" style="min-width:120px;font-size:12px;"></select>
+          <span style="font-size:11px;color:var(--text2);">↔ السابق:</span>
+          <select id="cmp-prev" onchange="onCmpPickChange('prev')" class="filter-select" style="min-width:120px;font-size:12px;"></select>
+          <button onclick="resetCmpSelections()" class="reset-btn" style="font-size:11px;padding:5px 10px;" title="إعادة لافتراضي">↺</button>
+        </div>
+      </div>
+      <!-- بطاقات المقارنة -->
+      <div id="cmp-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px;"></div>
+      <!-- مقارنة حسب القطاع -->
+      <div style="margin-top:14px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:8px;">🏛️ التغير حسب القطاع</div>
+        <div id="cmp-sectors" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px;"></div>
+      </div>
+    </div>
+
     <!-- Charts -->
     <div style="display:grid;grid-template-columns:1fr 2fr;gap:14px;margin-bottom:20px;">
       <div class="chart-card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;">
@@ -1202,10 +1233,14 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
       <div class="table-header">
         <h3>📋 تفاصيل المدارس</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="export-btn" onclick="sendWeeklySummary()" style="background:linear-gradient(135deg,#7030A0,#382972);" title="ملخص أعلى/أقل المدارس والمؤشرات">
+            <span>📊</span> ملخص أسبوعي
+          </button>
           <button class="export-btn" onclick="sendWhatsApp()" style="background:linear-gradient(135deg,#25D366,#128C7E);">
             <span>📲</span> إرسال للواتساب
           </button>
           <button class="export-btn" onclick="exportExcel()">📥 تصدير إكسل</button>
+          <button class="export-btn" onclick="printSchoolsTable()" style="background:linear-gradient(135deg,#ef4444,#b91c1c);">📄 تصدير PDF</button>
         </div>
       </div>
       <div class="table-wrap">
@@ -1248,7 +1283,8 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
             <option value="50" selected="">50</option>
             <option value="99999">الكل</option>
           </select>
-          <button class="export-btn" onclick="exportIndTable()" style="padding:6px 12px;font-size:12px;">📥 تصدير</button>
+          <button class="export-btn" onclick="exportIndTable()" style="padding:6px 12px;font-size:12px;">📥 Excel</button>
+          <button class="export-btn" onclick="printIndTable()" style="padding:6px 12px;font-size:12px;background:linear-gradient(135deg,#ef4444,#b91c1c);">📄 PDF</button>
         </div>
       </div>
       <div class="table-wrap" style="max-height:480px;overflow:auto;">
@@ -1282,7 +1318,11 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
     <div class="table-card" style="margin-bottom:16px;">
       <div class="table-header">
         <h3>🏛️ مقارنة القطاعات بالمؤشرات (مستوى الرضا عن أداء المقاولين)</h3>
-        <button class="export-btn" onclick="exportSectorTable()" style="padding:6px 12px;font-size:12px;">📥 تصدير</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="export-btn" onclick="showSectorCompareModal()" style="padding:6px 12px;font-size:12px;background:linear-gradient(135deg,#0DCFDA,#0891b2);">🆚 مقارنة شاملة</button>
+          <button class="export-btn" onclick="exportSectorTable()" style="padding:6px 12px;font-size:12px;">📥 Excel</button>
+          <button class="export-btn" onclick="printSectorTable()" style="padding:6px 12px;font-size:12px;background:linear-gradient(135deg,#ef4444,#b91c1c);">📄 PDF</button>
+        </div>
       </div>
       <div class="table-wrap" style="max-height:360px;overflow:auto;">
         <table id="sector-table" style="min-width:1200px;">
@@ -1408,8 +1448,8 @@ const IND_KEYS=INDICATORS.map(i=>i.key);
 
 // per-source stores
 var srcData={
-  'بنين':{completed:[],allSchools:[],sectorMap:{},loaded:false},
-  'بنات':{completed:[],allSchools:[],sectorMap:{},loaded:false}
+  'بنين':{completed:[],allSchools:[],sectorMap:{},loaded:false,rows:[]},
+  'بنات':{completed:[],allSchools:[],sectorMap:{},loaded:false,rows:[]}
 };
 
 // merged (rebuilt on every processExcelForType call)
@@ -1426,6 +1466,112 @@ var charts={};
 
 /* ============================================================ */
 function normWeek(w){return w?w.toString().trim().replace('الأسبوع','الاسبوع'):'';}
+
+// تطبيع اسم المدرسة للمطابقة (موحّد على مستوى التطبيق)
+function normSchoolName(s){
+  return (s||'').toString().trim()
+    .replace(/\s+/g,' ')
+    .replace(/[أإآ]/g,'ا')
+    .replace(/ة/g,'ه')
+    .replace(/ى/g,'ي')
+    .replace(/ـ/g,'');
+}
+
+// تنظيف الرقم الوزاري (إزالة .0 لو موجود)
+function cleanCode(c){
+  return (c||'').toString().trim().replace(/\.0$/,'');
+}
+
+// استعادة التواريخ بعد القراءة من localStorage (JSON تحوّلها لنصوص)
+function rehydrateMasterDB(arr){
+  if(!Array.isArray(arr)) return arr;
+  arr.forEach(function(m){
+    if(m.created_at  && !(m.created_at  instanceof Date)) m.created_at  = new Date(m.created_at);
+    if(m.archived_at && !(m.archived_at instanceof Date)) m.archived_at = new Date(m.archived_at);
+  });
+  return arr;
+}
+
+// هل المدرسة كانت نشطة في تاريخ معين؟
+// effectiveDate=null → نستخدم الوضع الحالي (NOW)
+function isSchoolActiveAt(m, effectiveDate){
+  if(!effectiveDate) return !m.archived_at; // الآن: نشطة لو ليست مؤرشفة
+  // كانت موجودة قبل أو في ذلك التاريخ
+  if(m.created_at && m.created_at > effectiveDate) return false;
+  // ولم تُؤرشف بعد ذلك التاريخ
+  if(m.archived_at && m.archived_at <= effectiveDate) return false;
+  return true;
+}
+
+// حساب تاريخ الفعالية لفترة (أسبوع أو فصل): أحدث assessment_date في تلك الفترة
+// نتجاهل التواريخ المستقبلية (أخطاء إدخال) لضمان دقة المطابقة
+// returns Date | null (null = استخدم الآن)
+function getEffectiveDateForPeriod(rows){
+  var maxD = null;
+  var now = new Date();
+  rows.forEach(function(r){
+    if(!r._assessmentDate) return;
+    if(r._assessmentDate > now) return; // تجاهل أخطاء التواريخ المستقبلية
+    if(!maxD || r._assessmentDate > maxD) maxD = r._assessmentDate;
+  });
+  return maxD;
+}
+
+// عدد المدارس (من masterDB) التي أكملت ضمن فترة معيّنة
+// rows: مصفوفة سجلات completed مفلترة سلفاً (قطاع/نوع/فترة)
+// sectorFilter/typeFilter: فلاتر تُطبَّق على masterDB لحساب القاسم
+// effectiveDate (اختياري): تاريخ لتحديد المدارس النشطة في ذلك الوقت
+// returns {done, total}
+function countDoneInMaster(rows, sectorFilter, typeFilter, effectiveDate){
+  if(!masterLoaded || !masterDB.length){
+    var unique = new Set();
+    rows.forEach(function(r){ unique.add((r.school||'')+'||'+(r.type||'')); });
+    return {done: unique.size, total: unique.size};
+  }
+  // لو ما تم تمرير تاريخ، نحسبه تلقائياً من السجلات
+  if(effectiveDate === undefined) effectiveDate = getEffectiveDateForPeriod(rows);
+
+  var doneByCode = new Set();
+  var doneByName = new Set();
+  rows.forEach(function(r){
+    if(r.code){
+      var c = cleanCode(r.code);
+      if(c) doneByCode.add(c);
+    }
+    if(r.school){
+      doneByName.add(normSchoolName(r.school));
+    }
+  });
+  var dbFiltered = masterDB.filter(function(m){
+    if(!isSchoolActiveAt(m, effectiveDate)) return false;
+    if(sectorFilter && (m.govArea||m.sector||'') !== sectorFilter) return false;
+    if(typeFilter && (m.type||'') !== typeFilter) return false;
+    return true;
+  });
+  var done = 0;
+  dbFiltered.forEach(function(m){
+    var c = cleanCode(m.code);
+    var key = normSchoolName(m.school);
+    if((c && doneByCode.has(c)) || doneByName.has(key)){ done++; return; }
+    // ✨ الأكواد البديلة
+    if(m.code_aliases){
+      var ac = m.code_aliases.split('|');
+      for(var i=0;i<ac.length;i++){
+        var v = cleanCode(ac[i]);
+        if(v && doneByCode.has(v)){ done++; return; }
+      }
+    }
+    // ✨ الأسماء البديلة
+    if(m.name_aliases){
+      var an = m.name_aliases.split('|');
+      for(var j=0;j<an.length;j++){
+        var k = normSchoolName(an[j]);
+        if(k && doneByName.has(k)){ done++; return; }
+      }
+    }
+  });
+  return {done: done, total: dbFiltered.length};
+}
 
 function setTheme(t,id){
   document.body.className=t==='dark'?'':'theme-'+t;
@@ -1647,6 +1793,19 @@ async function loadFromGoogleSheets(eduType){
           'رقم الجوال لمدير المدرسة':  r.principal_phone,
           'رقم الجوال لمديرة المدرسة': r.principal_phone,
           'إقرار':                    r.acknowledged
+        };
+      });
+      // احتفظ بصفوف Supabase الخام (مع id) لاستخدامها في لوحة التحكم/الحذف
+      srcData[eduType].rows = data.map(function(r){
+        return {
+          id: r.id,
+          school: r.school_name,
+          code: r.school_code,
+          sector: r.province,
+          week: r.week,
+          date: r.assessment_date,
+          assessor_email: r.assessor_email,
+          start_time: r.start_time
         };
       });
       processRowsForType(rows, eduType);
@@ -1987,6 +2146,13 @@ function processRowsForType(rows, eduType){
       'سرعة الاستجابة لبلاغات الدعم الموحد.التقييم',
       'جودة معالجة بلاغات الدعم الموحد.التقييم'
     ].some(function(k){return r[k]!==null&&r[k]!==undefined&&r[k]!=='';});
+    // ✨ تاريخ التقييم: مهم لتحديد المدارس النشطة وقت ذلك التقييم
+    var dateRaw = r['التاريخ']||r['تاريخ التقييم']||r['Date']||null;
+    var assessDate = null;
+    if(dateRaw){
+      if(dateRaw instanceof Date) assessDate = dateRaw;
+      else { var d = new Date(dateRaw); if(!isNaN(d.getTime())) assessDate = d; }
+    }
     return{
       school: info.name,
       code: info.code,  // الرقم الوزاري
@@ -1995,6 +2161,7 @@ function processRowsForType(rows, eduType){
       sector: sector,
       type: r['نوع التعليم']?r['نوع التعليم'].toString().trim():eduType,
       stage: (r['المرحلة']||'').toString().trim(),
+      _assessmentDate: assessDate,  // ✨ مرجع للتاريخ الفعلي للتقييم
       building: parseScore(gv(r,['حالة المبنى ومرافقة','حالة المبنى ومرافقة.التقييم'])),
       water:    parseScore(gv(r,['أعمال المياه','أعمال المياه.التقييم'])),
       ac:       parseScore(gv(r,['أعمال التكييف','أعمال التكييف.التقييم'])),
@@ -2417,6 +2584,7 @@ function mergeAndRebuild(){
 
     applyFilters();
     updateLastRefreshTime();
+    try{ checkCriticalSchools(); }catch(e){ console.warn('checkCriticalSchools:', e); }
   }
 }
 
@@ -2592,28 +2760,45 @@ function applyFilters(){
     var formByName = {};
 
     compForDone.forEach(function(r){
-      var t = r.type||'';
       // الرقم الوزاري
       if(r.code && r.code.toString().trim()){
         var c = r.code.toString().trim().replace(/\.0$/,'');
         doneByCode.add(c);
         if(!formByCode[c]) formByCode[c] = r;
       }
-      // الاسم + النوع
+      // الاسم (بدون شرط النوع)
       if(r.school){
-        doneByName.add(normStr(r.school)+'|'+t);
+        doneByName.add(normStr(r.school));
         if(!formByName[r.school]) formByName[r.school] = r;
       }
     });
 
-    // هل المدرسة أكملت؟ — رقم وزاري أو اسم مدرسة
+    // هل المدرسة أكملت؟ — رقم وزاري أو اسم مدرسة (أيهما تطابق)
+    // ✨ يدعم الأكواد البديلة (code_aliases) والأسماء البديلة (name_aliases)
     function isDone(dbRow){
-      // 1. الرقم الوزاري
+      // 1. الرقم الوزاري الأساسي
       var c = (dbRow.code||'').toString().trim().replace(/\.0$/,'');
       if(c && doneByCode.has(c)) return true;
-      // 2. الاسم + النوع
-      var key = normStr(dbRow.school)+'|'+(dbRow.type||'');
-      return doneByName.has(key);
+      // 2. الأكواد البديلة (مفصولة بـ |)
+      if(dbRow.code_aliases){
+        var altCodes = dbRow.code_aliases.split('|');
+        for(var i=0;i<altCodes.length;i++){
+          var ac = altCodes[i].trim().replace(/\.0$/,'');
+          if(ac && doneByCode.has(ac)) return true;
+        }
+      }
+      // 3. الاسم الأساسي
+      var key = normStr(dbRow.school);
+      if(doneByName.has(key)) return true;
+      // 4. الأسماء البديلة (مفصولة بـ |)
+      if(dbRow.name_aliases){
+        var altNames = dbRow.name_aliases.split('|');
+        for(var j=0;j<altNames.length;j++){
+          var an = normStr(altNames[j]);
+          if(an && doneByName.has(an)) return true;
+        }
+      }
+      return false;
     }
 
     function getFormRec(dbRow){
@@ -2622,8 +2807,13 @@ function applyFilters(){
       return formByName[dbRow.school]||null;
     }
 
-    // masterDB مفلترة بالقطاع والنوع
+    // ✨ تاريخ الفعالية: لو فلتر أسبوع → استخدم أحدث تاريخ تقييم في تلك الفترة
+    // (هذا يضمن أن المدارس المضافة لاحقاً لا تؤثر على نسبة ذلك الأسبوع)
+    var effectiveDate = f.week ? getEffectiveDateForPeriod(compForDone) : null;
+
+    // masterDB مفلترة بالقطاع والنوع وتاريخ الفعالية
     var dbFiltered = masterDB.filter(function(r){
+      if(!isSchoolActiveAt(r, effectiveDate)) return false;
       if(f.sector && (r.govArea||r.sector||'')!==f.sector) return false;
       if(f.type   && (r.type||'')!==f.type) return false;
       return true;
@@ -2706,6 +2896,7 @@ function applyFilters(){
   // جدول المؤشرات يعرض كل المكتملين (بدون فلتر المدرسة للإجمالي)
   try{buildIndTable(comp.length?comp:compFiltered);}catch(e){console.warn('IndTable:',e);}
   try{generateAlerts(compFiltered,combined);}catch(e){console.warn('Alerts:',e);}
+  try{updateComparison();}catch(e){console.warn('Comparison:',e);}
   try{drawWeekCompare(combined);}catch(e){console.warn('WeekCompare:',e);}
   try{buildSectorTable(compFiltered);}catch(e){console.warn('SectorTable:',e);}
   try{renderTable();}catch(e){console.error('Table:',e);}
@@ -2725,9 +2916,15 @@ function updateKPIs(comp,combined){
     // لم يكمل فقط: الإجمالي = غير المكتملين
     total = combined.length;
   } else {
-    // الكل: الإجمالي من masterDB مع فلتر النوع والقطاع
+    // الكل: الإجمالي من masterDB مع فلتر النوع والقطاع + تاريخ الفعالية
     if(masterLoaded && masterDB.length){
+      // ✨ لو فيه فلتر أسبوع، نحسب فقط المدارس النشطة في ذلك الأسبوع
+      var kpiCompForDone = f.week
+        ? completed.filter(function(r){ return r.week===f.week; })
+        : completed;
+      var kpiEffDate = f.week ? getEffectiveDateForPeriod(kpiCompForDone) : null;
       total = masterDB.filter(function(r){
+        if(!isSchoolActiveAt(r, kpiEffDate)) return false;
         if(f.type   && (r.type||'')              !== f.type)   return false;
         if(f.sector && (r.govArea||r.sector||'') !== f.sector) return false;
         return true;
@@ -3023,7 +3220,13 @@ function updateCharts(comp,combined,f){
   if(fD.link==='done'||fD.link==='not'){
     totalD=combined.length;
   } else {
+    // ✨ تاريخ الفعالية للفلترة الزمنية
+    var chCompForDone = fD.week
+      ? completed.filter(function(r){ return r.week===fD.week; })
+      : completed;
+    var chEffDate = fD.week ? getEffectiveDateForPeriod(chCompForDone) : null;
     totalD=masterDB.length?masterDB.filter(function(r){
+      if(!isSchoolActiveAt(r, chEffDate)) return false;
       if(fD.type&&(r.type||'')!==fD.type) return false;
       if(fD.sector&&(r.govArea||r.sector||'')!==fD.sector) return false;
       return true;
@@ -3073,7 +3276,7 @@ function renderTable(){
     var city=r.city||'-';
     var govArea=r.sector||'-';
     var _i=start+i;
-    return '<tr style="cursor:pointer;" onclick="showSchoolCard(searchData['+_i+'])">'+'<td style="color:var(--text2)">'+(_i+1)+'</td>'+'<td style="font-weight:600;max-width:220px;color:var(--accent)">'+(r.school||'-')+'</td>'+
+    return '<tr style="cursor:pointer;" onclick="showSchoolCard(searchData['+_i+'])">'+'<td style="color:var(--text2)">'+(_i+1)+'</td>'+'<td style="font-weight:600;max-width:220px;color:var(--accent2)">'+(r.school||'-')+'</td>'+
       '<td>'+govArea+'</td>'+
       '<td style="font-size:11px">'+city+'</td>'+
       '<td>'+(r.week||'-')+'</td>'+
@@ -3181,6 +3384,60 @@ function sendWhatsApp(){
   window.open('https://wa.me/?text='+encoded,'_blank');
 }
 
+function sendWeeklySummary(){
+  var comp = (window._lastComp && window._lastComp.length) ? window._lastComp : searchData.filter(function(r){return r.status==='done';});
+  if(!comp.length){ alert('لا توجد بيانات مكتملة لإنشاء الملخص'); return; }
+
+  var f = (typeof getFilters==='function') ? getFilters() : {};
+  var week = f.week || (weeks && weeks.length ? weeks[weeks.length-1] : 'الأسبوع الحالي');
+  var sector = f.sector || 'جميع القطاعات';
+
+  // متوسط عام
+  var scored = comp.map(function(r){return getScore(r);}).filter(function(v){return v!==null;});
+  var overall = scored.length ? scored.reduce(function(a,b){return a+b;},0)/scored.length : 0;
+
+  // أعلى/أقل 3 مدارس
+  var bySchool = comp.map(function(r){return {name:r.school, sector:r.sector||r.govArea||'', avg:getScore(r)};})
+                     .filter(function(x){return x.avg!==null;});
+  var topSchools = bySchool.slice().sort(function(a,b){return b.avg-a.avg;}).slice(0,3);
+  var botSchools = bySchool.slice().sort(function(a,b){return a.avg-b.avg;}).slice(0,3);
+
+  // أعلى/أقل 3 مؤشرات
+  var indStats = INDICATORS.map(function(ind){
+    var vals = comp.map(function(r){return parseFloat(r[ind.key]);}).filter(function(v){return !isNaN(v)&&v>=0&&v<=5;});
+    var avg = vals.length ? vals.reduce(function(a,b){return a+b;},0)/vals.length : null;
+    return { key:ind.key, label:ind.label, avg:avg, count:vals.length };
+  }).filter(function(x){return x.avg!==null;});
+  var topInd = indStats.slice().sort(function(a,b){return b.avg-a.avg;}).slice(0,3);
+  var botInd = indStats.slice().sort(function(a,b){return a.avg-b.avg;}).slice(0,3);
+
+  var notDoneCount = searchData.filter(function(r){return r.status==='not';}).length;
+
+  var msg = '📊 *ملخص جودة الخدمات*\n';
+  msg += '📅 ' + week + ' | 🏛️ ' + sector + '\n';
+  msg += '━━━━━━━━━━━━━━━━━━\n';
+  msg += '📈 المتوسط العام: *' + overall.toFixed(2) + '* / 5.0\n';
+  msg += '✅ مكتملة: ' + comp.length + '   ❌ لم تكمل: ' + notDoneCount + '\n\n';
+
+  msg += '🏆 *أعلى 3 مدارس:*\n';
+  topSchools.forEach(function(s,i){ msg += (i+1)+'. '+s.name+(s.sector?' ('+s.sector+')':'')+' — '+s.avg.toFixed(2)+'\n'; });
+
+  msg += '\n⚠️ *أقل 3 مدارس:*\n';
+  botSchools.forEach(function(s,i){ msg += (i+1)+'. '+s.name+(s.sector?' ('+s.sector+')':'')+' — '+s.avg.toFixed(2)+'\n'; });
+
+  msg += '\n🎯 *أقوى 3 مؤشرات:*\n';
+  topInd.forEach(function(x,i){ msg += (i+1)+'. '+x.label+' — '+x.avg.toFixed(2)+'\n'; });
+
+  msg += '\n🚨 *أضعف 3 مؤشرات:*\n';
+  botInd.forEach(function(x,i){ msg += (i+1)+'. '+x.label+' — '+x.avg.toFixed(2)+'\n'; });
+
+  msg += '━━━━━━━━━━━━━━━━━━\n';
+  msg += '📋 إجمالي: ' + (comp.length + notDoneCount) + ' مدرسة';
+
+  var encoded = encodeURIComponent(msg);
+  window.open('https://wa.me/?text='+encoded,'_blank');
+}
+
 /* ============================================================
    ④ Top 10 / Bottom 10
    ============================================================ */
@@ -3245,6 +3502,282 @@ function updateTopBottom(comp){
         makeList(bottom,false)+
       '</div>'+
     '</div>';
+}
+
+/* ============================================================
+   📈 مقارنة الأداء عبر الزمن (أسبوع/فصل ↔ أسبوع/فصل سابق)
+   ============================================================ */
+function _cmpAvgScore(rows){
+  var scores = [];
+  rows.forEach(function(r){
+    var s = getScore(r);
+    if(s !== null && !isNaN(s)) scores.push(s);
+  });
+  if(!scores.length) return null;
+  return scores.reduce(function(a,b){return a+b;},0) / scores.length;
+}
+
+function _cmpSortPeriods(arr, periodKey){
+  // ترتيب الأسابيع/الفصول حسب القيمة الرقمية أو الأبجدية
+  return arr.slice().sort(function(a,b){
+    var na = parseInt((a||'').toString().replace(/[^\d]/g,''));
+    var nb = parseInt((b||'').toString().replace(/[^\d]/g,''));
+    if(!isNaN(na) && !isNaN(nb)) return na - nb;
+    return (a||'').toString().localeCompare((b||'').toString(),'ar');
+  });
+}
+
+function _cmpFmtNum(n, digits){
+  if(n === null || n === undefined || isNaN(n)) return '—';
+  return Number(n).toFixed(digits===undefined?2:digits);
+}
+
+function _cmpTrendHtml(curr, prev, betterIsHigher){
+  if(curr === null || prev === null || curr === undefined || prev === undefined){
+    return '<span style="color:var(--text2);font-size:11px;">—</span>';
+  }
+  var diff = curr - prev;
+  if(Math.abs(diff) < 0.01){
+    return '<span style="color:var(--text2);font-size:11px;font-weight:700;">▬ ثابت</span>';
+  }
+  var up = diff > 0;
+  var good = betterIsHigher ? up : !up;
+  var color = good ? '#10b981' : '#ef4444';
+  var arrow = up ? '▲' : '▼';
+  var sign = up ? '+' : '';
+  return '<span style="color:'+color+';font-size:12px;font-weight:800;">'+arrow+' '+sign+_cmpFmtNum(diff)+'</span>';
+}
+
+// حالة المقارنة محفوظة لكل وضع
+var _cmpState = { week: {curr:null, prev:null}, term: {curr:null, prev:null} };
+
+function onCmpModeChange(){ updateComparison(); }
+
+function resetCmpSelections(){
+  var mode = (document.getElementById('cmp-period')||{}).value || 'week';
+  _cmpState[mode] = { curr: null, prev: null };
+  updateComparison();
+}
+
+// تُستدعى من onchange للقوائم — تخزّن الاختيار ثم تعيد الحساب فقط
+function onCmpPickChange(which){
+  var mode = (document.getElementById('cmp-period')||{}).value || 'week';
+  var sel = document.getElementById(which==='curr' ? 'cmp-curr' : 'cmp-prev');
+  if(sel && sel.value){
+    _cmpState[mode][which] = sel.value;
+  }
+  // أعد الحساب فقط دون إعادة بناء القوائم
+  _renderComparison();
+}
+
+function _cmpFillSelect(sel, periods, selected){
+  if(!sel) return;
+  sel.innerHTML = periods.map(function(p){
+    var esc = String(p).replace(/"/g,'&quot;');
+    return '<option value="'+esc+'">'+esc+'</option>';
+  }).join('');
+  if(selected && periods.indexOf(selected) >= 0) sel.value = selected;
+}
+
+// نقاط الدخول: updateComparison يعيد بناء القوائم + يحسب
+// _renderComparison يكتفي بالحساب من القيم الموجودة في القوائم
+function updateComparison(){
+  _buildCmpDropdowns();
+  _renderComparison();
+}
+
+function _getCmpBase(){
+  var f = getFilters();
+  return completed.filter(function(r){
+    if(f.sector && r.sector !== f.sector) return false;
+    if(f.type   && r.type   !== f.type)   return false;
+    if(f.schoolCode){
+      var rc = (r.code||'').toString();
+      if(rc.indexOf(f.schoolCode) < 0) return false;
+    }
+    return true;
+  });
+}
+
+function _getCmpPeriods(mode){
+  var base = _getCmpBase();
+  var keyField = (mode === 'term') ? 'term' : 'week';
+  var set = {};
+  base.forEach(function(r){ if(r[keyField]) set[r[keyField]] = true; });
+  return _cmpSortPeriods(Object.keys(set));
+}
+
+function _buildCmpDropdowns(){
+  var modeSel = document.getElementById('cmp-period');
+  var currSel = document.getElementById('cmp-curr');
+  var prevSel = document.getElementById('cmp-prev');
+  if(!modeSel || !currSel || !prevSel) return;
+  var mode = modeSel.value || 'week';
+  var periods = _getCmpPeriods(mode);
+  if(!periods.length){
+    currSel.innerHTML = '';
+    prevSel.innerHTML = '';
+    return;
+  }
+  var state = _cmpState[mode];
+  // اختيار افتراضي: آخر فترتين
+  var defaultCurr = periods[periods.length - 1];
+  var defaultPrev = periods.length > 1 ? periods[periods.length - 2] : periods[0];
+  var currVal = (state.curr && periods.indexOf(state.curr) >= 0) ? state.curr : defaultCurr;
+  var prevVal = (state.prev && periods.indexOf(state.prev) >= 0) ? state.prev : defaultPrev;
+  _cmpFillSelect(currSel, periods, currVal);
+  _cmpFillSelect(prevSel, periods, prevVal);
+  _cmpState[mode].curr = currSel.value;
+  _cmpState[mode].prev = prevSel.value;
+}
+
+function _renderComparison(){
+  var box = document.getElementById('comparison-section');
+  if(!box) return;
+  var cards = document.getElementById('cmp-cards');
+  var sectorsBox = document.getElementById('cmp-sectors');
+  var modeSel = document.getElementById('cmp-period');
+  var currSel = document.getElementById('cmp-curr');
+  var prevSel = document.getElementById('cmp-prev');
+  if(!cards || !sectorsBox) return;
+  var mode = (modeSel && modeSel.value) || 'week';
+  var f = getFilters();
+
+  // البيانات الأساسية: completed (مع تطبيق فلاتر القطاع/النوع/المدرسة فقط)
+  var base = completed.filter(function(r){
+    if(f.sector && r.sector !== f.sector) return false;
+    if(f.type   && r.type   !== f.type)   return false;
+    if(f.schoolCode){
+      var rc = (r.code||'').toString();
+      if(rc.indexOf(f.schoolCode) < 0) return false;
+    }
+    return true;
+  });
+
+  if(!base.length){
+    cards.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text2);font-size:12px;">لا توجد بيانات للمقارنة</div>';
+    sectorsBox.innerHTML = '';
+    return;
+  }
+
+  var keyField = (mode === 'term') ? 'term' : 'week';
+
+  // اقرأ الفترتين من القوائم مباشرة (تم بناؤها في _buildCmpDropdowns)
+  var currentP  = currSel ? currSel.value : '';
+  var previousP = prevSel ? prevSel.value : '';
+  if(!currentP || !previousP){
+    cards.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:20px;color:var(--text2);font-size:12px;">⚠️ تحتاج بيانات لفترتين على الأقل للمقارنة</div>';
+    sectorsBox.innerHTML = '';
+    return;
+  }
+
+  var currRows = base.filter(function(r){ return r[keyField] === currentP; });
+  var prevRows = base.filter(function(r){ return r[keyField] === previousP; });
+
+
+  // المقاييس
+  var avgCurr = _cmpAvgScore(currRows);
+  var avgPrev = _cmpAvgScore(prevRows);
+  // ✨ موحّد مع KPI/Donut: نعد المدارس من masterDB التي طابقت (بالكود أو الاسم)
+  var doneCurr = countDoneInMaster(currRows, f.sector, f.type).done;
+  var donePrev = countDoneInMaster(prevRows, f.sector, f.type).done;
+
+  // نسب التقدير (تحتاج دعم: <=3)
+  function needsSupport(rows){
+    var map = {};
+    rows.forEach(function(r){
+      var k = r.school+'||'+(r.type||'');
+      var s = getScore(r);
+      if(s !== null && !isNaN(s)){
+        if(!(k in map) || s < map[k]) map[k] = s;
+      }
+    });
+    var c = 0;
+    Object.keys(map).forEach(function(k){ if(map[k] <= 3) c++; });
+    return c;
+  }
+  var supCurr = needsSupport(currRows);
+  var supPrev = needsSupport(prevRows);
+
+  // مدارس تحسّنت / تراجعت
+  function avgByKey(rows){
+    var m = {}, cnt = {};
+    rows.forEach(function(r){
+      var k = r.school+'||'+(r.type||'');
+      var s = getScore(r);
+      if(s===null||isNaN(s)) return;
+      m[k] = (m[k]||0) + s;
+      cnt[k] = (cnt[k]||0) + 1;
+    });
+    var out = {};
+    Object.keys(m).forEach(function(k){ out[k] = m[k]/cnt[k]; });
+    return out;
+  }
+  var currMap = avgByKey(currRows);
+  var prevMap = avgByKey(prevRows);
+  var improved = 0, declined = 0;
+  Object.keys(currMap).forEach(function(k){
+    if(prevMap[k] === undefined) return;
+    var diff = currMap[k] - prevMap[k];
+    if(diff > 0.05) improved++;
+    else if(diff < -0.05) declined++;
+  });
+
+  // بطاقات المقارنة
+  function card(label, currVal, prevVal, fmtDigits, betterIsHigher, sub){
+    var trend = _cmpTrendHtml(currVal, prevVal, betterIsHigher !== false);
+    return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;">'+
+      '<div style="font-size:11px;color:var(--text2);margin-bottom:6px;">'+label+'</div>'+
+      '<div style="font-size:22px;font-weight:900;line-height:1;">'+_cmpFmtNum(currVal, fmtDigits)+'</div>'+
+      '<div style="font-size:11px;color:var(--text2);margin-top:6px;display:flex;justify-content:space-between;align-items:center;">'+
+        '<span>السابق: '+_cmpFmtNum(prevVal, fmtDigits)+'</span>'+
+        trend+
+      '</div>'+
+      (sub?'<div style="font-size:10px;color:var(--text2);margin-top:4px;">'+sub+'</div>':'')+
+    '</div>';
+  }
+  cards.innerHTML =
+    card('متوسط الأداء', avgCurr, avgPrev, 2, true, 'من 5.0') +
+    card('عدد المكتملين', doneCurr, donePrev, 0, true) +
+    card('تحتاج دعم (≤3)', supCurr, supPrev, 0, false) +
+    '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;">'+
+      '<div style="font-size:11px;color:var(--text2);margin-bottom:6px;">مدارس تحسّنت / تراجعت</div>'+
+      '<div style="display:flex;gap:14px;align-items:baseline;">'+
+        '<span style="font-size:22px;font-weight:900;color:#10b981;">▲ '+improved+'</span>'+
+        '<span style="font-size:22px;font-weight:900;color:#ef4444;">▼ '+declined+'</span>'+
+      '</div>'+
+      '<div style="font-size:10px;color:var(--text2);margin-top:6px;">مقارنة لكل مدرسة بين الفترتين</div>'+
+    '</div>';
+
+  // مقارنة لكل قطاع
+  function avgBySector(rows){
+    var sums = {}, cnt = {};
+    rows.forEach(function(r){
+      if(!r.sector) return;
+      var s = getScore(r);
+      if(s===null||isNaN(s)) return;
+      sums[r.sector] = (sums[r.sector]||0) + s;
+      cnt[r.sector] = (cnt[r.sector]||0) + 1;
+    });
+    var out = {};
+    Object.keys(sums).forEach(function(k){ out[k] = sums[k]/cnt[k]; });
+    return out;
+  }
+  var secCurr = avgBySector(currRows);
+  var secPrev = avgBySector(prevRows);
+  var allSectors = Array.from(new Set(Object.keys(secCurr).concat(Object.keys(secPrev)))).sort();
+  if(!allSectors.length){
+    sectorsBox.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:10px;color:var(--text2);font-size:11px;">لا توجد بيانات قطاعات</div>';
+  } else {
+    sectorsBox.innerHTML = allSectors.map(function(sec){
+      var c = secCurr[sec], p = secPrev[sec];
+      return '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;">'+
+        '<div style="font-size:12px;font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+sec+'</div>'+
+        '<div style="text-align:left;font-size:11px;color:var(--text2);">'+_cmpFmtNum(p)+' → <strong style="color:var(--text);">'+_cmpFmtNum(c)+'</strong></div>'+
+        '<div style="min-width:70px;text-align:left;">'+_cmpTrendHtml(c, p, true)+'</div>'+
+      '</div>';
+    }).join('');
+  }
 }
 
 function exportNeedsSupport(){
@@ -3495,7 +4028,13 @@ function loadMasterDBFromCSV(onDone, isRefresh){
           govArea: (r.province || '').toString().trim(),
           city:    (r.city || '').toString().trim(),
           code:    (r.ministry_code || '').toString().trim(),
-          email:   (r.email || '').toString().trim()
+          email:   (r.email || '').toString().trim(),
+          // ✨ أسماء وأكواد بديلة (مفصولة بـ |)
+          name_aliases: (r.name_aliases || '').toString().trim(),
+          code_aliases: (r.code_aliases || '').toString().trim(),
+          // ✨ تواريخ الصلاحية: لو ما موجودة (قبل تنفيذ الـ SQL) ناخذ قيم افتراضية
+          created_at:  r.created_at  ? new Date(r.created_at)  : null,
+          archived_at: r.archived_at ? new Date(r.archived_at) : null
         };
       }).filter(function(r){return r.school;});
       masterLoaded = true;
@@ -3515,7 +4054,7 @@ function loadMasterDBFromCSV(onDone, isRefresh){
       try{
         var cached = localStorage.getItem('masterDB_cache');
         if(cached){
-          masterDB = JSON.parse(cached);
+          masterDB = rehydrateMasterDB(JSON.parse(cached));
           masterLoaded = true;
           updateMasterDBUI();
           if(onDone) onDone(true);
@@ -3581,7 +4120,7 @@ function loadMasterDBFromCSV(onDone, isRefresh){
       try{
         var cached = localStorage.getItem('masterDB_cache');
         if(cached){
-          masterDB = JSON.parse(cached);
+          masterDB = rehydrateMasterDB(JSON.parse(cached));
           masterLoaded = true;
           updateMasterDBUI();
           console.log('[DB] ⚠️ استخدام النسخة المحلية المحفوظة');
@@ -4487,17 +5026,22 @@ function cpRenderAssessments(){
   } else {
     tbody.innerHTML = slice.map(function(it,i){
       var r = it._row;
-      var key = it._gender + '|' + (r.school||'') + '|' + (r.week||'') + '|' + (r.code||'');
+      var key = (r.id !== undefined && r.id !== null)
+        ? String(r.id)
+        : it._gender + '|' + (r.school||'') + '|' + (r.week||'') + '|' + (r.code||'');
       var checked = cpAsm.selected.has(key) ? 'checked' : '';
       var icon = it._gender==='بنين' ? '👦' : '👧';
+      var canDel = (r.id !== undefined && r.id !== null);
       return '<tr>'+
-        '<td><input type="checkbox" data-key="'+key.replace(/"/g,'&quot;')+'" '+checked+' onclick="cpToggleAsm(this)"></td>'+
+        '<td><input type="checkbox" data-key="'+key.replace(/"/g,'&quot;')+'" '+checked+(canDel?'':' disabled')+' onclick="cpToggleAsm(this)"></td>'+
         '<td style="font-size:11px;">'+icon+' '+it._gender+'</td>'+
         '<td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;">'+(r.school||'-')+'</td>'+
         '<td style="font-size:11px;">'+(r.sector||r.govArea||'-')+'</td>'+
         '<td style="font-size:11px;">'+(r.week||'-')+'</td>'+
         '<td style="font-size:11px;">'+(r.date||'-')+'</td>'+
-        '<td><button class="cp-row-del" onclick="cpDeleteAsmRow(\''+key.replace(/'/g,"\\'")+'\')">🗑️</button></td>'+
+        '<td>'+(canDel
+          ? '<button class="cp-row-del" onclick="cpDeleteAsmRow('+r.id+')">🗑️</button>'
+          : '<span style="color:#64748b;font-size:10px;" title="لا يمكن الحذف: السجل غير مرتبط بقاعدة البيانات">—</span>')+'</td>'+
       '</tr>';
     }).join('');
   }
@@ -4525,19 +5069,53 @@ function cpToggleAllAssessments(cb){
   if(cb.checked){
     cpFilteredAssessments().forEach(function(it){
       var r = it._row;
-      var key = it._gender + '|' + (r.school||'') + '|' + (r.week||'') + '|' + (r.code||'');
-      cpAsm.selected.add(key);
+      if(r.id === undefined || r.id === null) return;
+      cpAsm.selected.add(String(r.id));
     });
   } else cpAsm.selected.clear();
   cpRenderAssessments();
 }
 
-function cpDeleteAsmRow(key){
-  alert('حذف التقييمات يتطلب البحث عن السجل في Supabase أولاً. سيتم تطوير هذه الميزة قريباً.');
+function cpDeleteAsmRow(id){
+  if(id === undefined || id === null) return;
+  if(!confirm('حذف هذا التقييم نهائياً من قاعدة البيانات؟')) return;
+  fetch(SUPABASE_URL + '/rest/v1/assessments?id=eq.' + encodeURIComponent(id), {
+    method: 'DELETE',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'return=minimal' }
+  }).then(function(r){
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    ['بنين','بنات'].forEach(function(g){
+      if(srcData[g] && srcData[g].rows){
+        srcData[g].rows = srcData[g].rows.filter(function(x){ return String(x.id) !== String(id); });
+      }
+    });
+    cpAsm.selected.delete(String(id));
+    cpRenderAssessments();
+    cpUpdateStats();
+  }).catch(function(e){ alert('فشل الحذف: ' + e.message); });
 }
 
 function cpDeleteSelectedAssessments(){
-  alert('الحذف الجماعي للتقييمات قيد التطوير.');
+  var ids = [...cpAsm.selected].filter(function(x){ return x !== '' && x !== null && x !== undefined; });
+  if(!ids.length) return;
+  if(!confirm('سيتم حذف ' + ids.length.toLocaleString('ar') + ' تقييم نهائياً. متأكد؟')) return;
+  var url = SUPABASE_URL + '/rest/v1/assessments?id=in.(' + encodeURIComponent(ids.join(',')) + ')';
+  fetch(url, {
+    method: 'DELETE',
+    headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY, 'Prefer': 'return=minimal' }
+  }).then(function(r){
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    var set = new Set(ids.map(String));
+    ['بنين','بنات'].forEach(function(g){
+      if(srcData[g] && srcData[g].rows){
+        srcData[g].rows = srcData[g].rows.filter(function(x){ return !set.has(String(x.id)); });
+      }
+    });
+    cpAsm.selected.clear();
+    cpRenderAssessments();
+    cpUpdateStats();
+    alert('✅ تم حذف ' + ids.length + ' تقييم');
+  }).catch(function(e){ alert('فشل الحذف: ' + e.message); });
 }
 
 function applyControlPanel(){
@@ -4763,14 +5341,17 @@ function drawWeekCompare(combined){
   var padL=50, padR=30, padT=35, padB=55;
   var chartW=W-padL-padR, chartH=H-padT-padB;
 
-  var totalSchools = masterLoaded&&masterDB.length ? masterDB.length : combined.length;
+  // ✨ موحّد مع KPI/Donut: نطبّق فلاتر القطاع/النوع ونعد المطابقة من masterDB
+  var fW = getFilters();
   var wkStats = weeks.map(function(w){
-    var uniqueSchools = new Set();
-    completed.filter(function(r){return r.week===w;}).forEach(function(r){
-      uniqueSchools.add(r.school+'|'+(r.type||''));
+    var weekRows = completed.filter(function(r){
+      if(r.week !== w) return false;
+      if(fW.sector && r.sector !== fW.sector) return false;
+      if(fW.type   && r.type   !== fW.type)   return false;
+      return true;
     });
-    var wDone = uniqueSchools.size;
-    return {week:w, done:wDone, total:totalSchools, pct: totalSchools?(wDone/totalSchools*100):0};
+    var r = countDoneInMaster(weekRows, fW.sector, fW.type);
+    return {week:w, done:r.done, total:r.total, pct: r.total?(r.done/r.total*100):0};
   });
 
   var n = wkStats.length;
@@ -4843,7 +5424,7 @@ function showSchoolCard(r){
   var sectorComp=window._lastComp?window._lastComp.filter(function(x){return(x.sector||x.govArea)===(r.sector||r.govArea);}):[];
   var html='<div style="margin-bottom:16px;">';
   html+='<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px;">';
-  html+='<div><h2 style="font-size:17px;font-weight:900;margin-bottom:4px;">'+r.school+'</h2>';
+  html+='<div><h2 style="font-size:18px;font-weight:900;margin-bottom:4px;color:var(--text);">'+r.school+'</h2>';
   html+='<div style="font-size:12px;color:var(--text2);">'+(r.govArea||r.sector||'-')+' | '+(r.city||'-')+' | '+(r.type||'-')+(r.week?' | '+r.week:'')+'</div></div>';
   if(avg!==null){
     html+='<div style="text-align:center;background:var(--surface2);border-radius:12px;padding:10px 18px;flex-shrink:0;">';
@@ -4851,9 +5432,14 @@ function showSchoolCard(r){
     html+='<div style="font-size:10px;color:var(--text2);">/ 5.0</div></div>';
   }
   html+='</div>';
-  html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">';
+  html+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;">';
   html+=r.status==='done'?'<span class="status-pill pill-done">✅ أكمل الرابط</span>':'<span class="status-pill pill-not">❌ لم يكمل</span>';
   if(r.code) html+='<span style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;">رقم: '+r.code+'</span>';
+  var schoolEsc = (r.school||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+  html+='<div style="margin-right:auto;display:flex;gap:6px;flex-wrap:wrap;">';
+  html+='<button onclick="exportSchoolReport(\''+schoolEsc+'\')" style="background:linear-gradient(135deg,#0DCFDA,#0891b2);color:#fff;border:none;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Cairo,sans-serif;font-size:11px;font-weight:700;">📥 Excel</button>';
+  html+='<button onclick="printSchoolReport(\''+schoolEsc+'\')" style="background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border:none;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Cairo,sans-serif;font-size:11px;font-weight:700;">📄 PDF</button>';
+  html+='</div>';
   html+='</div></div>';
   if(avg!==null){
     html+='<div style="font-size:13px;font-weight:700;margin-bottom:10px;">مؤشرات الأداء</div>';
@@ -4881,14 +5467,734 @@ function showSchoolCard(r){
   } else {
     html+='<div class="empty"><div class="empty-icon">📭</div>لا توجد بيانات أداء</div>';
   }
+  // تطور المؤشرات عبر الأسابيع
+  var history = getSchoolWeeklyHistory(r.school);
+  if(history.length >= 2){
+    html+='<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">';
+    html+='<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;flex-wrap:wrap;">';
+    html+='<div style="font-size:13px;font-weight:700;">📈 تطور المتوسط عبر '+history.length+' أسابيع</div>';
+    var first=history[0].avg, last=history[history.length-1].avg;
+    if(first!==null && last!==null){
+      var delta=last-first;
+      var arrow=delta>=0?'▲':'▼';
+      var dColor=delta>=0?'#10b981':'#ef4444';
+      html+='<div style="font-size:11px;color:'+dColor+';font-weight:700;">'+arrow+' '+(delta>=0?'+':'')+delta.toFixed(2)+' من '+history[0].week+'</div>';
+    }
+    html+='</div>';
+    html+='<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;height:220px;position:relative;"><canvas id="school-history-chart"></canvas></div>';
+    html+='</div>';
+  } else if(history.length === 1){
+    html+='<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);font-size:11px;color:var(--text2);">📈 لا يوجد إلا أسبوع واحد لهذه المدرسة (لا يمكن رسم التطور)</div>';
+  }
   content.innerHTML=html;
   modal.style.display='flex';
   document.body.style.overflow='hidden';
+  if(history.length >= 2){
+    setTimeout(function(){ drawSchoolHistoryChart(history); }, 50);
+  }
 }
+
+function getSchoolWeeklyHistory(schoolName){
+  if(!schoolName) return [];
+  var rows = [];
+  ['بنين','بنات'].forEach(function(g){
+    if(srcData[g] && srcData[g].completed){
+      srcData[g].completed.forEach(function(x){
+        if(x.school === schoolName && x.week) rows.push(x);
+      });
+    }
+  });
+  // جمّع بالأسبوع (احتفظ بآخر سجل إن تكرر)
+  var byWeek = {};
+  rows.forEach(function(x){ byWeek[x.week] = x; });
+  var arr = Object.keys(byWeek).map(function(w){
+    var rec = byWeek[w];
+    var num = (w.toString().match(/\d+/)||[])[0];
+    return { week: w, weekNum: num?parseInt(num):0, avg: getScore(rec), row: rec };
+  });
+  arr.sort(function(a,b){ return a.weekNum - b.weekNum; });
+  return arr;
+}
+
+function drawSchoolHistoryChart(history){
+  var canvas = document.getElementById('school-history-chart');
+  if(!canvas || typeof Chart === 'undefined') return;
+  var ctx = canvas.getContext('2d');
+  var labels = history.map(function(h){ return h.week; });
+  var data = history.map(function(h){ return h.avg!==null ? +h.avg.toFixed(2) : null; });
+  var colors = data.map(function(v){ return v===null ? '#64748b' : getColor(v); });
+  if(window._schoolHistChart){ try{ window._schoolHistChart.destroy(); }catch(e){} }
+  window._schoolHistChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'المتوسط',
+        data: data,
+        spanGaps: true,
+        borderColor: '#0DCFDA',
+        backgroundColor: 'rgba(13,207,218,0.12)',
+        borderWidth: 2,
+        tension: 0.3,
+        fill: true,
+        pointBackgroundColor: colors,
+        pointBorderColor: colors,
+        pointRadius: 5,
+        pointHoverRadius: 7
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(c){ return 'المتوسط: ' + (c.parsed.y!==null?c.parsed.y.toFixed(2):'—') + ' / 5'; }
+          }
+        }
+      },
+      scales: {
+        y: { min: 0, max: 5, ticks: { stepSize: 1, color: '#94a3b8' }, grid: { color: 'rgba(148,163,184,0.15)' } },
+        x: { ticks: { color: '#94a3b8' }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+function exportSchoolReport(schoolName){
+  if(typeof XLSX === 'undefined'){ alert('مكتبة XLSX لم تُحمّل بعد. أعد المحاولة بعد ثانية.'); return; }
+  if(!schoolName) return;
+  var history = getSchoolWeeklyHistory(schoolName);
+  if(!history.length){ alert('لا توجد بيانات لهذه المدرسة'); return; }
+
+  var latest = history[history.length-1].row;
+  var first = history[0], last = history[history.length-1];
+  var delta = (first.avg!==null && last.avg!==null) ? (last.avg-first.avg) : null;
+
+  // ورقة 1: الملخص
+  var summary = [
+    ['تقرير المدرسة'],
+    [],
+    ['اسم المدرسة', schoolName],
+    ['الرقم الوزاري', latest.code||'-'],
+    ['المحافظة', latest.sector||latest.govArea||'-'],
+    ['المدينة', latest.city||'-'],
+    ['النوع', latest.type||'-'],
+    ['المرحلة', latest.stage||'-'],
+    [],
+    ['عدد الأسابيع المُقيّمة', history.length],
+    ['أول أسبوع', first.week + (first.avg!==null?' ('+first.avg.toFixed(2)+')':'')],
+    ['آخر أسبوع',  last.week  + (last.avg!==null ?' ('+last.avg.toFixed(2)+')':'')],
+    ['الفرق', delta!==null ? (delta>=0?'+':'')+delta.toFixed(2) : '-'],
+    [],
+    ['المؤشر', 'القيمة (آخر أسبوع)']
+  ];
+  INDICATORS.forEach(function(ind){
+    var v = parseFloat(latest[ind.key]);
+    summary.push([ind.label, (!isNaN(v)&&v>=0&&v<=5) ? +v.toFixed(2) : '-']);
+  });
+
+  // ورقة 2: تطور أسبوعي
+  var histHeader = ['الأسبوع','المتوسط'].concat(INDICATORS.map(function(i){return i.label;}));
+  var histRows = [histHeader];
+  history.forEach(function(h){
+    var row = [h.week, h.avg!==null ? +h.avg.toFixed(2) : '-'];
+    INDICATORS.forEach(function(ind){
+      var v = parseFloat(h.row[ind.key]);
+      row.push((!isNaN(v)&&v>=0&&v<=5) ? +v.toFixed(2) : '-');
+    });
+    histRows.push(row);
+  });
+
+  // ورقة 3: البلاغات (إن وُجدت)
+  var schoolComplaints = (typeof uscData !== 'undefined' ? uscData : []).filter(function(x){
+    if(!x) return false;
+    if(latest.code && x.schoolCode && x.schoolCode.toString().trim() === latest.code.toString().trim()) return true;
+    return (x.school||'').toString().trim() === schoolName.toString().trim();
+  });
+  var compRows = [['رقم الحالة','تاريخ الإنشاء','الحالة','الأولوية','التصنيف','الفئة الفرعية','عنوان البلاغ','عدد مرات إعادة الفتح','المختص']];
+  schoolComplaints.forEach(function(c){
+    compRows.push([c.caseId||'-', c.createdAt||'-', c.status||'-', c.priority||'-', c.cat1||c.service||'-', c.cat2||'-', c.title||'-', c.reopenCount||0, c.specialist||'-']);
+  });
+
+  var wb = XLSX.utils.book_new();
+  var ws1 = XLSX.utils.aoa_to_sheet(summary);
+  ws1['!cols'] = [{wch:28},{wch:30}];
+  var ws2 = XLSX.utils.aoa_to_sheet(histRows);
+  ws2['!cols'] = [{wch:16},{wch:10}].concat(INDICATORS.map(function(){return {wch:14};}));
+  var ws3 = XLSX.utils.aoa_to_sheet(compRows);
+  ws3['!cols'] = [{wch:14},{wch:14},{wch:12},{wch:10},{wch:22},{wch:22},{wch:36},{wch:8},{wch:18}];
+
+  // اتجاه ورقة RTL
+  [ws1,ws2,ws3].forEach(function(ws){ ws['!sheetView'] = [{RTL:true}]; });
+
+  XLSX.utils.book_append_sheet(wb, ws1, 'ملخص');
+  XLSX.utils.book_append_sheet(wb, ws2, 'تطور أسبوعي');
+  XLSX.utils.book_append_sheet(wb, ws3, 'البلاغات ('+schoolComplaints.length+')');
+
+  var safe = schoolName.replace(/[\\/:*?"<>|]/g,'_').substring(0,80);
+  var stamp = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, 'تقرير_'+safe+'_'+stamp+'.xlsx');
+}
+
 function closeSchoolModal(){
   var m=document.getElementById('school-modal');
   if(m){m.style.display='none';}
   document.body.style.overflow='';
+}
+
+/* ============================================================
+   تقرير القطاع التفصيلي + المقارنة الشاملة
+   ============================================================ */
+function getSectorData(sectorName){
+  var comp = (window._lastComp || []).filter(function(r){ return (r.sector||r.govArea) === sectorName; });
+  var all = (typeof allSchools !== 'undefined' ? allSchools : []).filter(function(r){ return (r.sector||r.govArea) === sectorName; });
+  var done = comp.length;
+  var schoolsSet = new Set(all.map(function(r){return r.school;}));
+  var doneSchoolsSet = new Set(comp.map(function(r){return r.school;}));
+  var notDone = [];
+  schoolsSet.forEach(function(s){ if(!doneSchoolsSet.has(s)) notDone.push(s); });
+
+  var scored = comp.map(function(r){return getScore(r);}).filter(function(v){return v!==null;});
+  var avg = scored.length ? scored.reduce(function(a,b){return a+b;},0)/scored.length : null;
+
+  // متوسط كل مؤشر للقطاع
+  var indStats = INDICATORS.map(function(ind){
+    var vals = comp.map(function(r){return parseFloat(r[ind.key]);}).filter(function(v){return !isNaN(v)&&v>=0&&v<=5;});
+    var a = vals.length ? vals.reduce(function(x,y){return x+y;},0)/vals.length : null;
+    return { key:ind.key, label:ind.label, avg:a, count:vals.length };
+  });
+
+  // ترتيب المدارس
+  var bySchool = comp.map(function(r){
+    return { school:r.school, city:r.city||'', code:r.code||'', avg:getScore(r), week:r.week };
+  }).filter(function(x){return x.avg!==null;});
+  var topSchools = bySchool.slice().sort(function(a,b){return b.avg-a.avg;}).slice(0,5);
+  var botSchools = bySchool.slice().sort(function(a,b){return a.avg-b.avg;}).slice(0,5);
+
+  // بلاغات القطاع
+  var complaints = (typeof uscData !== 'undefined' ? uscData : []).filter(function(c){
+    var s = (c.school||'').toString();
+    return all.some(function(r){ return r.school === s; });
+  });
+
+  return {
+    sector: sectorName, comp:comp, all:all, done:done, notDone:notDone,
+    totalSchools: schoolsSet.size, avg:avg, indStats:indStats,
+    topSchools:topSchools, botSchools:botSchools, complaints:complaints
+  };
+}
+
+function showSectorCard(sectorName){
+  var modal = document.getElementById('sector-modal');
+  var content = document.getElementById('sector-modal-content');
+  if(!modal || !content) return;
+  var d = getSectorData(sectorName);
+  if(!d.comp.length && !d.all.length){ alert('لا توجد بيانات لهذا القطاع'); return; }
+
+  var avgColor = d.avg!==null ? getColor(d.avg) : '#64748b';
+  var html = '<div style="margin-bottom:16px;">';
+  html += '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;">';
+  html += '<div><h2 style="font-size:20px;font-weight:900;margin-bottom:4px;color:var(--text);">🏛️ '+sectorName+'</h2>';
+  html += '<div style="font-size:12px;color:var(--text2);">تقرير القطاع التفصيلي</div></div>';
+  if(d.avg!==null){
+    html += '<div style="text-align:center;background:var(--surface2);border-radius:12px;padding:10px 18px;">';
+    html += '<div style="font-size:34px;font-weight:900;color:'+avgColor+'">'+d.avg.toFixed(2)+'</div>';
+    html += '<div style="font-size:10px;color:var(--text2);">المتوسط العام</div></div>';
+  }
+  var sNameEsc = sectorName.replace(/'/g,"\\'");
+  html += '<div style="display:flex;gap:6px;height:fit-content;flex-wrap:wrap;">';
+  html += '<button onclick="exportSectorReport(\''+sNameEsc+'\')" style="background:linear-gradient(135deg,#0DCFDA,#0891b2);color:#fff;border:none;padding:8px 14px;border-radius:10px;cursor:pointer;font-family:Cairo,sans-serif;font-size:12px;font-weight:700;">📥 Excel</button>';
+  html += '<button onclick="printSectorReport(\''+sNameEsc+'\')" style="background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border:none;padding:8px 14px;border-radius:10px;cursor:pointer;font-family:Cairo,sans-serif;font-size:12px;font-weight:700;">📄 PDF</button>';
+  html += '</div>';
+  html += '</div>';
+
+  // إحصاءات سريعة
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:18px;">';
+  html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:11px;color:var(--text2);">إجمالي المدارس</div><div style="font-size:22px;font-weight:900;color:var(--accent2);">'+d.totalSchools+'</div></div>';
+  html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:11px;color:var(--text2);">المكتملة</div><div style="font-size:22px;font-weight:900;color:#10b981;">'+d.done+'</div></div>';
+  html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:11px;color:var(--text2);">لم تكمل</div><div style="font-size:22px;font-weight:900;color:#ef4444;">'+d.notDone.length+'</div></div>';
+  html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center;"><div style="font-size:11px;color:var(--text2);">البلاغات</div><div style="font-size:22px;font-weight:900;color:#f59e0b;">'+d.complaints.length+'</div></div>';
+  html += '</div>';
+
+  // مخطط راديار للمؤشرات
+  if(d.indStats.some(function(x){return x.avg!==null;})){
+    html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:18px;">';
+    html += '<div style="font-size:13px;font-weight:700;margin-bottom:10px;">📊 خريطة المؤشرات</div>';
+    html += '<div style="height:340px;position:relative;"><canvas id="sector-radar-chart"></canvas></div>';
+    html += '</div>';
+  }
+
+  // قوة وضعف
+  var validInd = d.indStats.filter(function(x){return x.avg!==null;});
+  var topInd = validInd.slice().sort(function(a,b){return b.avg-a.avg;}).slice(0,3);
+  var botInd = validInd.slice().sort(function(a,b){return a.avg-b.avg;}).slice(0,3);
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">';
+  html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;">';
+  html += '<div style="font-size:12px;font-weight:700;color:#10b981;margin-bottom:8px;">💪 أقوى 3 مؤشرات</div>';
+  topInd.forEach(function(x,i){
+    html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span>'+(i+1)+'. '+x.label+'</span><span style="font-weight:700;color:'+getColor(x.avg)+';">'+x.avg.toFixed(2)+'</span></div>';
+  });
+  html += '</div>';
+  html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;">';
+  html += '<div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:8px;">⚠️ أضعف 3 مؤشرات</div>';
+  botInd.forEach(function(x,i){
+    html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;"><span>'+(i+1)+'. '+x.label+'</span><span style="font-weight:700;color:'+getColor(x.avg)+';">'+x.avg.toFixed(2)+'</span></div>';
+  });
+  html += '</div></div>';
+
+  // أعلى وأقل المدارس
+  html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">';
+  html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;">';
+  html += '<div style="font-size:12px;font-weight:700;color:#0DCFDA;margin-bottom:8px;">🏆 أعلى المدارس</div>';
+  d.topSchools.forEach(function(s,i){
+    html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;gap:6px;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(i+1)+'. '+s.school+'</span><span style="font-weight:700;color:'+getColor(s.avg)+';flex-shrink:0;">'+s.avg.toFixed(2)+'</span></div>';
+  });
+  html += '</div>';
+  html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;">';
+  html += '<div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:8px;">⚠️ أقل المدارس</div>';
+  d.botSchools.forEach(function(s,i){
+    html += '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px;gap:6px;"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+(i+1)+'. '+s.school+'</span><span style="font-weight:700;color:'+getColor(s.avg)+';flex-shrink:0;">'+s.avg.toFixed(2)+'</span></div>';
+  });
+  html += '</div></div>';
+
+  // المدارس التي لم تكمل
+  if(d.notDone.length){
+    html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;">';
+    html += '<div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:8px;">❌ مدارس لم تُكمل ('+d.notDone.length+')</div>';
+    html += '<div style="max-height:140px;overflow-y:auto;font-size:11px;">';
+    d.notDone.forEach(function(s,i){
+      html += '<div style="padding:4px 0;border-bottom:1px solid var(--border);">'+(i+1)+'. '+s+'</div>';
+    });
+    html += '</div></div>';
+  }
+
+  content.innerHTML = html;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  // ارسم الراديار
+  setTimeout(function(){ drawSectorRadar(d.indStats); }, 50);
+}
+
+function drawSectorRadar(indStats){
+  var canvas = document.getElementById('sector-radar-chart');
+  if(!canvas || typeof Chart === 'undefined') return;
+  if(window._sectorRadarChart){ try{ window._sectorRadarChart.destroy(); }catch(e){} }
+  var labels = indStats.map(function(x){return x.label;});
+  var data = indStats.map(function(x){return x.avg!==null ? +x.avg.toFixed(2) : 0;});
+  window._sectorRadarChart = new Chart(canvas.getContext('2d'), {
+    type: 'radar',
+    data: { labels:labels, datasets:[{
+      label: 'متوسط المؤشر',
+      data: data,
+      borderColor: '#0DCFDA',
+      backgroundColor: 'rgba(13,207,218,0.18)',
+      pointBackgroundColor: '#0DCFDA',
+      pointRadius: 4
+    }]},
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: { r: {
+        min: 0, max: 5,
+        ticks: { stepSize: 1, color: '#94a3b8', backdropColor: 'transparent' },
+        grid: { color: 'rgba(148,163,184,0.18)' },
+        angleLines: { color: 'rgba(148,163,184,0.18)' },
+        pointLabels: { color: '#94a3b8', font: { size: 10, family: 'Cairo' } }
+      }}
+    }
+  });
+}
+
+function closeSectorModal(){
+  var m = document.getElementById('sector-modal');
+  if(m) m.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function showSectorCompareModal(){
+  var modal = document.getElementById('sector-compare-modal');
+  var content = document.getElementById('sector-compare-content');
+  if(!modal || !content) return;
+  var comp = window._lastComp || [];
+  if(!comp.length){ alert('لا توجد بيانات للمقارنة'); return; }
+
+  var sectors = [...new Set(comp.map(function(r){return r.sector||r.govArea;}).filter(Boolean))].sort();
+  if(!sectors.length){ alert('لا توجد قطاعات للمقارنة'); return; }
+
+  // متوسط كل قطاع لكل مؤشر
+  var datasets = sectors.map(function(s, i){
+    var hue = (i * 360 / sectors.length) | 0;
+    var clr = 'hsl('+hue+',70%,55%)';
+    var arr = INDICATORS.map(function(ind){
+      var vals = comp.filter(function(r){return (r.sector||r.govArea)===s;})
+        .map(function(r){return parseFloat(r[ind.key]);})
+        .filter(function(v){return !isNaN(v)&&v>=0&&v<=5;});
+      return vals.length ? +(vals.reduce(function(a,b){return a+b;},0)/vals.length).toFixed(2) : 0;
+    });
+    return {
+      label: s, data: arr,
+      borderColor: clr,
+      backgroundColor: clr.replace('hsl','hsla').replace(')',',0.10)'),
+      pointBackgroundColor: clr,
+      pointRadius: 3, borderWidth: 2
+    };
+  });
+
+  // متوسط كل قطاع (العام)
+  var sectorAvgs = sectors.map(function(s){
+    var scored = comp.filter(function(r){return (r.sector||r.govArea)===s;}).map(function(r){return getScore(r);}).filter(function(v){return v!==null;});
+    return { sector:s, avg: scored.length ? scored.reduce(function(a,b){return a+b;},0)/scored.length : null };
+  }).sort(function(a,b){return (b.avg||0)-(a.avg||0);});
+
+  var html = '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">';
+  html += '<h2 style="font-size:18px;font-weight:900;margin:0;color:var(--text);">🆚 مقارنة شاملة للقطاعات</h2>';
+  html += '<div style="font-size:12px;color:var(--text2);">'+sectors.length+' قطاعات • '+comp.length+' مدرسة مكتملة</div>';
+  html += '</div>';
+
+  // ترتيب القطاعات بالمتوسط
+  html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:16px;">';
+  html += '<div style="font-size:12px;font-weight:700;margin-bottom:8px;">🏅 ترتيب القطاعات بالمتوسط العام</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;">';
+  sectorAvgs.forEach(function(x,i){
+    var c = x.avg!==null ? getColor(x.avg) : '#64748b';
+    html += '<div onclick="closeSectorCompareModal();showSectorCard(\''+x.sector.replace(/\'/g,"\\\\'")+'\')" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--surface);border-radius:8px;border:1px solid var(--border);">';
+    html += '<span style="font-size:12px;"><b style="color:var(--text2);">'+(i+1)+'.</b> '+x.sector+'</span>';
+    html += '<span style="font-weight:900;font-size:16px;color:'+c+';">'+(x.avg!==null?x.avg.toFixed(2):'-')+'</span>';
+    html += '</div>';
+  });
+  html += '</div></div>';
+
+  // مخطط راديار للمقارنة
+  html += '<div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px;">';
+  html += '<div style="font-size:12px;font-weight:700;margin-bottom:10px;">📊 مقارنة المؤشرات (انقر اسم القطاع لإخفائه/إظهاره)</div>';
+  html += '<div style="height:480px;position:relative;"><canvas id="sector-compare-chart"></canvas></div>';
+  html += '</div>';
+
+  content.innerHTML = html;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  setTimeout(function(){
+    var canvas = document.getElementById('sector-compare-chart');
+    if(!canvas || typeof Chart === 'undefined') return;
+    if(window._sectorCompareChart){ try{ window._sectorCompareChart.destroy(); }catch(e){} }
+    window._sectorCompareChart = new Chart(canvas.getContext('2d'), {
+      type: 'radar',
+      data: { labels: INDICATORS.map(function(i){return i.label;}), datasets: datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { color: '#94a3b8', font: { size: 11, family: 'Cairo' }, padding: 8 } }
+        },
+        scales: { r: {
+          min: 0, max: 5,
+          ticks: { stepSize: 1, color: '#94a3b8', backdropColor: 'transparent' },
+          grid: { color: 'rgba(148,163,184,0.18)' },
+          angleLines: { color: 'rgba(148,163,184,0.18)' },
+          pointLabels: { color: '#94a3b8', font: { size: 10, family: 'Cairo' } }
+        }}
+      }
+    });
+  }, 50);
+}
+
+function closeSectorCompareModal(){
+  var m = document.getElementById('sector-compare-modal');
+  if(m) m.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function exportSectorReport(sectorName){
+  if(typeof XLSX === 'undefined'){ alert('مكتبة XLSX لم تُحمّل بعد'); return; }
+  var d = getSectorData(sectorName);
+  if(!d.comp.length && !d.all.length){ alert('لا توجد بيانات لهذا القطاع'); return; }
+
+  // ورقة 1: ملخص
+  var summary = [
+    ['تقرير القطاع'], [],
+    ['القطاع', sectorName],
+    ['إجمالي المدارس', d.totalSchools],
+    ['المكتملة', d.done],
+    ['لم تكمل', d.notDone.length],
+    ['البلاغات', d.complaints.length],
+    ['المتوسط العام', d.avg!==null ? +d.avg.toFixed(2) : '-'],
+    [], ['المؤشر', 'المتوسط', 'عدد التقييمات']
+  ];
+  d.indStats.forEach(function(x){
+    summary.push([x.label, x.avg!==null ? +x.avg.toFixed(2) : '-', x.count]);
+  });
+
+  // ورقة 2: كل المدارس المكتملة في القطاع
+  var schHeader = ['المدرسة','المدينة','الأسبوع','المتوسط'].concat(INDICATORS.map(function(i){return i.label;}));
+  var schRows = [schHeader];
+  d.comp.forEach(function(r){
+    var avg = getScore(r);
+    var row = [r.school||'-', r.city||'-', r.week||'-', avg!==null?+avg.toFixed(2):'-'];
+    INDICATORS.forEach(function(ind){
+      var v = parseFloat(r[ind.key]);
+      row.push((!isNaN(v)&&v>=0&&v<=5) ? +v.toFixed(2) : '-');
+    });
+    schRows.push(row);
+  });
+
+  // ورقة 3: المدارس التي لم تكمل
+  var ndRows = [['#','اسم المدرسة']];
+  d.notDone.forEach(function(s,i){ ndRows.push([i+1, s]); });
+
+  // ورقة 4: البلاغات
+  var compRows = [['رقم الحالة','تاريخ الإنشاء','الحالة','الأولوية','المدرسة','التصنيف','الفئة الفرعية','عنوان البلاغ','المختص']];
+  d.complaints.forEach(function(c){
+    compRows.push([c.caseId||'-', c.createdAt||'-', c.status||'-', c.priority||'-', c.school||'-', c.cat1||c.service||'-', c.cat2||'-', c.title||'-', c.specialist||'-']);
+  });
+
+  var wb = XLSX.utils.book_new();
+  var ws1 = XLSX.utils.aoa_to_sheet(summary); ws1['!cols']=[{wch:28},{wch:14},{wch:14}];
+  var ws2 = XLSX.utils.aoa_to_sheet(schRows); ws2['!cols']=[{wch:34},{wch:18},{wch:14},{wch:10}].concat(INDICATORS.map(function(){return{wch:13};}));
+  var ws3 = XLSX.utils.aoa_to_sheet(ndRows); ws3['!cols']=[{wch:6},{wch:40}];
+  var ws4 = XLSX.utils.aoa_to_sheet(compRows); ws4['!cols']=[{wch:14},{wch:14},{wch:12},{wch:10},{wch:30},{wch:22},{wch:22},{wch:36},{wch:18}];
+  [ws1,ws2,ws3,ws4].forEach(function(ws){ ws['!sheetView']=[{RTL:true}]; });
+
+  XLSX.utils.book_append_sheet(wb, ws1, 'ملخص');
+  XLSX.utils.book_append_sheet(wb, ws2, 'المدارس المكتملة ('+d.done+')');
+  XLSX.utils.book_append_sheet(wb, ws3, 'لم تكمل ('+d.notDone.length+')');
+  XLSX.utils.book_append_sheet(wb, ws4, 'البلاغات ('+d.complaints.length+')');
+
+  var safe = sectorName.replace(/[\\/:*?"<>|]/g,'_').substring(0,80);
+  var stamp = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, 'تقرير_قطاع_'+safe+'_'+stamp+'.xlsx');
+}
+
+/* ============================================================
+   تصدير PDF عبر window.print()
+   ============================================================ */
+function printReport(title, bodyHtml){
+  var w = window.open('', '_blank');
+  if(!w){ alert('فضلاً اسمح بالنوافذ المنبثقة لطباعة التقرير'); return; }
+  var css = '<style>'+
+    '@page{size:A4;margin:14mm}'+
+    '*{box-sizing:border-box}'+
+    'body{font-family:"Cairo","Segoe UI",Tahoma,Arial,sans-serif;direction:rtl;color:#1a0d35;background:#fff;margin:0;padding:0;font-size:12px;line-height:1.6}'+
+    'h1{font-size:22px;margin:0 0 6px;color:#0891b2}'+
+    'h2{font-size:16px;margin:18px 0 8px;color:#382972;border-bottom:2px solid #0DCFDA;padding-bottom:4px}'+
+    'h3{font-size:13px;margin:10px 0 6px;color:#382972}'+
+    '.print-header{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:3px solid #0DCFDA;padding-bottom:10px;margin-bottom:14px}'+
+    '.print-header .meta{font-size:11px;color:#666}'+
+    '.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0}'+
+    '.kpi-box{border:1px solid #ddd;border-radius:8px;padding:10px;text-align:center;background:#f8f7fc}'+
+    '.kpi-box .lbl{font-size:10px;color:#666;margin-bottom:4px}'+
+    '.kpi-box .val{font-size:20px;font-weight:900}'+
+    'table{width:100%;border-collapse:collapse;margin:8px 0;font-size:11px}'+
+    'th{background:#0DCFDA;color:#fff;padding:6px;text-align:right;font-weight:700;border:1px solid #0891b2}'+
+    'td{padding:5px 6px;border:1px solid #ddd;vertical-align:middle}'+
+    'tr:nth-child(even) td{background:#fafafa}'+
+    '.score{font-weight:900}'+
+    '.score-good{color:#10b981}.score-ok{color:#f59e0b}.score-bad{color:#ef4444}.score-poor{color:#f97316}'+
+    '.two-col{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:8px 0}'+
+    '.card{border:1px solid #ddd;border-radius:8px;padding:10px;background:#fafafa;page-break-inside:avoid}'+
+    '.card .title{font-size:12px;font-weight:700;margin-bottom:6px;color:#382972}'+
+    '.row-item{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee;font-size:11px}'+
+    '.row-item:last-child{border-bottom:none}'+
+    '.print-footer{margin-top:18px;padding-top:8px;border-top:1px solid #ddd;font-size:10px;color:#888;text-align:center}'+
+    '@media print{.no-print{display:none}body{font-size:11px}h1{font-size:18px}h2{font-size:14px}}'+
+    '</style>';
+  var html = '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>'+title+'</title>'+css+'</head><body>'+
+    bodyHtml+
+    '<div class="print-footer">تم التوليد من لوحة مؤشرات جودة الخدمات • '+new Date().toLocaleString('ar-SA')+'</div>'+
+    '<script>window.onload=function(){setTimeout(function(){window.print();},400);};<\/script>'+
+    '</body></html>';
+  w.document.open(); w.document.write(html); w.document.close();
+}
+
+function scoreClass(v){
+  if(v===null || isNaN(v)) return '';
+  if(v>=4) return 'score-good'; if(v>=3) return 'score-ok';
+  if(v>=2) return 'score-poor'; return 'score-bad';
+}
+
+function printSchoolReport(schoolName){
+  if(!schoolName) return;
+  var history = getSchoolWeeklyHistory(schoolName);
+  if(!history.length){ alert('لا توجد بيانات لهذه المدرسة'); return; }
+  var latest = history[history.length-1].row;
+  var first = history[0], last = history[history.length-1];
+  var delta = (first.avg!==null && last.avg!==null) ? (last.avg-first.avg) : null;
+  var avgFmt = function(v){return v!==null && !isNaN(v) ? v.toFixed(2) : '-';};
+  var schoolComplaints = (typeof uscData !== 'undefined' ? uscData : []).filter(function(x){
+    if(latest.code && x.schoolCode && x.schoolCode.toString().trim() === latest.code.toString().trim()) return true;
+    return (x.school||'').toString().trim() === schoolName.toString().trim();
+  });
+
+  var body = '<div class="print-header">'+
+    '<div><h1>📋 تقرير المدرسة</h1>'+
+      '<div style="font-size:14px;font-weight:700;color:#382972;">'+schoolName+'</div>'+
+      '<div class="meta">'+(latest.sector||latest.govArea||'-')+' • '+(latest.city||'-')+' • '+(latest.type||'-')+'</div>'+
+    '</div>'+
+    '<div style="text-align:center;"><div class="meta">المتوسط</div><div style="font-size:30px;font-weight:900;color:#10b981;">'+avgFmt(last.avg)+'</div></div>'+
+    '</div>';
+
+  body += '<div class="kpi-grid">';
+  body += '<div class="kpi-box"><div class="lbl">الرقم الوزاري</div><div class="val" style="font-size:14px;">'+(latest.code||'-')+'</div></div>';
+  body += '<div class="kpi-box"><div class="lbl">عدد الأسابيع</div><div class="val">'+history.length+'</div></div>';
+  body += '<div class="kpi-box"><div class="lbl">أول أسبوع</div><div class="val" style="font-size:12px;">'+first.week+' ('+avgFmt(first.avg)+')</div></div>';
+  body += '<div class="kpi-box"><div class="lbl">الفرق</div><div class="val '+(delta>=0?'score-good':'score-bad')+'">'+(delta!==null?(delta>=0?'+':'')+delta.toFixed(2):'-')+'</div></div>';
+  body += '</div>';
+
+  body += '<h2>📊 المؤشرات في آخر أسبوع ('+last.week+')</h2>';
+  body += '<table><thead><tr><th>المؤشر</th><th style="width:90px;text-align:center;">القيمة</th></tr></thead><tbody>';
+  INDICATORS.forEach(function(ind){
+    var v = parseFloat(latest[ind.key]);
+    var ok = !isNaN(v)&&v>=0&&v<=5;
+    body += '<tr><td>'+ind.label+'</td><td style="text-align:center;" class="score '+scoreClass(ok?v:null)+'">'+(ok?v.toFixed(2):'-')+'</td></tr>';
+  });
+  body += '</tbody></table>';
+
+  if(history.length >= 2){
+    body += '<h2>📈 تطور المتوسط عبر الأسابيع</h2>';
+    body += '<table><thead><tr><th>الأسبوع</th><th style="width:90px;text-align:center;">المتوسط</th></tr></thead><tbody>';
+    history.forEach(function(h){
+      body += '<tr><td>'+h.week+'</td><td style="text-align:center;" class="score '+scoreClass(h.avg)+'">'+avgFmt(h.avg)+'</td></tr>';
+    });
+    body += '</tbody></table>';
+  }
+
+  if(schoolComplaints.length){
+    body += '<h2>🎫 البلاغات ('+schoolComplaints.length+')</h2>';
+    body += '<table><thead><tr><th style="width:80px;">رقم الحالة</th><th style="width:75px;">التاريخ</th><th style="width:70px;">الحالة</th><th>التصنيف</th><th>العنوان</th></tr></thead><tbody>';
+    schoolComplaints.slice(0,30).forEach(function(c){
+      body += '<tr><td>'+(c.caseId||'-')+'</td><td>'+(c.createdAt||'-')+'</td><td>'+(c.status||'-')+'</td><td>'+(c.cat1||c.service||'-')+'</td><td>'+(c.title||'-')+'</td></tr>';
+    });
+    body += '</tbody></table>';
+    if(schoolComplaints.length>30) body += '<div class="meta">... و '+(schoolComplaints.length-30)+' بلاغ آخر</div>';
+  }
+
+  printReport('تقرير_'+schoolName, body);
+}
+
+function printSectorReport(sectorName){
+  var d = getSectorData(sectorName);
+  if(!d.comp.length && !d.all.length){ alert('لا توجد بيانات لهذا القطاع'); return; }
+  var avgFmt = function(v){return v!==null && !isNaN(v) ? v.toFixed(2) : '-';};
+
+  var body = '<div class="print-header">'+
+    '<div><h1>🏛️ تقرير القطاع</h1>'+
+      '<div style="font-size:16px;font-weight:700;color:#382972;">'+sectorName+'</div>'+
+      '<div class="meta">تقرير تفصيلي شامل</div>'+
+    '</div>'+
+    '<div style="text-align:center;"><div class="meta">المتوسط</div><div style="font-size:34px;font-weight:900;color:'+(d.avg!==null?getColor(d.avg):'#666')+';">'+avgFmt(d.avg)+'</div></div>'+
+    '</div>';
+
+  body += '<div class="kpi-grid">';
+  body += '<div class="kpi-box"><div class="lbl">إجمالي المدارس</div><div class="val">'+d.totalSchools+'</div></div>';
+  body += '<div class="kpi-box"><div class="lbl">المكتملة</div><div class="val score-good">'+d.done+'</div></div>';
+  body += '<div class="kpi-box"><div class="lbl">لم تكمل</div><div class="val score-bad">'+d.notDone.length+'</div></div>';
+  body += '<div class="kpi-box"><div class="lbl">البلاغات</div><div class="val" style="color:#f59e0b;">'+d.complaints.length+'</div></div>';
+  body += '</div>';
+
+  body += '<h2>📊 متوسط المؤشرات</h2>';
+  body += '<table><thead><tr><th>المؤشر</th><th style="width:90px;text-align:center;">المتوسط</th><th style="width:90px;text-align:center;">عدد التقييمات</th></tr></thead><tbody>';
+  d.indStats.forEach(function(x){
+    body += '<tr><td>'+x.label+'</td><td style="text-align:center;" class="score '+scoreClass(x.avg)+'">'+avgFmt(x.avg)+'</td><td style="text-align:center;">'+x.count+'</td></tr>';
+  });
+  body += '</tbody></table>';
+
+  var validInd = d.indStats.filter(function(x){return x.avg!==null;});
+  var topInd = validInd.slice().sort(function(a,b){return b.avg-a.avg;}).slice(0,3);
+  var botInd = validInd.slice().sort(function(a,b){return a.avg-b.avg;}).slice(0,3);
+  body += '<div class="two-col">';
+  body += '<div class="card"><div class="title" style="color:#10b981;">💪 أقوى 3 مؤشرات</div>';
+  topInd.forEach(function(x,i){ body+='<div class="row-item"><span>'+(i+1)+'. '+x.label+'</span><span class="score '+scoreClass(x.avg)+'">'+avgFmt(x.avg)+'</span></div>'; });
+  body += '</div>';
+  body += '<div class="card"><div class="title" style="color:#ef4444;">⚠️ أضعف 3 مؤشرات</div>';
+  botInd.forEach(function(x,i){ body+='<div class="row-item"><span>'+(i+1)+'. '+x.label+'</span><span class="score '+scoreClass(x.avg)+'">'+avgFmt(x.avg)+'</span></div>'; });
+  body += '</div></div>';
+
+  body += '<div class="two-col">';
+  body += '<div class="card"><div class="title" style="color:#0891b2;">🏆 أعلى المدارس</div>';
+  d.topSchools.forEach(function(s,i){ body+='<div class="row-item"><span>'+(i+1)+'. '+s.school+'</span><span class="score '+scoreClass(s.avg)+'">'+avgFmt(s.avg)+'</span></div>'; });
+  body += '</div>';
+  body += '<div class="card"><div class="title" style="color:#ef4444;">⚠️ أقل المدارس</div>';
+  d.botSchools.forEach(function(s,i){ body+='<div class="row-item"><span>'+(i+1)+'. '+s.school+'</span><span class="score '+scoreClass(s.avg)+'">'+avgFmt(s.avg)+'</span></div>'; });
+  body += '</div></div>';
+
+  if(d.notDone.length){
+    body += '<h2>❌ مدارس لم تكمل ('+d.notDone.length+')</h2>';
+    body += '<table><thead><tr><th style="width:40px;">#</th><th>المدرسة</th></tr></thead><tbody>';
+    d.notDone.forEach(function(s,i){ body += '<tr><td>'+(i+1)+'</td><td>'+s+'</td></tr>'; });
+    body += '</tbody></table>';
+  }
+
+  printReport('تقرير_قطاع_'+sectorName, body);
+}
+
+function printSchoolsTable(){
+  var rows = (typeof searchData !== 'undefined' ? searchData : []);
+  if(!rows.length){ alert('لا توجد بيانات لطباعتها'); return; }
+  var f = (typeof getFilters === 'function') ? getFilters() : {};
+  var body = '<div class="print-header"><div><h1>📋 تفاصيل المدارس</h1>'+
+    '<div class="meta">'+(f.sector||'جميع القطاعات')+' • '+(f.week||'كل الأسابيع')+' • '+rows.length+' مدرسة</div></div></div>';
+  body += '<table><thead><tr><th style="width:34px;">#</th><th>المدرسة</th><th>المحافظة</th><th>المدينة</th><th>الأسبوع</th><th>النوع</th><th>الرابط</th><th style="width:60px;text-align:center;">المتوسط</th></tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    var a = getScore(r);
+    body += '<tr><td>'+(i+1)+'</td><td>'+(r.school||'-')+'</td><td>'+(r.sector||r.govArea||'-')+'</td><td>'+(r.city||'-')+'</td><td>'+(r.week||'-')+'</td><td>'+(r.type||'-')+'</td><td>'+(r.status==='done'?'✅':'❌')+'</td><td style="text-align:center;" class="score '+scoreClass(a)+'">'+(a!==null?a.toFixed(2):'-')+'</td></tr>';
+  });
+  body += '</tbody></table>';
+  printReport('تفاصيل_المدارس', body);
+}
+
+function printIndTable(){
+  var rows = (typeof indTableData !== 'undefined' ? indTableData : []);
+  if(!rows.length){ alert('لا توجد بيانات لطباعتها'); return; }
+  var body = '<div class="print-header"><div><h1>📊 مؤشرات الأداء التفصيلي</h1>'+
+    '<div class="meta">'+rows.length+' مدرسة</div></div></div>';
+  body += '<table style="font-size:9px;"><thead><tr><th style="width:24px;">#</th><th>المدرسة</th><th>المحافظة</th><th style="width:42px;text-align:center;">المتوسط</th>';
+  INDICATORS.forEach(function(ind){ body += '<th style="width:42px;text-align:center;">'+ind.label+'</th>'; });
+  body += '</tr></thead><tbody>';
+  rows.forEach(function(r,i){
+    var a = getScore(r);
+    body += '<tr><td>'+(i+1)+'</td><td>'+(r.school||'-')+'</td><td>'+(r.sector||'-')+'</td><td style="text-align:center;" class="score '+scoreClass(a)+'">'+(a!==null?a.toFixed(2):'-')+'</td>';
+    INDICATORS.forEach(function(ind){
+      var v = parseFloat(r[ind.key]);
+      var ok = !isNaN(v)&&v>=0&&v<=5;
+      body += '<td style="text-align:center;" class="score '+scoreClass(ok?v:null)+'">'+(ok?v.toFixed(1):'-')+'</td>';
+    });
+    body += '</tr>';
+  });
+  body += '</tbody></table>';
+  printReport('مؤشرات_الأداء_التفصيلي', body);
+}
+
+function printSectorTable(){
+  var comp = window._sectorComp || window._lastComp || [];
+  if(!comp.length){ alert('لا توجد بيانات لطباعتها'); return; }
+  var sectors = window._activeSectors || [...new Set(comp.map(function(r){return r.sector||r.govArea;}).filter(Boolean))].sort();
+  var body = '<div class="print-header"><div><h1>🏛️ مقارنة القطاعات بالمؤشرات</h1>'+
+    '<div class="meta">'+sectors.length+' قطاع • '+comp.length+' تقييم</div></div></div>';
+  body += '<table style="font-size:10px;"><thead><tr><th>المؤشر</th>';
+  sectors.forEach(function(s){ body += '<th style="text-align:center;min-width:50px;">'+s+'</th>'; });
+  body += '<th style="text-align:center;background:#382972;">الكلي</th></tr></thead><tbody>';
+  INDICATORS.forEach(function(ind){
+    var allVals = [];
+    var cells = sectors.map(function(s){
+      var vals = comp.filter(function(r){return (r.sector||r.govArea)===s;})
+        .map(function(r){return parseFloat(r[ind.key]);})
+        .filter(function(v){return !isNaN(v)&&v>=0&&v<=5;});
+      var a = vals.length ? vals.reduce(function(x,y){return x+y;},0)/vals.length : null;
+      if(a!==null) allVals.push(a);
+      return a;
+    });
+    var total = allVals.length ? allVals.reduce(function(x,y){return x+y;},0)/allVals.length : null;
+    body += '<tr><td>'+ind.label+'</td>';
+    cells.forEach(function(a){
+      body += '<td style="text-align:center;" class="score '+scoreClass(a)+'">'+(a!==null?a.toFixed(2):'-')+'</td>';
+    });
+    body += '<td style="text-align:center;font-weight:900;background:#f3eefc;" class="score '+scoreClass(total)+'">'+(total!==null?total.toFixed(2):'-')+'</td>';
+    body += '</tr>';
+  });
+  body += '</tbody></table>';
+  printReport('مقارنة_القطاعات', body);
 }
 
 /* ============================================================
@@ -4908,8 +6214,10 @@ function buildSectorTable(comp){
   var hhtml='<th onclick="sortSectorTable(\'ind\')" style="cursor:pointer;white-space:nowrap;">'+
     'المؤشر <span id="sector-sort-ind" style="opacity:.4">⇅</span></th>';
   activeSectors.forEach(function(s,si){
-    hhtml+='<th onclick="sortSectorTable('+si+')" style="cursor:pointer;white-space:nowrap;min-width:75px;text-align:center;">'+
-      s+' <span id="sector-sort-'+si+'" style="opacity:.4">⇅</span></th>';
+    var sEsc=s.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    hhtml+='<th style="white-space:nowrap;min-width:75px;text-align:center;">'+
+      '<span onclick="showSectorCard(\''+sEsc+'\')" style="cursor:pointer;color:var(--accent2);text-decoration:underline;text-underline-offset:3px;" title="تقرير '+s+'">'+s+'</span> '+
+      '<span onclick="sortSectorTable('+si+')" id="sector-sort-'+si+'" style="opacity:.4;cursor:pointer;">⇅</span></th>';
   });
   hhtml+='<th onclick="sortSectorTable(\'total\')" style="cursor:pointer;background:rgba(112,48,160,.1);text-align:center;">'+
     'الكلي <span id="sector-sort-total" style="opacity:.4">⇅</span></th>';
@@ -5907,5 +7215,495 @@ function drawUscCharts(){
 }
 </script>
 
+<!-- ===== نظام الإشعارات اللحظية ===== -->
+<style>
+#toast-container{position:fixed;top:80px;left:20px;z-index:99999;display:flex;flex-direction:column;gap:10px;max-width:380px;}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 16px;box-shadow:0 8px 32px rgba(0,0,0,.5);animation:toast-in .35s cubic-bezier(.16,1,.3,1);font-family:'Cairo',sans-serif;display:flex;gap:10px;align-items:flex-start;border-right:4px solid #0DCFDA;}
+.toast.critical{border-right-color:#ef4444;animation:toast-in .35s cubic-bezier(.16,1,.3,1),pulse-bg 1.5s ease-in-out 2;}
+.toast.late{border-right-color:#f59e0b;}
+.toast.leaving{animation:toast-out .3s ease-in forwards;}
+.toast-close{background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:16px;padding:0;}
+@keyframes toast-in{from{transform:translateX(-110%);opacity:0;}to{transform:translateX(0);opacity:1;}}
+@keyframes toast-out{to{transform:translateX(-110%);opacity:0;}}
+@keyframes pulse-bg{0%,100%{background:var(--surface);}50%{background:rgba(239,68,68,.12);}}
+#notif-panel{position:fixed;top:70px;left:20px;width:380px;max-height:520px;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.5);z-index:9998;display:none;flex-direction:column;overflow:hidden;}
+#notif-panel.open{display:flex;}
+.notif-item{padding:12px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;}
+.notif-item:hover{background:var(--surface2);}
+.notif-item.unread{background:rgba(13,207,218,.06);}
+.notif-filter-btn{background:transparent;border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:14px;cursor:pointer;font-size:11px;font-family:'Cairo',sans-serif;transition:.15s;}
+.notif-filter-btn:hover{border-color:var(--accent2);color:var(--text);}
+.notif-filter-active{background:var(--accent2);border-color:var(--accent2);color:#fff;}
+.notif-group-header{padding:8px 14px;background:var(--surface2);font-size:11px;font-weight:700;color:var(--text2);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:1;}
+</style>
+
+<div id="toast-container"></div>
+
+<div id="notif-panel">
+  <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px;">
+    <div style="font-weight:800;font-size:14px;">🔔 الإشعارات <span id="notif-panel-count" style="color:var(--text2);font-weight:500;font-size:12px;"></span></div>
+    <div style="display:flex;gap:4px;">
+      <button id="notif-mute-btn" onclick="toggleNotifMute()" title="كتم الصوت" style="background:transparent;border:1px solid var(--border);color:var(--text2);width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:13px;font-family:'Cairo',sans-serif;">🔊</button>
+      <button onclick="markAllNotifRead()" title="قراءة الكل" style="background:transparent;border:1px solid var(--border);color:var(--text2);padding:4px 8px;border-radius:6px;cursor:pointer;font-size:11px;font-family:'Cairo',sans-serif;">✓ قراءة</button>
+      <button onclick="clearAllNotif()" title="مسح الكل" style="background:transparent;border:1px solid var(--border);color:var(--text2);padding:4px 8px;border-radius:6px;cursor:pointer;font-size:11px;font-family:'Cairo',sans-serif;">🗑️</button>
+      <button onclick="toggleNotifPanel()" style="background:transparent;border:none;color:var(--text2);cursor:pointer;font-size:16px;">✕</button>
+    </div>
+  </div>
+  <div style="padding:8px 14px;border-bottom:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;background:var(--surface2);">
+    <button class="notif-filter-btn notif-filter-active" data-filter="all" onclick="setNotifFilter('all')">الكل</button>
+    <button class="notif-filter-btn" data-filter="unread" onclick="setNotifFilter('unread')">غير مقروء</button>
+    <button class="notif-filter-btn" data-filter="critical" onclick="setNotifFilter('critical')">🔴 حرجة</button>
+    <button class="notif-filter-btn" data-filter="late" onclick="setNotifFilter('late')">⏰ متأخرة</button>
+    <button class="notif-filter-btn" data-filter="normal" onclick="setNotifFilter('normal')">📩 عادية</button>
+  </div>
+  <div id="notif-list" style="flex:1;overflow-y:auto;">
+    <div style="text-align:center;padding:30px;color:var(--text2);font-size:12px;">لا توجد إشعارات</div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   نظام الإشعارات اللحظية — Supabase Realtime
+   ============================================================ */
+var supaClient = null;
+var notifLog = [];
+var notifUnread = 0;
+var notifMaxKeep = 50;
+
+var _notifFilter = 'all';
+function notifSoundMuted(){ try{ return localStorage.getItem('notif_muted') === '1'; }catch(e){ return false; } }
+function toggleNotifMute(){
+  var muted = !notifSoundMuted();
+  try{ localStorage.setItem('notif_muted', muted ? '1' : '0'); }catch(e){}
+  updateMuteButton();
+}
+function updateMuteButton(){
+  var b = document.getElementById('notif-mute-btn');
+  if(!b) return;
+  var muted = notifSoundMuted();
+  b.textContent = muted ? '🔇' : '🔊';
+  b.title = muted ? 'تشغيل الصوت' : 'كتم الصوت';
+  b.style.color = muted ? '#ef4444' : 'var(--text2)';
+}
+function setNotifFilter(f){
+  _notifFilter = f;
+  document.querySelectorAll('.notif-filter-btn').forEach(function(b){
+    b.classList.toggle('notif-filter-active', b.getAttribute('data-filter') === f);
+  });
+  notifRenderList();
+}
+function clearAllNotif(){
+  if(!notifLog.length) return;
+  if(!confirm('مسح كل الإشعارات؟')) return;
+  notifLog = []; notifUnread = 0;
+  notifUpdateBadge(); notifRenderList();
+}
+
+function notifPlaySound(critical){
+  try{
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    var ctx = new AC();
+    var osc = ctx.createOscillator();
+    var gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = critical ? 880 : 660;
+    gain.gain.value = .15;
+    osc.start();
+    osc.frequency.exponentialRampToValueAtTime(critical?440:330, ctx.currentTime + .3);
+    gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .35);
+    osc.stop(ctx.currentTime + .35);
+  }catch(e){}
+}
+
+function escHtml(s){
+  return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+var TOAST_MAX_VISIBLE = 3;
+var TOAST_BATCH_WINDOW = 2500; // مللي ثانية: ادمج البلاغات الواصلة خلال هذه الفترة
+var _pendingToasts = [];
+var _toastBatchTimer = null;
+
+function showToast(opts){
+  // وضع تجميع (للبلاغات الواصلة بسرعة)
+  if(opts && opts._batch){
+    _pendingToasts.push(opts);
+    if(_toastBatchTimer) clearTimeout(_toastBatchTimer);
+    _toastBatchTimer = setTimeout(flushBatchedToasts, TOAST_BATCH_WINDOW);
+    return;
+  }
+  _renderToast(opts);
+}
+
+function flushBatchedToasts(){
+  _toastBatchTimer = null;
+  var batch = _pendingToasts.slice();
+  _pendingToasts = [];
+  if(!batch.length) return;
+  if(batch.length === 1){ _renderToast(batch[0]); return; }
+  var criticals = batch.filter(function(x){return x.type==='critical';}).length;
+  _renderToast({
+    type: criticals ? 'critical' : '',
+    icon: criticals ? '🔴' : '🔔',
+    title: batch.length + ' بلاغات جديدة' + (criticals?' (منها '+criticals+' حرجة)':''),
+    body: 'افتح 🔔 لعرض التفاصيل'
+  });
+}
+
+function _renderToast(opts){
+  var container = document.getElementById('toast-container');
+  if(!container) return;
+  // حد أقصى للتوستات المرئية: أزل أقدمها
+  while(container.children.length >= TOAST_MAX_VISIBLE){
+    var oldest = container.firstChild;
+    if(!oldest) break;
+    oldest.classList.add('leaving');
+    container.removeChild(oldest);
+  }
+  var t = document.createElement('div');
+  t.className = 'toast ' + (opts.type || '');
+  var icon = opts.icon || '📩';
+  t.innerHTML =
+    '<div style="font-size:22px;line-height:1;">'+icon+'</div>'+
+    '<div style="flex:1;min-width:0;">'+
+      '<div style="font-weight:800;font-size:13px;margin-bottom:4px;color:'+(opts.type==='critical'?'#ef4444':'var(--text)')+';">'+escHtml(opts.title||'')+'</div>'+
+      '<div style="font-size:12px;color:var(--text2);line-height:1.5;">'+escHtml(opts.body||'')+'</div>'+
+    '</div>'+
+    '<button class="toast-close" onclick="this.parentNode.classList.add(\'leaving\');setTimeout(function(n){n.remove();},300,this.parentNode);">✕</button>';
+  container.appendChild(t);
+  setTimeout(function(){
+    if(t.parentNode){
+      t.classList.add('leaving');
+      setTimeout(function(){ if(t.parentNode) t.remove(); }, 300);
+    }
+  }, opts.type==='critical' ? 8000 : 4500);
+}
+
+function notifAdd(entry){
+  notifLog.unshift(entry);
+  if(notifLog.length > notifMaxKeep) notifLog = notifLog.slice(0, notifMaxKeep);
+  notifUnread++;
+  notifUpdateBadge();
+  if(document.getElementById('notif-panel').classList.contains('open')) notifRenderList();
+}
+
+function notifUpdateBadge(){
+  var b = document.getElementById('notif-badge');
+  if(!b) return;
+  if(notifUnread > 0){
+    b.textContent = notifUnread > 99 ? '99+' : notifUnread;
+    b.style.display = 'flex';
+  } else {
+    b.style.display = 'none';
+  }
+}
+
+function toggleNotifPanel(){
+  var p = document.getElementById('notif-panel');
+  if(!p) return;
+  if(p.classList.contains('open')){
+    p.classList.remove('open');
+  } else {
+    p.classList.add('open');
+    updateMuteButton();
+    notifRenderList();
+  }
+}
+
+function notifRenderList(){
+  var list = document.getElementById('notif-list');
+  var cnt  = document.getElementById('notif-panel-count');
+  if(!list) return;
+
+  // فلترة
+  var filtered = notifLog.filter(function(n){
+    if(_notifFilter === 'all') return true;
+    if(_notifFilter === 'unread') return !n.read;
+    if(_notifFilter === 'critical') return n.type === 'critical';
+    if(_notifFilter === 'late') return n.type === 'late';
+    if(_notifFilter === 'normal') return n.type !== 'critical' && n.type !== 'late';
+    return true;
+  });
+
+  if(cnt) cnt.textContent = filtered.length ? '('+filtered.length+(filtered.length!==notifLog.length?'/'+notifLog.length:'')+')' : '';
+  if(!filtered.length){
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text2);font-size:12px;">'+(notifLog.length?'لا إشعارات بهذا الفلتر':'لا توجد إشعارات')+'</div>';
+    return;
+  }
+
+  // تجميع بحسب الزمن
+  var now = new Date();
+  var startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  var startYesterday = startToday - 86400000;
+  var groups = { today:[], yesterday:[], older:[] };
+  filtered.forEach(function(n){
+    if(n.ts >= startToday) groups.today.push(n);
+    else if(n.ts >= startYesterday) groups.yesterday.push(n);
+    else groups.older.push(n);
+  });
+
+  function renderGroup(label, arr){
+    if(!arr.length) return '';
+    var html = '<div class="notif-group-header">'+label+' ('+arr.length+')</div>';
+    arr.forEach(function(n){
+      var idx = notifLog.indexOf(n);
+      var icon = n.type==='critical'?'🔴':(n.type==='late'?'⏰':'📩');
+      var color = n.type==='critical'?'#ef4444':(n.type==='late'?'#f59e0b':'#0DCFDA');
+      html += '<div class="notif-item '+(n.read?'':'unread')+'" onclick="notifMarkRead('+idx+')">'+
+        '<div style="display:flex;gap:8px;align-items:flex-start;">'+
+          '<span style="font-size:18px;color:'+color+';flex-shrink:0;">'+icon+'</span>'+
+          '<div style="flex:1;min-width:0;">'+
+            '<div style="font-weight:700;font-size:12px;margin-bottom:2px;">'+escHtml(n.title)+'</div>'+
+            '<div style="font-size:11px;color:var(--text2);line-height:1.4;">'+escHtml(n.body)+'</div>'+
+            '<div style="font-size:10px;color:var(--text2);margin-top:4px;opacity:.7;">'+notifTimeAgo(n.ts)+'</div>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+    });
+    return html;
+  }
+
+  list.innerHTML = renderGroup('اليوم', groups.today) + renderGroup('أمس', groups.yesterday) + renderGroup('أقدم', groups.older);
+}
+
+function notifTimeAgo(ts){
+  var diff = (Date.now() - ts) / 1000;
+  if(diff < 60) return 'الآن';
+  if(diff < 3600) return 'منذ '+Math.floor(diff/60)+' دقيقة';
+  if(diff < 86400) return 'منذ '+Math.floor(diff/3600)+' ساعة';
+  return 'منذ '+Math.floor(diff/86400)+' يوم';
+}
+
+function notifMarkRead(idx){
+  if(notifLog[idx] && !notifLog[idx].read){
+    notifLog[idx].read = true;
+    notifUnread = Math.max(0, notifUnread - 1);
+    notifUpdateBadge();
+    notifRenderList();
+  }
+}
+
+function markAllNotifRead(){
+  notifLog.forEach(function(n){ n.read = true; });
+  notifUnread = 0;
+  notifUpdateBadge();
+  notifRenderList();
+}
+
+function handleRealtimeComplaint(payload){
+  var r = payload.new || {};
+  var isCritical = (r.priority||'').indexOf('حرج') >= 0 || (r.priority||'').toLowerCase().indexOf('critical') >= 0;
+  var entry = {
+    ts: Date.now(),
+    read: false,
+    type: isCritical ? 'critical' : 'normal',
+    title: (isCritical?'🔴 بلاغ حرج جديد':'📩 بلاغ جديد') + (r.case_id?' — '+r.case_id:''),
+    body: (r.school_name||'مدرسة غير محددة') + ' — ' + (r.cat1||r.service||r.title||'بدون عنوان')
+  };
+  notifAdd(entry);
+  showToast({
+    _batch: true,
+    type: isCritical ? 'critical' : '',
+    icon: isCritical ? '🔴' : '📩',
+    title: entry.title,
+    body: entry.body
+  });
+  if(!notifSoundMuted()) notifPlaySound(isCritical);
+
+  // أضِف البلاغ الجديد لبيانات الواجهة لو متاحة
+  try{
+    if(typeof uscData !== 'undefined'){
+      uscData.unshift({
+        caseId: r.case_id||'',
+        createdAt: (r.created_at_date||'').substring(0,10),
+        status: r.status||'',
+        priority: r.priority||'',
+        service: r.service||'',
+        cat1: r.cat1||'',
+        cat2: r.cat2||'',
+        school: r.school_name||'',
+        schoolCode: (r.school_code||'').toString(),
+        title: r.title||r.description||'',
+        team: r.team||'',
+        specialist: r.specialist||''
+      });
+      if(typeof updateWelcomeStats === 'function') updateWelcomeStats();
+      if(typeof applyUscFilters === 'function') applyUscFilters();
+    }
+  }catch(e){ console.warn('Realtime UI update:', e); }
+}
+
+function initRealtimeNotifications(){
+  if(!window.supabase || !window.supabase.createClient){
+    console.warn('[Realtime] مكتبة Supabase JS لم تُحمَّل');
+    return;
+  }
+  try{
+    supaClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    supaClient.channel('complaints-realtime')
+      .on('postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'complaints' },
+        handleRealtimeComplaint)
+      .subscribe(function(status){
+        console.log('[Realtime] حالة الاشتراك:', status);
+        if(status === 'SUBSCRIBED'){
+          console.log('[Realtime] ✅ متصل — البلاغات الجديدة ستظهر فوراً');
+        }
+      });
+  }catch(e){
+    console.error('[Realtime] فشل الاتصال:', e);
+  }
+}
+
+// فحص البلاغات المتأخرة (أكثر من 48 ساعة وما زالت مفتوحة)
+var notifLateSeen = new Set();
+function checkLateComplaints(){
+  if(typeof uscData === 'undefined' || !uscData.length) return;
+  var now = Date.now();
+  var H48 = 48 * 3600 * 1000;
+  uscData.forEach(function(r){
+    if(!r.createdAt || !r.caseId) return;
+    var status = (r.status||'');
+    // متجاهل المحلولة والملغاة
+    if(status === 'محلول' || status === 'ملغي' || status.toLowerCase().indexOf('closed')>=0) return;
+    var created = new Date(r.createdAt).getTime();
+    if(isNaN(created)) return;
+    if(now - created < H48) return;
+    if(notifLateSeen.has(r.caseId)) return;
+    notifLateSeen.add(r.caseId);
+    var entry = {
+      ts: Date.now(),
+      read: false,
+      type: 'late',
+      title: '⏰ بلاغ متأخر — '+r.caseId,
+      body: (r.school||'') + ' — مفتوح منذ أكثر من 48 ساعة'
+    };
+    notifAdd(entry);
+    showToast({
+      _batch: true,
+      type: 'late', icon: '⏰',
+      title: entry.title, body: entry.body
+    });
+  });
+}
+
+// فحص المدارس الحرجة: متوسط منخفض أو هبوط حاد
+var notifSchoolSeen = new Set();
+var CRITICAL_AVG_THRESHOLD = 2.5;    // متوسط أقل من هذا = حرج
+var CRITICAL_DROP_THRESHOLD = 1.0;   // هبوط بمقدار درجة كاملة = هبوط حاد
+
+function checkCriticalSchools(){
+  if(typeof srcData === 'undefined') return;
+  var all = (srcData['بنين'].completed || []).concat(srcData['بنات'].completed || []);
+  if(!all.length) return;
+
+  // 1) متوسط منخفض على آخر أسبوع لكل مدرسة
+  var bySchool = {};
+  all.forEach(function(r){
+    if(!r.school) return;
+    var num = (r.week||'').toString().match(/\d+/);
+    var wn = num ? parseInt(num[0]) : 0;
+    if(!bySchool[r.school] || wn > bySchool[r.school].weekNum){
+      bySchool[r.school] = { row: r, weekNum: wn, avg: getScore(r) };
+    }
+  });
+  Object.keys(bySchool).forEach(function(name){
+    var s = bySchool[name];
+    if(s.avg === null || s.avg >= CRITICAL_AVG_THRESHOLD) return;
+    var key = 'low|' + name + '|' + s.row.week;
+    if(notifSchoolSeen.has(key)) return;
+    notifSchoolSeen.add(key);
+    notifAdd({
+      ts: Date.now(),
+      read: false,
+      type: 'critical',
+      title: '🔴 مدرسة بأداء حرج',
+      body: name + ' — متوسط ' + s.avg.toFixed(2) + ' في ' + (s.row.week||'-')
+    });
+  });
+
+  // 2) هبوط حاد بين أول وآخر أسبوع
+  Object.keys(bySchool).forEach(function(name){
+    var hist = getSchoolWeeklyHistory(name);
+    if(hist.length < 2) return;
+    var first = hist[0], last = hist[hist.length-1];
+    if(first.avg === null || last.avg === null) return;
+    var delta = last.avg - first.avg;
+    if(delta > -CRITICAL_DROP_THRESHOLD) return;
+    var key = 'drop|' + name + '|' + first.week + '|' + last.week;
+    if(notifSchoolSeen.has(key)) return;
+    notifSchoolSeen.add(key);
+    notifAdd({
+      ts: Date.now(),
+      read: false,
+      type: 'late',
+      title: '⚠️ هبوط حاد في الأداء',
+      body: name + ' — من ' + first.avg.toFixed(2) + ' إلى ' + last.avg.toFixed(2) + ' (' + delta.toFixed(2) + ')'
+    });
+  });
+}
+
+// تشغيل فوري بعد تحميل الصفحة
+window.addEventListener('load', function(){
+  setTimeout(initRealtimeNotifications, 800);
+  // فحص المتأخر كل دقيقة (بعد دقيقتين من البدء ليكون uscData محمّل)
+  setTimeout(function(){
+    checkLateComplaints();
+    setInterval(checkLateComplaints, 60000);
+  }, 120000);
+});
+
+// إغلاق لوحة الإشعارات عند النقر خارجها
+document.addEventListener('click', function(e){
+  var p = document.getElementById('notif-panel');
+  var bell = document.getElementById('notif-bell');
+  if(!p || !p.classList.contains('open')) return;
+  if(p.contains(e.target) || (bell && bell.contains(e.target))) return;
+  p.classList.remove('open');
+});
+
+// إغلاق بطاقة المدرسة بالنقر خارج المحتوى أو بـ Escape
+document.addEventListener('click', function(e){
+  var m = document.getElementById('school-modal');
+  if(m && e.target === m) closeSchoolModal();
+});
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape'){
+    var m = document.getElementById('school-modal');
+    if(m && m.style.display !== 'none') closeSchoolModal();
+  }
+});
+</script>
+
+<!-- 🏫 بطاقة المدرسة -->
+<div id="school-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9997;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:20px;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;width:min(820px,96vw);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:flex-end;padding:10px 14px;border-bottom:1px solid var(--border);">
+      <button onclick="closeSchoolModal()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:10px;cursor:pointer;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div id="school-modal-content" style="padding:20px 24px;overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- 🏛️ بطاقة القطاع -->
+<div id="sector-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9997;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:20px;" onclick="if(event.target===this)closeSectorModal()">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;width:min(960px,96vw);max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:flex-end;padding:10px 14px;border-bottom:1px solid var(--border);">
+      <button onclick="closeSectorModal()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:10px;cursor:pointer;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div id="sector-modal-content" style="padding:20px 24px;overflow-y:auto;"></div>
+  </div>
+</div>
+
+<!-- 🆚 مقارنة القطاعات -->
+<div id="sector-compare-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9997;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:20px;" onclick="if(event.target===this)closeSectorCompareModal()">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;width:min(1100px,96vw);max-height:94vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;">
+    <div style="display:flex;align-items:center;justify-content:flex-end;padding:10px 14px;border-bottom:1px solid var(--border);">
+      <button onclick="closeSectorCompareModal()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:10px;cursor:pointer;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <div id="sector-compare-content" style="padding:20px 24px;overflow-y:auto;"></div>
+  </div>
+</div>
 
 </body></html>
