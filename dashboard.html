@@ -469,6 +469,14 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
     <option value="بنين">👦 بنين</option>
     <option value="بنات">👧 بنات</option>
   </select>
+  <select class="filter-select" id="f-stage" onchange="onFilterChange()">
+    <option value="">كل المراحل</option>
+    <option value="طفولة مبكرة">🧸 طفولة مبكرة</option>
+    <option value="ابتدائي">📚 ابتدائي</option>
+    <option value="متوسط">📖 متوسط</option>
+    <option value="ثانوي">🎓 ثانوي</option>
+    <option value="مجمع">🏫 مجمع</option>
+  </select>
   <!-- فلتر المدارس مع بحث -->
   <div style="position:relative;display:inline-block;min-width:200px;">
     <input type="text" id="f-school-input" placeholder="🔍 ابحث باسم المدرسة..." autocomplete="off"
@@ -939,12 +947,14 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
               <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
                 <span style="font-size:12px;color:var(--text2);min-width:50px;">👦 بنين:</span>
                 <div class="src-card-status status-loaded" id="status-banin" style="flex:1;font-size:11px;">⚡ محمّل</div>
-                <label class="src-upload-btn" onclick="document.getElementById('fileBanin').click()" style="margin:0;font-size:11px;padding:5px 10px;">📂</label>
+                <label class="src-upload-btn" onclick="document.getElementById('fileBanin').click()" style="margin:0;font-size:11px;padding:5px 10px;" title="رفع ملف Excel">📂</label>
+                <button id="btn-save-banin" onclick="saveAssessmentsToSupabase('بنين')" class="src-upload-btn" style="margin:0;font-size:11px;padding:5px 10px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border-color:transparent;" title="حفظ الجديد في Supabase">💾</button>
               </div>
               <div style="display:flex;gap:8px;align-items:center;">
                 <span style="font-size:12px;color:var(--text2);min-width:50px;">👧 بنات:</span>
                 <div class="src-card-status status-loaded" id="status-banat" style="flex:1;font-size:11px;">⚡ محمّل</div>
-                <label class="src-upload-btn" onclick="document.getElementById('fileBanat').click()" style="margin:0;font-size:11px;padding:5px 10px;">📂</label>
+                <label class="src-upload-btn" onclick="document.getElementById('fileBanat').click()" style="margin:0;font-size:11px;padding:5px 10px;" title="رفع ملف Excel">📂</label>
+                <button id="btn-save-banat" onclick="saveAssessmentsToSupabase('بنات')" class="src-upload-btn" style="margin:0;font-size:11px;padding:5px 10px;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border-color:transparent;" title="حفظ الجديد في Supabase">💾</button>
               </div>
             </div>
 
@@ -993,6 +1003,7 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
             <label>المرحلة <span style="color:#ef4444">*</span></label>
             <select id="cp-sch-stage" required>
               <option value="">اختر...</option>
+              <option value="طفولة مبكرة">طفولة مبكرة</option>
               <option value="ابتدائي">ابتدائي</option>
               <option value="متوسط">متوسط</option>
               <option value="ثانوي">ثانوي</option>
@@ -1254,7 +1265,7 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
           <thead>
             <tr>
               <th>#</th><th>اسم المدرسة</th><th>المحافظة</th><th>المدينة</th><th>الأسبوع</th>
-              <th>الفصل</th><th>النوع</th><th>حالة الرابط</th><th>متوسط الأداء</th><th>التقييم</th>
+              <th>الفصل</th><th>النوع</th><th>حالة الرابط</th><th>متوسط الأداء</th><th>التقييم</th><th>دورة الدعم</th>
             </tr>
           </thead>
           <tbody id="table-body"><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[0])"><td style="color:var(--text2)">1</td><td style="font-weight:600;max-width:220px;color:var(--accent)">متوسطة الطبري</td><td>الجبيل</td><td style="font-size:11px">الجبيل البلد</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">4.8</span><div class="score-track"><div class="score-fill" style="width:96.9230769230769%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[1])"><td style="color:var(--text2)">2</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ابتدائية تبوك</td><td>الجبيل</td><td style="font-size:11px">الجبيل البلد</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">4.8</span><div class="score-track"><div class="score-fill" style="width:96.9230769230769%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[2])"><td style="color:var(--text2)">3</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ابتدائية الحرمين</td><td>الخبر</td><td style="font-size:11px">الخبر.</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">4.5</span><div class="score-track"><div class="score-fill" style="width:90%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[3])"><td style="color:var(--text2)">4</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ابتدائية حي جسر الملك فهد</td><td>الخبر</td><td style="font-size:11px">جسر الملك فهد</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#f59e0b">3.2</span><div class="score-track"><div class="score-fill" style="width:64.61538461538461%;background:#f59e0b"></div></div></div></td><td><span class="status-pill rating-3">جيد</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[4])"><td style="color:var(--text2)">5</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ابتدائية عبدالله بن حذافة ( الشرقية )</td><td>الدمام</td><td style="font-size:11px">الدمام</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">4.6</span><div class="score-track"><div class="score-fill" style="width:91.11111111111111%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[5])"><td style="color:var(--text2)">6</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ابتدائية ثابت بن قيس</td><td>القطيف</td><td style="font-size:11px">جزيرة تاروت</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">4.0</span><div class="score-track"><div class="score-fill" style="width:80%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-4">جيد جداً</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[6])"><td style="color:var(--text2)">7</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ابتدائية إبن الأرقم</td><td>القطيف</td><td style="font-size:11px">دارين</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">4.8</span><div class="score-track"><div class="score-fill" style="width:96.66666666666666%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[7])"><td style="color:var(--text2)">8</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ابتدائية ابودجانة</td><td>رأس تنورة</td><td style="font-size:11px">رأس تنورة.</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">4.0</span><div class="score-track"><div class="score-fill" style="width:80%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-4">جيد جداً</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[8])"><td style="color:var(--text2)">9</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ابتدائية بلال بن رباح</td><td>القطيف</td><td style="font-size:11px">سنابس</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">4.8</span><div class="score-track"><div class="score-fill" style="width:95.38461538461537%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[9])"><td style="color:var(--text2)">10</td><td style="font-weight:600;max-width:220px;color:var(--accent)">متوسطة دارين</td><td>القطيف</td><td style="font-size:11px">دارين</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">4.8</span><div class="score-track"><div class="score-fill" style="width:96.66666666666666%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[10])"><td style="color:var(--text2)">11</td><td style="font-weight:600;max-width:220px;color:var(--accent)">متوسطة قرية العليا</td><td>قرية العليا</td><td style="font-size:11px">قرية العليا</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">4.8</span><div class="score-track"><div class="score-fill" style="width:95.38461538461537%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[11])"><td style="color:var(--text2)">12</td><td style="font-weight:600;max-width:220px;color:var(--accent)">متوسطة الامير سعود بن عبدالله بن جلوي</td><td>الدمام</td><td style="font-size:11px">الدمام</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">4.0</span><div class="score-track"><div class="score-fill" style="width:80%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-4">جيد جداً</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[12])"><td style="color:var(--text2)">13</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ابتدائية مغطي</td><td>النعيرية</td><td style="font-size:11px">هجرة</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">4.6</span><div class="score-track"><div class="score-fill" style="width:91.11111111111111%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[13])"><td style="color:var(--text2)">14</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ابتدائية سلوى</td><td>ابقيق</td><td style="font-size:11px">سلوى</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#f59e0b">3.6</span><div class="score-track"><div class="score-fill" style="width:72%;background:#f59e0b"></div></div></div></td><td><span class="status-pill rating-4">جيد جداً</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[14])"><td style="color:var(--text2)">15</td><td style="font-weight:600;max-width:220px;color:var(--accent)">طارق بن زياد الابتدائية بالقيصومة</td><td>حفر الباطن</td><td style="font-size:11px">القيصومه</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">5.0</span><div class="score-track"><div class="score-fill" style="width:100%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[15])"><td style="color:var(--text2)">16</td><td style="font-weight:600;max-width:220px;color:var(--accent)">الصفيري المتوسطة</td><td>حفر الباطن</td><td style="font-size:11px">هجرة الصفيري</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">5.0</span><div class="score-track"><div class="score-fill" style="width:100%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[16])"><td style="color:var(--text2)">17</td><td style="font-weight:600;max-width:220px;color:var(--accent)">الابناء الخامسة الابتدائية بنين</td><td>حفر الباطن</td><td style="font-size:11px">مدينة الملك خالد العسكرية</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#f59e0b">3.9</span><div class="score-track"><div class="score-fill" style="width:78.33333333333333%;background:#f59e0b"></div></div></div></td><td><span class="status-pill rating-4">جيد جداً</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[17])"><td style="color:var(--text2)">18</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ثانوية ابن الرومي - مسارات</td><td>الدمام</td><td style="font-size:11px">مدينة الدمام</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">5.0</span><div class="score-track"><div class="score-fill" style="width:100%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[18])"><td style="color:var(--text2)">19</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ثانوية القطيف - مسارات</td><td>القطيف</td><td style="font-size:11px">القطيف</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#f59e0b">3.5</span><div class="score-track"><div class="score-fill" style="width:69.23076923076923%;background:#f59e0b"></div></div></div></td><td><span class="status-pill rating-3">جيد</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[19])"><td style="color:var(--text2)">20</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ثانوية عاصم بن عمر بن الخطاب - مسارات</td><td>القطيف</td><td style="font-size:11px">دارين</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">4.8</span><div class="score-track"><div class="score-fill" style="width:96.66666666666666%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[20])"><td style="color:var(--text2)">21</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ثانوية أم القرى بسلوى - مسارات</td><td>ابقيق</td><td style="font-size:11px">سلوى</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#f59e0b">3.7</span><div class="score-track"><div class="score-fill" style="width:73.84615384615385%;background:#f59e0b"></div></div></div></td><td><span class="status-pill rating-4">جيد جداً</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[21])"><td style="color:var(--text2)">22</td><td style="font-weight:600;max-width:220px;color:var(--accent)">الصفيري الثانوية - مسارات</td><td>حفر الباطن</td><td style="font-size:11px">هجرة الصفيري</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">5.0</span><div class="score-track"><div class="score-fill" style="width:100%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[22])"><td style="color:var(--text2)">23</td><td style="font-weight:600;max-width:220px;color:var(--accent)">الابناء الاولى الثانوية بنين - مسارات</td><td>حفر الباطن</td><td style="font-size:11px">المدينة العسكرية</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#f97316">2.0</span><div class="score-track"><div class="score-fill" style="width:40%;background:#f97316"></div></div></div></td><td><span class="status-pill rating-2">مقبول</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[23])"><td style="color:var(--text2)">24</td><td style="font-weight:600;max-width:220px;color:var(--accent)">ثانوية عبدالرحمن بن القاسم - مسارات</td><td>الخبر</td><td style="font-size:11px">الثقبة</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#f59e0b">3.5</span><div class="score-track"><div class="score-fill" style="width:69.23076923076923%;background:#f59e0b"></div></div></div></td><td><span class="status-pill rating-3">جيد</span></td></tr><tr style="cursor:pointer;" onclick="showSchoolCard(searchData[24])"><td style="color:var(--text2)">25</td><td style="font-weight:600;max-width:220px;color:var(--accent)">مدرسة الإمام مسلم الثانوية بحفر الباطن</td><td>حفر الباطن</td><td style="font-size:11px">حفر الباطن</td><td>الحادي عشر</td><td style="font-size:11px">الفصل الدراسي الثاني</td><td>👦 بنين</td><td><span class="status-pill pill-done">✅ أكمل الرابط</span></td><td><div class="score-bar"><span style="font-weight:700;color:#10b981">4.8</span><div class="score-track"><div class="score-fill" style="width:96.9230769230769%;background:#10b981"></div></div></div></td><td><span class="status-pill rating-5">ممتاز</span></td></tr></tbody>
@@ -1488,6 +1499,18 @@ function cleanCode(c){
   return (c||'').toString().trim().replace(/\.0$/,'');
 }
 
+// ✨ توحيد المرحلة (المصادر تستخدم صيغاً مختلفة: إبتدائي/ابتدائي، طفولة مبكرة/رياض، المتوسطة/متوسط)
+function normStage(s){
+  var v = (s||'').toString().trim();
+  if(!v) return '';
+  if(/إبتدائي|ابتدائي/.test(v)) return 'ابتدائي';
+  if(/متوسط/.test(v))           return 'متوسط';
+  if(/ثانوي/.test(v))           return 'ثانوي';
+  if(/طفولة|رياض/.test(v))      return 'طفولة مبكرة';
+  if(/مجمع/.test(v))            return 'مجمع';
+  return v;
+}
+
 // استعادة التواريخ بعد القراءة من localStorage (JSON تحوّلها لنصوص)
 function rehydrateMasterDB(arr){
   if(!Array.isArray(arr)) return arr;
@@ -1537,16 +1560,10 @@ function countDoneInMaster(rows, sectorFilter, typeFilter, effectiveDate){
   // لو ما تم تمرير تاريخ، نحسبه تلقائياً من السجلات
   if(effectiveDate === undefined) effectiveDate = getEffectiveDateForPeriod(rows);
 
-  var doneByCode = new Set();
+  // ✨ مطابقة بالاسم فقط (الفورم يفرض اختيار الاسم من قائمة منسدلة)
   var doneByName = new Set();
   rows.forEach(function(r){
-    if(r.code){
-      var c = cleanCode(r.code);
-      if(c) doneByCode.add(c);
-    }
-    if(r.school){
-      doneByName.add(normSchoolName(r.school));
-    }
+    if(r.school) doneByName.add(normSchoolName(r.school));
   });
   var dbFiltered = masterDB.filter(function(m){
     if(!isSchoolActiveAt(m, effectiveDate)) return false;
@@ -1556,17 +1573,8 @@ function countDoneInMaster(rows, sectorFilter, typeFilter, effectiveDate){
   });
   var done = 0;
   dbFiltered.forEach(function(m){
-    var c = cleanCode(m.code);
     var key = normSchoolName(m.school);
-    if((c && doneByCode.has(c)) || doneByName.has(key)){ done++; return; }
-    // ✨ الأكواد البديلة
-    if(m.code_aliases){
-      var ac = m.code_aliases.split('|');
-      for(var i=0;i<ac.length;i++){
-        var v = cleanCode(ac[i]);
-        if(v && doneByCode.has(v)){ done++; return; }
-      }
-    }
+    if(doneByName.has(key)){ done++; return; }
     // ✨ الأسماء البديلة
     if(m.name_aliases){
       var an = m.name_aliases.split('|');
@@ -1699,6 +1707,7 @@ function handleFileDB(e){
         return{
           school:(r['المدرسة']||'').toString().trim(),
           type:(r['نوع التعليم']||'').toString().trim(),
+          stage:(r['المرحلة']||'').toString().trim(),
           sector:(r['القطاع']||'').toString().trim(),
           govArea:(r['المحافظة']||'').toString().trim(),
           city:(r['المدينة']||'').toString().trim(),
@@ -1798,7 +1807,9 @@ async function loadFromGoogleSheets(eduType){
           'مديرة المدرسة':             r.principal_name,
           'رقم الجوال لمدير المدرسة':  r.principal_phone,
           'رقم الجوال لمديرة المدرسة': r.principal_phone,
-          'إقرار':                    r.acknowledged
+          'إقرار':                    r.acknowledged,
+          // ✨ حضور دورة الدعم الموحد
+          'حصلت على التدريب ( أون لاين) في لقاء تعزيز كفاءة استخدام منصة الدعم الموحد واستمارة تقييم جودة الخدمة': r.has_usc_training
         };
       });
       // احتفظ بصفوف Supabase الخام (مع id) لاستخدامها في لوحة التحكم/الحذف
@@ -1846,6 +1857,220 @@ async function loadFromGoogleSheets(eduType){
     hideLoading();
     alert('تعذّر الاتصال بأكسل:\n'+err+'\n\nتأكد من الاتصال بالإنترنت وأن رابط Apps Script صحيح');
   });
+}
+
+/* ============================================================
+   ✨ حفظ التقييمات المرفوعة في Supabase (مع منع التكرار)
+   ============================================================ */
+function saveAssessmentsToSupabase(eduType){
+  var rows = srcData[eduType] && srcData[eduType].rawForUpload;
+  if(!rows || !rows.length){
+    alert('⚠️ ارفع ملف الاستمارة أولاً من زر 📂'); return;
+  }
+  var btn = document.getElementById('btn-save-'+(eduType==='بنين'?'banin':'banat'));
+  if(btn){ btn.disabled=true; btn.textContent='⏳'; }
+
+  // ─── 1. تحويل صفوف الاستمارة لصيغة Supabase ───
+  function toSbRow(r){
+    var info = (function(){
+      // نستخدم نفس منطق getSchoolInfo لكن مبسّط
+      var cityCols = ['مدارس الدمام','مدارس الخبر','مدارس ابقيق','مدارس القطيف',
+        'مدارس رأس تنورة','مدارس راس تنورة','مدارس الخفجي','مدارس الجبيل',
+        'مدارس حفر الباطن','مدارس النعيرية','مدارس القرية العليا','القرية العليا'];
+      var codeCols = ['الرقم الوزاري','الرقم الوزاري1','الرقم الوزاري2','الرقم الوزاري3',
+        'الرقم الوزاري4','الرقم الوزاري5','الرقم الوزاري6','الرقم الوزاري7','الرقم الوزاري8',
+        'الرقم الوزاري9','الرقم الوزاري10','الرقم الوزاري11','الرقم الوزاري12','الرقم الوزاري13',
+        'الرقم الوزاري14','الرقم الوزاري15','الرقم الوزاري16','الرقم الوزاري17','الرقم الوزاري18',
+        'الرقم الوزراي'];
+      var name='', code='';
+      // الأعمدة المخصّصة لكل مدينة
+      Object.keys(r).forEach(function(k){
+        if(name) return;
+        if(/^مدارس\s/.test(k) || k==='القرية العليا'){
+          var v=r[k]; if(v && (''+v).trim().length>3){ name=(''+v).trim(); }
+        }
+      });
+      for(var i=0;i<codeCols.length;i++){
+        var v=r[codeCols[i]];
+        if(v!==null && v!==undefined && (''+v).trim()){
+          code=(''+v).trim().replace(/\.0$/,'').replace(/\.$/,''); break;
+        }
+      }
+      // لو ما لقينا اسم، نستخدم اللي في عمود الـ code أصلاً
+      if(!name && code) name = '';
+      return {name:name, code:code};
+    })();
+    function s(v){ return (v===null||v===undefined)?'':(''+v).trim(); }
+    // ✨ يستخرج رقم 0-5 من نصوص مثل "5 منجز" أو "4 منجز جزئي" — وإلا null
+    function num(v){
+      if(v===null||v===undefined||v==='') return null;
+      var t = (''+v).replace(/ /g,' ').trim();
+      var m = t.match(/^(\d+(\.\d+)?)/);
+      var n = m ? parseFloat(m[1]) : parseFloat(t);
+      if(isNaN(n)) return null;
+      return (n>=0 && n<=5) ? n : null;
+    }
+    function dt(v){
+      if(!v) return null;
+      if(v instanceof Date) return v.toISOString();
+      var d = new Date(v); return isNaN(d.getTime())?null:d.toISOString();
+    }
+    function dateOnly(v){
+      if(!v) return null;
+      if(v instanceof Date) return v.toISOString().slice(0,10);
+      var d = new Date(v); return isNaN(d.getTime())?null:d.toISOString().slice(0,10);
+    }
+    return {
+      gender_type: eduType,
+      start_time: dt(r['وقت البدء']),
+      completion_time: dt(r['وقت الإكمال']),
+      assessor_email: s(r['البريد الإلكتروني']),
+      assessor_name:  s(r['الاسم']),
+      assessment_day: s(r['اليوم']),
+      semester:       s(r['الفصل الدراسي']),
+      week:           normWeek(r['الاسبوع']||r['الأسبوع']||''),
+      assessment_date: dateOnly(r['التاريخ']),
+      education_type: s(r['نوع التعليم']),
+      stage:          s(r['المرحلة']),
+      student_count:  parseInt(s(r['عدد الطلبة']))||null,
+      province:       s(r['المحافظة']),
+      school_name:    info.name,
+      school_code:    info.code,
+      building_type:  s(r['نوع المبنى']),
+      rating_building:  num(r['حالة المبنى ومرافقة.التقييم']),
+      rating_water:     num(r['أعمال المياه.التقييم']),
+      rating_hvac:      num(r['أعمال التكييف.التقييم']),
+      rating_electrical:num(r['أعمال الكهرباء.التقييم']),
+      rating_sewage:    num(r['أعمال الصرف الصحي.التقييم']),
+      rating_cleaning:  num(r['أعمال النظافة.التقييم']),
+      rating_office_equipment: num(r['التجهيزات المكتبية والمدرسية.التقييم']),
+      rating_tech_equipment:   num(r['التجهيزات التقنية.التقييم']),
+      rating_facility_equipment: num(r['تجهيزات المرافق التعليمية .التقييم']||r['تجهيزات المرافق التعليمية .التقييم']),
+      has_transport:    s(r['هل يوجد خدمة نقل المدرسي']||r['هل يوجد خدمة نقل مدرسي']),
+      rating_transport: num(r['خدمة النقل المدرسي.التقييم']),
+      has_canteen:      s(r['هل يوجد خدمة مقصف مدرسي']),
+      rating_canteen_location: num(r['مقر المقصف المدرسي.التقييم']),
+      rating_canteen_vendors:  num(r['التزام البائعين بالاشتراطات الصحية.التقييم']),
+      rating_canteen_meals:    num(r['التزام المتعهد بالاشتراطات الصحية للوجبات الغذائية.التقييم']),
+      has_usc:          s(r['الدعم الموحد']),
+      no_usc_reason:    s(r['سبب عدم التفعيل']||r['سبب عدم تفعيل بلاغات الدعم الموحد']),
+      has_reopened_complaints: s(r['يوجد بلاغات تم إعادة فتحها']),
+      // ✨ حضور دورة الدعم الموحد (يبحث عن أي عمود يحوي "حصلت على التدريب")
+      has_usc_training: (function(){
+        for(var _k in r){
+          if(_k && _k.indexOf('حصلت على التدريب')>=0){
+            var v=r[_k]; if(v!==null && v!==undefined) return v.toString().trim();
+          }
+        }
+        return '';
+      })(),
+      rating_usc_response_speed: num(r['سرعة الاستجابة لبلاغات الدعم الموحد.التقييم']),
+      rating_usc_processing:     num(r['جودة معالجة بلاغات الدعم الموحد.التقييم']),
+      quality_officer:           s(r['المسؤول المكلف بأعمال الجودة']),
+      quality_officer_phone:     s(r['رقم الجوال لمسؤول الجودة']),
+      quality_officer_id:        s(r['السجل المدني لمسؤول الجودة']),
+      principal_name:            s(r['مديرة المدرسة']||r['مدير المدرسة']),
+      principal_phone:           s(r['رقم الجوال لمديرة المدرسة']||r['رقم الجوال لمدير المدرسة']),
+      acknowledged:              s(r['إقرار'])
+    };
+  }
+
+  // ─── 2. جلب مفاتيح Supabase الحالية للجنس + الأسبوع ───
+  showLoading('جاري فحص Supabase...');
+  fetchSupabaseAll('assessments',
+    'select=week,school_code,assessor_email&gender_type=eq.'+encodeURIComponent(eduType),
+    function(existing){
+      var existKeys = new Set();
+      existing.forEach(function(x){
+        var w = (x.week||'').toString().trim().replace('الأسبوع','الاسبوع');
+        var c = (x.school_code||'').toString().trim().replace(/\.0$/,'').replace(/\.$/,'');
+        var e = (x.assessor_email||'').toString().trim().toLowerCase();
+        var emd = e.split('@')[0].replace(/[^0-9]/g,'');
+        if(c) existKeys.add(w+'|'+c);
+        if(emd && emd.length>=4) existKeys.add(w+'|E:'+emd);
+      });
+
+      // ─── 3. تصفية الصفوف الجديدة ───
+      var seenInFile = new Set();
+      var newRows = [];
+      var skipped = 0, dupInFile = 0;
+      rows.forEach(function(r){
+        var sb = toSbRow(r);
+        if(!sb.week) return;
+        var c = (sb.school_code||'').trim();
+        var emd = (sb.assessor_email||'').split('@')[0].replace(/[^0-9]/g,'');
+        var key = c ? sb.week+'|'+c : (emd ? sb.week+'|E:'+emd : null);
+        if(!key) return;
+        if(existKeys.has(key)){ skipped++; return; }
+        if(seenInFile.has(key)){ dupInFile++; return; }
+        seenInFile.add(key);
+        newRows.push(sb);
+      });
+
+      hideLoading();
+      if(!newRows.length){
+        if(btn){ btn.disabled=false; btn.textContent='💾'; }
+        alert('✅ كل الصفوف موجودة بالفعل في Supabase — لا حاجة للرفع'+
+              (skipped?'\nصف موجود مسبقاً: '+skipped:'')+
+              (dupInFile?'\nمكرّر داخل الملف: '+dupInFile:''));
+        return;
+      }
+
+      // ─── 4. تأكيد المستخدم ───
+      var msg = '🆕 صف جديد للرفع: '+newRows.length+
+                '\n⏭️  موجود مسبقاً (تخطي): '+skipped+
+                (dupInFile?'\n⚠️  مكرّر داخل الملف (تخطي): '+dupInFile:'')+
+                '\n\nمتابعة الرفع إلى Supabase؟';
+      if(!confirm(msg)){
+        if(btn){ btn.disabled=false; btn.textContent='💾'; }
+        return;
+      }
+
+      // ─── 5. رفع على دفعات ───
+      showLoading('جاري رفع '+newRows.length+' صف...');
+      var BATCH = 500;
+      var sent = 0, errors = [];
+      function sendBatch(start){
+        if(start >= newRows.length){
+          hideLoading();
+          if(btn){ btn.disabled=false; btn.textContent='💾'; }
+          if(errors.length){
+            alert('⚠️ تم رفع '+sent+' صف، فشل '+errors.length+' دفعة:\n'+errors.slice(0,3).join('\n'));
+          } else {
+            alert('✅ تم رفع '+sent+' صف بنجاح إلى Supabase');
+            // أعد تحميل البيانات من Supabase لتحديث الواجهة
+            loadFromGoogleSheets(eduType);
+          }
+          return;
+        }
+        var batch = newRows.slice(start, start+BATCH);
+        fetch(SUPABASE_URL+'/rest/v1/assessments',{
+          method:'POST',
+          headers:{
+            'apikey':SUPABASE_KEY,
+            'Authorization':'Bearer '+SUPABASE_KEY,
+            'Content-Type':'application/json',
+            'Prefer':'return=minimal'
+          },
+          body: JSON.stringify(batch)
+        }).then(function(resp){
+          if(!resp.ok) return resp.text().then(function(t){throw new Error('HTTP '+resp.status+': '+t.slice(0,200));});
+          sent += batch.length;
+          showLoading('تم رفع '+sent+' من '+newRows.length+'...');
+          sendBatch(start+BATCH);
+        }).catch(function(err){
+          errors.push(err.message);
+          sendBatch(start+BATCH);
+        });
+      }
+      sendBatch(0);
+    },
+    function(err){
+      hideLoading();
+      if(btn){ btn.disabled=false; btn.textContent='💾'; }
+      alert('❌ فشل الاتصال بـ Supabase:\n'+err);
+    }
+  );
 }
 
 function fetchJSONP(url, onSuccess, onError){
@@ -2163,9 +2388,16 @@ function processRowsForType(rows, eduType){
       if(dateRaw instanceof Date) assessDate = dateRaw;
       else { var d = new Date(dateRaw); if(!isNaN(d.getTime())) assessDate = d; }
     }
+    // ✨ إيميل المُقيّم (يُستخدم كطبقة مطابقة احتياطية لو الرقم الوزاري في النموذج خطأ)
+    var emailRaw = (r['البريد الإلكتروني']||r['الاسم']||'').toString().trim();
+    var emailDigits = '';
+    if(emailRaw && emailRaw.indexOf('@')>=0){
+      emailDigits = emailRaw.split('@')[0].replace(/[^0-9]/g,'');
+    }
     return{
       school: info.name,
       code: info.code,  // الرقم الوزاري
+      emailCode: emailDigits,  // ✨ الأرقام المستخرجة من إيميل المُقيّم
       week: normWeek(r['الاسبوع']||r['الأسبوع']||''),
       term: (r['الفصل الدراسي']||'').toString().trim(),
       sector: sector,
@@ -2187,6 +2419,15 @@ function processRowsForType(rows, eduType){
       meals:    parseScore(gv(r,['التزام المتعهد بالاشتراطات الصحية للوجبات الغذائية','التزام المتعهد بالاشتراطات الصحية للوجبات الغذائية.التقييم'])),
       support:  (r['الدعم الموحد']||'').toString(),
       reopened: (r['يوجد بلاغات تم إعادة فتحها']||'').toString(),
+      // ✨ حضور دورة الدعم الموحد (تم الحضور / لم أحضر)
+      usc_training: (function(){
+        for(var _k in r){
+          if(_k && _k.indexOf('حصلت على التدريب')>=0 && r[_k]!==null && r[_k]!==undefined){
+            return r[_k].toString().trim();
+          }
+        }
+        return '';
+      })(),
       response_speed: parseScore(gv(r,['سرعة الاستجابة لبلاغات الدعم الموحد','سرعة الاستجابة لبلاغات الدعم الموحد.التقييم'])),
       quality:  parseScore(gv(r,['جودة معالجة بلاغات الدعم الموحد','جودة معالجة بلاغات الدعم الموحد.التقييم'])),
       _hasNamedRatings: anyRating || (buildingRaw!==null && buildingRaw!==undefined && buildingRaw!==''),
@@ -2240,6 +2481,8 @@ function processRowsForType(rows, eduType){
   srcData[eduType].allSchools=allSch;
   srcData[eduType].sectorMap=sectorMap;
   srcData[eduType].loaded=true;
+  // ✨ حفظ الصفوف الخام لزر "💾 احفظ في Supabase"
+  srcData[eduType].rawForUpload = rows;
 
   updateSourceUI(eduType, comp.length, allSch.length);
   console.log('[DEBUG] eduType:',eduType,'comp:',comp.length,'allSch:',allSch.length);
@@ -2652,6 +2895,7 @@ function updateSchoolDropdown(){
   var filtered = pool.filter(function(r){
     if(f.sector && (r.govArea||r.sector||'') !== f.sector) return false;
     if(f.type   && (r.type||'') !== f.type) return false;
+    if(f.stage  && normStage(r.stage) !== f.stage) return false;
     return true;
   });
 
@@ -2706,12 +2950,13 @@ function getFilters(){
     week:normWeek(document.getElementById('f-week').value),
     link:document.getElementById('f-link').value,
     type:document.getElementById('f-type').value,
+    stage:normStage((document.getElementById('f-stage')||{}).value||''),
     school:(document.getElementById('f-school').value||'').trim(),
     schoolCode:((document.getElementById('f-school-code')||{}).value||'').trim(),
   };
 }
 function resetFilters(){
-  ['f-sector','f-term','f-week','f-link','f-type','f-school'].forEach(function(id){
+  ['f-sector','f-term','f-week','f-link','f-type','f-stage','f-school'].forEach(function(id){
     var el=document.getElementById(id); if(el) el.value='';
   });
   var inp=document.getElementById('f-school-input');
@@ -2731,6 +2976,7 @@ function applyFilters(){
     if(f.term&&r.term!==f.term)return false;
     if(f.week&&r.week!==f.week)return false;
     if(f.type&&r.type!==f.type)return false;
+    if(f.stage && normStage(r.stage)!==f.stage) return false;
     if(f.schoolCode){
       var rc = (r.code||'').toString();
       if(rc.indexOf(f.schoolCode) < 0) return false;
@@ -2763,6 +3009,18 @@ function applyFilters(){
       ? completed.filter(function(r){ return r.week===f.week; })
       : completed;
 
+    // ✨ فهرس masterDB بالاسم — يستخدم لتصحيح الأكواد الخاطئة من النموذج
+    var masterByName = {};
+    masterDB.forEach(function(m){
+      if(m.school) masterByName[normStr(m.school)] = m;
+      if(m.name_aliases){
+        m.name_aliases.split('|').forEach(function(a){
+          var k = normStr(a);
+          if(k && !masterByName[k]) masterByName[k] = m;
+        });
+      }
+    });
+
     // بناء فهارس البحث: رقم وزاري + (اسم|نوع)
     var doneByCode = new Set();
     var doneByName = new Set();
@@ -2770,37 +3028,43 @@ function applyFilters(){
     var formByName = {};
 
     compForDone.forEach(function(r){
-      // الرقم الوزاري
-      if(r.code && r.code.toString().trim()){
-        var c = r.code.toString().trim().replace(/\.0$/,'');
-        doneByCode.add(c);
-        if(!formByCode[c]) formByCode[c] = r;
+      // ✨ لو اسم النموذج يطابق مدرسة في القاعدة، استخدم كودها الصحيح (لا الكود الخطأ من النموذج)
+      var formNameKey = r.school ? normStr(r.school) : '';
+      var masterMatch = formNameKey ? masterByName[formNameKey] : null;
+      var formCode = r.code ? r.code.toString().trim().replace(/\.0$/,'') : '';
+
+      if(masterMatch){
+        // الكود الصحيح من القاعدة (يصلح الخطأ الكتابي في النموذج)
+        var correctCode = (masterMatch.code||'').toString().trim().replace(/\.0$/,'');
+        if(correctCode){
+          doneByCode.add(correctCode);
+          if(!formByCode[correctCode]) formByCode[correctCode] = r;
+        }
+        // لا نضيف الكود الخطأ من النموذج، يمنع false positive لمدرسة أخرى
+      } else if(formCode){
+        // لا اسم مطابق → استخدم كود النموذج (سلوك أصلي)
+        doneByCode.add(formCode);
+        if(!formByCode[formCode]) formByCode[formCode] = r;
       }
-      // الاسم (بدون شرط النوع)
+      // ✨ الرقم المستخرج من إيميل المُقيّم (طبقة احتياطية)
+      if(r.emailCode && r.emailCode.length >= 4){
+        doneByCode.add(r.emailCode);
+        if(!formByCode[r.emailCode]) formByCode[r.emailCode] = r;
+      }
+      // الاسم
       if(r.school){
         doneByName.add(normStr(r.school));
         if(!formByName[r.school]) formByName[r.school] = r;
       }
     });
 
-    // هل المدرسة أكملت؟ — رقم وزاري أو اسم مدرسة (أيهما تطابق)
-    // ✨ يدعم الأكواد البديلة (code_aliases) والأسماء البديلة (name_aliases)
+    // ✨ مطابقة بالاسم فقط (الفورم يفرض اختيار الاسم من قائمة منسدلة → دقّة 100%)
+    // الكود يُتجاهل لأنه عرضة لأخطاء كتابية (مثل خديجة 156107/156170)
     function isDone(dbRow){
-      // 1. الرقم الوزاري الأساسي
-      var c = (dbRow.code||'').toString().trim().replace(/\.0$/,'');
-      if(c && doneByCode.has(c)) return true;
-      // 2. الأكواد البديلة (مفصولة بـ |)
-      if(dbRow.code_aliases){
-        var altCodes = dbRow.code_aliases.split('|');
-        for(var i=0;i<altCodes.length;i++){
-          var ac = altCodes[i].trim().replace(/\.0$/,'');
-          if(ac && doneByCode.has(ac)) return true;
-        }
-      }
-      // 3. الاسم الأساسي
+      // 1. الاسم الأساسي
       var key = normStr(dbRow.school);
       if(doneByName.has(key)) return true;
-      // 4. الأسماء البديلة (مفصولة بـ |)
+      // 2. الأسماء البديلة من القاعدة (name_aliases مفصولة بـ |)
       if(dbRow.name_aliases){
         var altNames = dbRow.name_aliases.split('|');
         for(var j=0;j<altNames.length;j++){
@@ -2821,11 +3085,12 @@ function applyFilters(){
     // (هذا يضمن أن المدارس المضافة لاحقاً لا تؤثر على نسبة ذلك الأسبوع)
     var effectiveDate = f.week ? getEffectiveDateForPeriod(compForDone) : null;
 
-    // masterDB مفلترة بالقطاع والنوع وتاريخ الفعالية
+    // masterDB مفلترة بالقطاع والنوع والمرحلة وتاريخ الفعالية
     var dbFiltered = masterDB.filter(function(r){
       if(!isSchoolActiveAt(r, effectiveDate)) return false;
       if(f.sector && (r.govArea||r.sector||'')!==f.sector) return false;
       if(f.type   && (r.type||'')!==f.type) return false;
+      if(f.stage  && normStage(r.stage)!==f.stage) return false;
       return true;
     });
 
@@ -2833,7 +3098,8 @@ function applyFilters(){
       // فقط المكتملون
       combined = dbFiltered.filter(isDone).map(function(r){
         var rec=getFormRec(r);
-        return Object.assign({},r,rec||{},{sector:r.govArea||r.sector,status:'done'});
+        // ✨ ابدأ بـ rec (التقييمات) ثم اطغى بـ r (اسم القاعدة الرسمي + كودها) عشان ما يخلط الاسم
+        return Object.assign({},rec||{},r,{sector:r.govArea||r.sector,status:'done'});
       });
     } else if(f.link==='not'){
       // فقط غير المكتملين
@@ -2844,7 +3110,8 @@ function applyFilters(){
       dbFiltered.forEach(function(r){
         if(isDone(r)){
           var rec=getFormRec(r);
-          combined.push(Object.assign({},r,rec||{},{sector:r.govArea||r.sector,status:'done'}));
+          // ✨ اسم القاعدة يطغى على اسم النموذج لمنع الخلط
+          combined.push(Object.assign({},rec||{},r,{sector:r.govArea||r.sector,status:'done'}));
         } else {
           combined.push(Object.assign({},r,{sector:r.govArea||r.sector,status:'not'}));
         }
@@ -2937,6 +3204,7 @@ function updateKPIs(comp,combined){
         if(!isSchoolActiveAt(r, kpiEffDate)) return false;
         if(f.type   && (r.type||'')              !== f.type)   return false;
         if(f.sector && (r.govArea||r.sector||'') !== f.sector) return false;
+        if(f.stage  && normStage(r.stage)        !== f.stage)  return false;
         return true;
       }).length;
     } else {
@@ -3239,6 +3507,7 @@ function updateCharts(comp,combined,f){
       if(!isSchoolActiveAt(r, chEffDate)) return false;
       if(fD.type&&(r.type||'')!==fD.type) return false;
       if(fD.sector&&(r.govArea||r.sector||'')!==fD.sector) return false;
+      if(fD.stage && normStage(r.stage)!==fD.stage) return false;
       return true;
     }).length:combined.length;
   }
@@ -3267,7 +3536,7 @@ function renderTable(){
   var tbody=document.getElementById('table-body');
   var start=page*PAGE_SIZE,slice=searchData.slice(start,start+PAGE_SIZE);
   if(!searchData.length){
-    tbody.innerHTML='<tr><td colspan="10" class="empty"><div class="empty-icon">📭</div>لا توجد نتائج</td></tr>';
+    tbody.innerHTML='<tr><td colspan="11" class="empty"><div class="empty-icon">📭</div>لا توجد نتائج</td></tr>';
     document.getElementById('pager-info').textContent='0 مدارس'; return;
   }
   tbody.innerHTML=slice.map(function(r,i){
@@ -3285,6 +3554,14 @@ function renderTable(){
     var typeLabel=r.type==='بنين'?'👦 بنين':r.type==='بنات'?'👧 بنات':(r.type||'-');
     var city=r.city||'-';
     var govArea=r.sector||'-';
+    // ✨ خلية دورة الدعم الموحد
+    var ut = (r.usc_training||'').toString().trim();
+    var trainingHtml = '<span style="color:#64748b">-</span>';
+    if(ut==='تم الحضور'){
+      trainingHtml = '<span class="status-pill" style="background:rgba(16,185,129,.15);color:#10b981;border:1px solid #10b981;font-size:10px;">🎓 حضرت</span>';
+    } else if(ut==='لم أحضر'){
+      trainingHtml = '<span class="status-pill" style="background:rgba(239,68,68,.15);color:#ef4444;border:1px solid #ef4444;font-size:10px;">⚠️ لم تحضر</span>';
+    }
     var _i=start+i;
     return '<tr style="cursor:pointer;" onclick="showSchoolCard(searchData['+_i+'])">'+'<td style="color:var(--text2)">'+(_i+1)+'</td>'+'<td style="font-weight:600;max-width:220px;color:var(--accent2)">'+(r.school||'-')+'</td>'+
       '<td>'+govArea+'</td>'+
@@ -3293,6 +3570,7 @@ function renderTable(){
       '<td style="font-size:11px">'+(r.term||'-')+'</td>'+
       '<td>'+typeLabel+'</td>'+
       '<td>'+statusHtml+'</td><td>'+scoreHtml+'</td><td>'+ratingHtml+'</td>'+
+      '<td>'+trainingHtml+'</td>'+
     '</tr>';
   }).join('');
   var total=searchData.length;
@@ -3312,7 +3590,7 @@ function exportExcel(){
   if(!searchData.length){alert('لا توجد بيانات للتصدير');return;}
   try{
     function sv(v){if(v===null||v===undefined)return '';if(typeof v==='number')return v;if(typeof v==='object')return '';return String(v);}
-    var hdrs=['#','اسم المدرسة','القطاع','الاسبوع','الفصل','النوع','حالة الرابط','متوسط الاداء','التقييم'];
+    var hdrs=['#','اسم المدرسة','القطاع','الاسبوع','الفصل','النوع','حالة الرابط','متوسط الاداء','التقييم','دورة الدعم'];
     for(var h=0;h<INDICATORS.length;h++)hdrs.push(INDICATORS[h].label);
     var allRows=[hdrs];
     for(var i=0;i<searchData.length;i++){
@@ -3320,7 +3598,8 @@ function exportExcel(){
       if(score!==null){var ri=getRatingInfo(score);if(Array.isArray(ri))rLabel=String(ri[0]);}
       var row=[i+1,sv(r.school),sv(r.sector),sv(r.week),sv(r.term),sv(r.type),
         r.status==='done'?'اكمل الرابط':'لم يكمل الرابط',
-        score!==null?Math.round(score*100)/100:'',rLabel];
+        score!==null?Math.round(score*100)/100:'',rLabel,
+        sv(r.usc_training)];
       for(var j=0;j<INDICATORS.length;j++){var v=parseFloat(r[INDICATORS[j].key]);row.push(isNaN(v)?'':v);}
       allRows.push(row);
     }
@@ -3848,6 +4127,7 @@ function loadSavedFilters(){
     if(f.week){var el=document.getElementById('f-week');if(el)el.value=f.week;}
     if(f.link){var el=document.getElementById('f-link');if(el)el.value=f.link;}
     if(f.type){var el=document.getElementById('f-type');if(el)el.value=f.type;}
+    if(f.stage){var el=document.getElementById('f-stage');if(el)el.value=f.stage;}
     if(f.school){var el=document.getElementById('f-school');if(el)el.value=f.school;}
     applyFilters();
   }catch(e){}
@@ -4034,6 +4314,7 @@ function loadMasterDBFromCSV(onDone, isRefresh){
         return {
           school:  (r.school_name || '').toString().trim(),
           type:    (r.education_type || '').toString().trim(),
+          stage:   (r.stage || '').toString().trim(),
           sector:  (r.sector || '').toString().trim(),
           govArea: (r.province || '').toString().trim(),
           city:    (r.city || '').toString().trim(),
@@ -4093,6 +4374,7 @@ function loadMasterDBFromCSV(onDone, isRefresh){
         return{
           school:  (r['المدرسة']||'').toString().trim(),
           type:    (r['نوع التعليم']||'').toString().trim(),
+          stage:   (r['المرحلة']||'').toString().trim(),
           sector:  (r['القطاع']||'').toString().trim(),
           govArea: (r['المحافظة']||'').toString().trim(),
           city:    (r['المدينة']||'').toString().trim(),
@@ -4221,6 +4503,7 @@ function loadMasterDB(onDone){
       return{
         school:  (r['المدرسة']||'').toString().trim(),
         type:    (r['نوع التعليم']||'').toString().trim(),
+        stage:   (r['المرحلة']||'').toString().trim(),
         sector:  (r['القطاع']||'').toString().trim(),
         govArea: (r['المحافظة']||'').toString().trim(),
         city:    (r['المدينة']||'').toString().trim(),
@@ -5445,6 +5728,13 @@ function showSchoolCard(r){
   html+='<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;">';
   html+=r.status==='done'?'<span class="status-pill pill-done">✅ أكمل الرابط</span>':'<span class="status-pill pill-not">❌ لم يكمل</span>';
   if(r.code) html+='<span style="background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;">رقم: '+r.code+'</span>';
+  // ✨ حضور دورة الدعم الموحد
+  var ut = (r.usc_training||'').toString().trim();
+  if(ut){
+    var utColor = ut==='تم الحضور' ? '#10b981' : (ut==='لم أحضر' ? '#ef4444' : '#64748b');
+    var utIcon  = ut==='تم الحضور' ? '🎓 ' : (ut==='لم أحضر' ? '⚠️ ' : '');
+    html+='<span style="background:rgba(13,207,218,.12);border:1px solid '+utColor+';color:'+utColor+';border-radius:20px;padding:3px 10px;font-size:11px;font-weight:700;" title="دورة الدعم الموحد">'+utIcon+'دورة الدعم: '+ut+'</span>';
+  }
   var schoolEsc = (r.school||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
   html+='<div style="margin-right:auto;display:flex;gap:6px;flex-wrap:wrap;">';
   html+='<button onclick="exportSchoolReport(\''+schoolEsc+'\')" style="background:linear-gradient(135deg,#0DCFDA,#0891b2);color:#fff;border:none;padding:6px 14px;border-radius:20px;cursor:pointer;font-family:Cairo,sans-serif;font-size:11px;font-weight:700;">📥 Excel</button>';
