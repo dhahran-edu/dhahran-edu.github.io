@@ -605,6 +605,11 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
           <div style="font-size:16px;font-weight:800;">التقارير</div>
           <div style="font-size:11px;font-weight:500;opacity:.85;">عرض وتصدير التقارير</div>
         </button>
+        <button onclick="showProjects()" class="welcome-action-card" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><line x1="9" y1="9" x2="9" y2="9"></line><line x1="9" y1="13" x2="9" y2="13"></line><line x1="9" y1="17" x2="9" y2="17"></line></svg>
+          <div style="font-size:16px;font-weight:800;">المشاريع</div>
+          <div style="font-size:11px;font-weight:500;opacity:.85;">متابعة مشاريع الصيانة والترميم</div>
+        </button>
       </div>
 
       <!-- 4️⃣ آخر الأنشطة -->
@@ -5799,6 +5804,210 @@ function buildComplaintsReport(){
   };
 }
 
+/* ===== المشاريع ===== */
+var _projectsData = [];
+
+function showProjects(){
+  var modal = document.getElementById('projects-modal');
+  if(modal) modal.style.display = 'flex';
+  loadProjects();
+}
+
+function closeProjectsModal(){
+  var modal = document.getElementById('projects-modal');
+  if(modal) modal.style.display = 'none';
+}
+
+function loadProjects(){
+  if(typeof USE_SUPABASE !== 'undefined' && USE_SUPABASE && typeof fetchSupabaseAll === 'function'){
+    fetchSupabaseAll('projects', 'select=*&order=id.asc', function(data){
+      _projectsData = data || [];
+      _buildProjectFilters();
+      renderProjects();
+    }, function(err){
+      var body = document.getElementById('projects-body');
+      if(body) body.innerHTML = '<div style="text-align:center;padding:40px;color:#ef4444;">❌ فشل تحميل المشاريع<br><br>تأكد من تنفيذ <strong>projects_setup.sql</strong> في Supabase أولاً</div>';
+    });
+  } else {
+    var body = document.getElementById('projects-body');
+    if(body) body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text2);">⚠️ Supabase غير متصل</div>';
+  }
+}
+
+function _buildProjectFilters(){
+  var types = [...new Set(_projectsData.map(function(p){return p.project_type;}).filter(Boolean))].sort();
+  var provs = [...new Set(_projectsData.map(function(p){return p.province;}).filter(Boolean))].sort();
+  var stats = [...new Set(_projectsData.map(function(p){return p.status;}).filter(Boolean))];
+  var STATUS_ORDER = ['مكتمل','جاري','قادم','متوقف'];
+  stats.sort(function(a,b){return STATUS_ORDER.indexOf(a) - STATUS_ORDER.indexOf(b);});
+
+  var typeSel = document.getElementById('pj-type');
+  var provSel = document.getElementById('pj-province');
+  var statSel = document.getElementById('pj-status');
+  if(typeSel) typeSel.innerHTML = '<option value="">الكل</option>' + types.map(function(t){return '<option value="'+t+'">'+t+'</option>';}).join('');
+  if(provSel) provSel.innerHTML = '<option value="">الكل</option>' + provs.map(function(p){return '<option value="'+p+'">'+p+'</option>';}).join('');
+  if(statSel) statSel.innerHTML = '<option value="">الكل</option>' + stats.map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join('');
+}
+
+function _filteredProjects(){
+  var t = (document.getElementById('pj-type')||{}).value || '';
+  var p = (document.getElementById('pj-province')||{}).value || '';
+  var s = (document.getElementById('pj-status')||{}).value || '';
+  var q = ((document.getElementById('pj-search')||{}).value || '').trim();
+  return _projectsData.filter(function(r){
+    if(t && r.project_type !== t) return false;
+    if(p && r.province !== p) return false;
+    if(s && r.status !== s) return false;
+    if(q && (r.project_name||'').indexOf(q) < 0) return false;
+    return true;
+  });
+}
+
+function _statusStyle(s){
+  if(s==='مكتمل')  return {bg:'#d1fae5', fg:'#065f46', icon:'✅'};
+  if(s==='جاري')   return {bg:'#dbeafe', fg:'#1e40af', icon:'🏗️'};
+  if(s==='قادم')   return {bg:'#fef3c7', fg:'#92400e', icon:'⏳'};
+  if(s==='متوقف')  return {bg:'#fee2e2', fg:'#991b1b', icon:'⏸️'};
+  return {bg:'#f3f4f6', fg:'#374151', icon:'•'};
+}
+
+function renderProjects(){
+  var rows = _filteredProjects();
+  var body = document.getElementById('projects-body');
+  if(!body) return;
+
+  // KPIs (من جميع البيانات بعد فلتر النوع/المحافظة فقط، ليس الحالة)
+  var kpiData = _projectsData.filter(function(r){
+    var t = (document.getElementById('pj-type')||{}).value || '';
+    var p = (document.getElementById('pj-province')||{}).value || '';
+    var q = ((document.getElementById('pj-search')||{}).value || '').trim();
+    if(t && r.project_type !== t) return false;
+    if(p && r.province !== p) return false;
+    if(q && (r.project_name||'').indexOf(q) < 0) return false;
+    return true;
+  });
+  var byStatus = {مكتمل:0, جاري:0, قادم:0, متوقف:0};
+  kpiData.forEach(function(r){ if(byStatus[r.status]!==undefined) byStatus[r.status]++; });
+
+  var kpis = document.getElementById('projects-kpis');
+  if(kpis){
+    kpis.innerHTML = ''
+      + _kpiHtml('🏗️','إجمالي المشاريع', kpiData.length, '#1d4ed8','#eff6ff')
+      + _kpiHtml('✅','مكتمل', byStatus['مكتمل'], '#15803d','#f0fdf4')
+      + _kpiHtml('🏗️','جاري', byStatus['جاري'], '#1e40af','#eff6ff')
+      + _kpiHtml('⏳','قادم', byStatus['قادم'], '#92400e','#fffbeb')
+      + _kpiHtml('⏸️','متوقف', byStatus['متوقف'], '#b91c1c','#fef2f2');
+  }
+
+  if(!rows.length){
+    body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text2);">لا توجد مشاريع بهذه الفلاتر</div>';
+    return;
+  }
+
+  var headerCss = 'padding:9px 8px;background:linear-gradient(135deg,#218CAA,#0DCFDA);color:#fff;text-align:center;font-weight:700;font-size:11px;';
+  var html = '<table style="width:100%;border-collapse:collapse;font-size:12px;">'
+    + '<thead><tr>'
+    + '<th style="'+headerCss+'width:36px;">#</th>'
+    + '<th style="'+headerCss+'">النوع</th>'
+    + '<th style="'+headerCss+'">اسم المشروع</th>'
+    + '<th style="'+headerCss+'">المحافظة</th>'
+    + '<th style="'+headerCss+'">البداية</th>'
+    + '<th style="'+headerCss+'">النهاية</th>'
+    + '<th style="'+headerCss+'">الحالة</th>'
+    + '<th style="'+headerCss+'">النسبة</th>'
+    + '</tr></thead><tbody>';
+  rows.forEach(function(r, i){
+    var st = _statusStyle(r.status);
+    var pct = r.completion_pct;
+    var pctNum = pct===null||pct===undefined||pct==='' ? 0 : parseFloat(pct);
+    var pctClr = pctNum>=90?'#15803d':pctNum>=60?'#1e40af':pctNum>=30?'#d97706':'#9ca3af';
+    var grad = pctNum>=90?'linear-gradient(90deg,#22c55e,#16a34a)':pctNum>=60?'linear-gradient(90deg,#3b82f6,#1d4ed8)':pctNum>=30?'linear-gradient(90deg,#fbbf24,#d97706)':'linear-gradient(90deg,#9ca3af,#6b7280)';
+    html += '<tr style="border-bottom:1px solid var(--border);'+(i%2?'background:var(--surface);':'')+'">'
+      + '<td style="padding:8px;text-align:center;color:var(--text2);">'+(i+1)+'</td>'
+      + '<td style="padding:8px;text-align:center;font-size:11px;">'+(r.project_type||'-')+'</td>'
+      + '<td style="padding:8px;font-weight:600;">'+(r.project_name||'-')+'</td>'
+      + '<td style="padding:8px;text-align:center;">'+(r.province==='غير محدد'?'<span style="color:var(--text2);font-style:italic;">'+r.province+'</span>':(r.province||'-'))+'</td>'
+      + '<td style="padding:8px;text-align:center;font-size:11px;color:var(--text2);">'+(r.start_date||'-')+'</td>'
+      + '<td style="padding:8px;text-align:center;font-size:11px;color:var(--text2);">'+(r.end_date||'-')+'</td>'
+      + '<td style="padding:8px;text-align:center;"><span style="background:'+st.bg+';color:'+st.fg+';padding:3px 10px;border-radius:8px;font-weight:700;font-size:11px;">'+st.icon+' '+(r.status||'-')+'</span></td>'
+      + '<td style="padding:8px;width:130px;">'
+      +   '<div style="position:relative;height:18px;background:var(--surface2);border-radius:9px;overflow:hidden;border:1px solid var(--border);">'
+      +     '<div style="height:100%;width:'+pctNum+'%;background:'+grad+';"></div>'
+      +     '<span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:10px;color:'+pctClr+';">'+(pct===null||pct===undefined||pct===''?'-':pctNum.toFixed(1)+'%')+'</span>'
+      +   '</div>'
+      + '</td>'
+      + '</tr>';
+  });
+  html += '</tbody></table>';
+  body.innerHTML = '<div style="margin-bottom:10px;font-size:12px;color:var(--text2);">عرض <strong>'+rows.length+'</strong> من إجمالي <strong>'+_projectsData.length+'</strong> مشروع</div>' + html;
+}
+
+function _kpiHtml(icon, label, value, color, bg){
+  return '<div style="background:'+bg+';border:1px solid '+color+'33;border-radius:12px;padding:12px 14px;text-align:center;">'
+    + '<div style="font-size:20px;margin-bottom:4px;">'+icon+'</div>'
+    + '<div style="font-size:10px;color:var(--text2);font-weight:600;margin-bottom:4px;">'+label+'</div>'
+    + '<div style="font-size:22px;font-weight:900;color:'+color+';line-height:1;">'+(value||0).toLocaleString('ar')+'</div>'
+    + '</div>';
+}
+
+function exportProjectsCSV(){
+  var rows = _filteredProjects();
+  if(!rows.length){ alert('لا توجد بيانات للتصدير'); return; }
+  var lines = ['#,النوع,اسم المشروع,المحافظة,البداية,النهاية,الحالة,النسبة'];
+  rows.forEach(function(r,i){
+    var parts = [i+1, r.project_type||'', r.project_name||'', r.province||'', r.start_date||'', r.end_date||'', r.status||'', r.completion_pct===null||r.completion_pct===undefined?'':r.completion_pct].map(function(c){
+      var s = (c===null||c===undefined)?'':c.toString();
+      if(s.indexOf(',')>=0 || s.indexOf('"')>=0) s = '"'+s.replace(/"/g,'""')+'"';
+      return s;
+    });
+    lines.push(parts.join(','));
+  });
+  _downloadCSV(lines.join('\n'), 'المشاريع.csv');
+}
+
+function printProjects(){
+  var rows = _filteredProjects();
+  if(!rows.length){ alert('لا توجد بيانات للطباعة'); return; }
+  var t = (document.getElementById('pj-type')||{}).value || '';
+  var p = (document.getElementById('pj-province')||{}).value || '';
+  var s = (document.getElementById('pj-status')||{}).value || '';
+  var subtitle = 'النوع: '+(t||'الكل')+' | المحافظة: '+(p||'الكل')+' | الحالة: '+(s||'الكل')+' | '+rows.length+' مشروع';
+
+  var byStatus = {مكتمل:0, جاري:0, قادم:0, متوقف:0};
+  rows.forEach(function(r){ if(byStatus[r.status]!==undefined) byStatus[r.status]++; });
+
+  var tbody = rows.map(function(r,i){
+    var st = _statusStyle(r.status);
+    var pct = r.completion_pct;
+    var pctNum = pct===null||pct===undefined||pct===''?0:parseFloat(pct);
+    var grad = pctNum>=90?'linear-gradient(90deg,#22c55e,#16a34a)':pctNum>=60?'linear-gradient(90deg,#3b82f6,#1d4ed8)':pctNum>=30?'linear-gradient(90deg,#fbbf24,#d97706)':'linear-gradient(90deg,#9ca3af,#6b7280)';
+    var pctClr = pctNum>=90?'#15803d':pctNum>=60?'#1e40af':pctNum>=30?'#d97706':'#6b7280';
+    return '<tr>'
+      + '<td class="idx">'+(i+1)+'</td>'
+      + '<td>'+(r.project_type||'-')+'</td>'
+      + '<td class="right">'+(r.project_name||'-')+'</td>'
+      + '<td>'+(r.province||'-')+'</td>'
+      + '<td>'+(r.start_date||'-')+'</td>'
+      + '<td>'+(r.end_date||'-')+'</td>'
+      + '<td><span style="background:'+st.bg+';color:'+st.fg+';padding:2px 8px;border-radius:8px;font-weight:700;font-size:10px;">'+(r.status||'-')+'</span></td>'
+      + '<td class="bar-cell"><div class="bar-wrap"><div class="bar-fill" style="width:'+pctNum+'%;background:'+grad+';"></div><span class="bar-label" style="color:'+pctClr+';">'+(pct===null||pct===undefined||pct===''?'-':pctNum.toFixed(1)+'%')+'</span></div></td>'
+      + '</tr>';
+  }).join('');
+
+  _printElegant({
+    title: '🏗️ متابعة المشاريع',
+    subtitle: subtitle,
+    kpis: [
+      {icon:'🏗️', label:'الإجمالي', value:rows.length.toLocaleString('ar'), cls:'kpi-blue'},
+      {icon:'✅', label:'مكتمل', value:byStatus['مكتمل'].toLocaleString('ar'), cls:'kpi-green'},
+      {icon:'🏗️', label:'جاري', value:byStatus['جاري'].toLocaleString('ar'), cls:'kpi-blue'},
+      {icon:'⏳', label:'قادم', value:byStatus['قادم'].toLocaleString('ar'), cls:'kpi-amber'},
+      {icon:'⏸️', label:'متوقف', value:byStatus['متوقف'].toLocaleString('ar'), cls:'kpi-red'}
+    ],
+    tableHtml: '<table><thead><tr><th>#</th><th>النوع</th><th>اسم المشروع</th><th>المحافظة</th><th>البداية</th><th>النهاية</th><th>الحالة</th><th>النسبة</th></tr></thead><tbody>'+tbody+'</tbody></table>'
+  });
+}
+
 /* ===== دوال الصفحة الرئيسية المبسّطة ===== */
 function showDashboard(){
   var dc = document.getElementById('dashboard-content');
@@ -9356,6 +9565,41 @@ document.addEventListener('keydown', function(e){
 </script>
 
 <!-- 🏫 بطاقة المدرسة -->
+<!-- 🏗️ المشاريع -->
+<div id="projects-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9997;align-items:center;justify-content:center;backdrop-filter:blur(4px);padding:20px;" onclick="if(event.target===this)closeProjectsModal()">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;width:min(1300px,98vw);max-height:96vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);overflow:hidden;">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-weight:800;font-size:16px;color:var(--text);">🏗️ متابعة المشاريع</div>
+      <button onclick="closeProjectsModal()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);width:32px;height:32px;border-radius:10px;cursor:pointer;font-size:16px;font-weight:700;">✕</button>
+    </div>
+    <div id="projects-kpis" style="padding:14px 18px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;"></div>
+    <div style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <div>
+        <label style="font-size:11px;color:var(--text2);margin-left:6px;">النوع:</label>
+        <select id="pj-type" onchange="renderProjects()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:8px;font-size:12px;min-width:140px;"></select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--text2);margin-left:6px;">المحافظة:</label>
+        <select id="pj-province" onchange="renderProjects()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:8px;font-size:12px;min-width:130px;"></select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--text2);margin-left:6px;">الحالة:</label>
+        <select id="pj-status" onchange="renderProjects()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:8px;font-size:12px;min-width:120px;"></select>
+      </div>
+      <div>
+        <input type="text" id="pj-search" placeholder="🔍 بحث باسم المشروع..." oninput="renderProjects()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:8px;font-size:12px;min-width:200px;">
+      </div>
+      <div style="margin-inline-start:auto;display:flex;gap:8px;">
+        <button onclick="exportProjectsCSV()" style="background:#22c55e;border:none;color:#fff;padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;">⬇️ CSV</button>
+        <button onclick="printProjects()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:6px 12px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:700;">🖨️ طباعة / PDF</button>
+      </div>
+    </div>
+    <div id="projects-body" style="padding:14px 18px;overflow:auto;flex:1;background:var(--bg);">
+      <div style="text-align:center;padding:40px;color:var(--text2);">⏳ جاري التحميل...</div>
+    </div>
+  </div>
+</div>
+
 <!-- 📊 التقارير -->
 <style>
   #print-area { position: absolute; left: -9999px; top: 0; width: 0; height: 0; overflow: hidden; }
