@@ -153,6 +153,12 @@ function exportIndTable(){
 <style>
 /* هوية وزارة التعليم البصرية */
 :root{--bg:#0d0820;--surface:#150d2e;--surface2:#1e1340;--accent:#7030A0;--accent2:#0DCFDA;--accent3:#218CAA;--danger:#ef4444;--text:#f1f5f9;--text2:#b8aed4;--border:#2d1f52;--card-shadow:0 4px 24px rgba(56,41,114,0.4);--radius:14px;}
+/* وضع "صفحة الدعم الموحد المستقلة" */
+/* إخفاء قسم الدعم الموحد من اللوحة الاعتيادية (يظهر فقط عند الانتقال له من الزر) */
+#dashboard-content > #usc-section{ display:none; }
+#dashboard-content.usc-only > *:not(#usc-section){ display:none !important; }
+#dashboard-content.usc-only > #usc-section{ display:block !important; }
+#dashboard-content.usc-only #usc-back-bar{ display:flex !important; }
 body.theme-light{--bg:#f5f3ff;--surface:#fff;--surface2:#ede9ff;--text:#1a0d35;--text2:#4b3e72;--border:#c4b5fd;--card-shadow:0 4px 24px rgba(112,48,160,0.1);}
 body.theme-light .header{background:linear-gradient(135deg,#382972,#7030A0,#382972);}
 body.theme-light .src-pill,body.theme-purple .src-pill{color:#fff!important;}
@@ -589,26 +595,31 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
       </div>
 
       <!-- 3️⃣ أزرار الإجراءات الكبيرة -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;">
-        <button onclick="quickEnter()" id="btn-quick-enter" class="welcome-action-card" style="background:linear-gradient(135deg,#0DCFDA,#218CAA);color:#000;">
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:14px;">
+        <button onclick="quickEnter()" id="btn-quick-enter" class="welcome-action-card" style="grid-column:span 2;background:linear-gradient(135deg,#0DCFDA,#218CAA);color:#000;">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"></path><polyline points="10 17 15 12 10 7"></polyline><line x1="15" y1="12" x2="3" y2="12"></line></svg>
-          <div style="font-size:16px;font-weight:800;">دخول للوحة</div>
+          <div style="font-size:16px;font-weight:800;">جودة الخدمات</div>
           <div style="font-size:11px;font-weight:500;opacity:.85;">عرض الإحصائيات الكاملة</div>
         </button>
-        <button onclick="showControlPanel()" class="welcome-action-card">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-          <div style="font-size:16px;font-weight:800;">لوحة التحكم</div>
-          <div style="font-size:11px;font-weight:500;opacity:.7;">إدارة البيانات والإعدادات</div>
+        <button onclick="showProjects()" class="welcome-action-card" style="grid-column:span 2;background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><line x1="9" y1="9" x2="9" y2="9"></line><line x1="9" y1="13" x2="9" y2="13"></line><line x1="9" y1="17" x2="9" y2="17"></line></svg>
+          <div style="font-size:16px;font-weight:800;">المشاريع</div>
+          <div style="font-size:11px;font-weight:500;opacity:.85;">متابعة مشاريع الصيانة والترميم</div>
         </button>
-        <button onclick="showReports()" class="welcome-action-card" style="background:linear-gradient(135deg,#7030A0,#A050C0);color:#fff;">
+        <button onclick="showUnifiedSupport()" class="welcome-action-card" style="grid-column:span 2;background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 0-2 2 2 2 0 0 0 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-3a2 2 0 0 0 2-2 2 2 0 0 0-2-2z"></path><line x1="14" y1="7" x2="14" y2="17"></line></svg>
+          <div style="font-size:16px;font-weight:800;">الدعم الموحد</div>
+          <div style="font-size:11px;font-weight:500;opacity:.85;">متابعة بلاغات الدعم الموحد</div>
+        </button>
+        <button onclick="showReports()" class="welcome-action-card" style="grid-column:span 3;background:linear-gradient(135deg,#7030A0,#A050C0);color:#fff;">
           <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="8" y1="13" x2="14" y2="13"></line><line x1="8" y1="17" x2="14" y2="17"></line></svg>
           <div style="font-size:16px;font-weight:800;">التقارير</div>
           <div style="font-size:11px;font-weight:500;opacity:.85;">عرض وتصدير التقارير</div>
         </button>
-        <button onclick="showProjects()" class="welcome-action-card" style="background:linear-gradient(135deg,#f59e0b,#d97706);color:#fff;">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V7l8-4v18"></path><path d="M19 21V11l-6-4"></path><line x1="9" y1="9" x2="9" y2="9"></line><line x1="9" y1="13" x2="9" y2="13"></line><line x1="9" y1="17" x2="9" y2="17"></line></svg>
-          <div style="font-size:16px;font-weight:800;">المشاريع</div>
-          <div style="font-size:11px;font-weight:500;opacity:.85;">متابعة مشاريع الصيانة والترميم</div>
+        <button onclick="showControlPanel()" class="welcome-action-card" style="grid-column:span 3;">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <div style="font-size:16px;font-weight:800;">لوحة التحكم</div>
+          <div style="font-size:11px;font-weight:500;opacity:.7;">إدارة البيانات والإعدادات</div>
         </button>
       </div>
 
@@ -1361,6 +1372,10 @@ tbody tr:hover td{background:rgba(112,48,160,.08);transition:background .15s;}
 
     <!-- ⑤ جدول الدعم الموحد -->
     <div class="table-card" style="margin-top:20px;" id="usc-section">
+      <div id="usc-back-bar" style="display:none;padding:10px 14px;background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border-radius:12px 12px 0 0;justify-content:space-between;align-items:center;">
+        <div style="font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;"><span>🎫</span><span>صفحة الدعم الموحد</span></div>
+        <button onclick="closeUscOnly()" style="background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 14px;border-radius:8px;cursor:pointer;font-family:'Cairo',sans-serif;font-size:12px;font-weight:700;">↩ رجوع للوحة</button>
+      </div>
       <div class="table-header" style="flex-wrap:wrap;gap:10px;">
         <h3>🎫 الدعم الموحد</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
@@ -2039,22 +2054,10 @@ function saveAssessmentsToSupabase(eduType){
       // ─── 5. رفع على دفعات ───
       showLoading('جاري رفع '+newRows.length+' صف...');
       var BATCH = 500;
-      var sent = 0, errors = [];
-      function sendBatch(start){
-        if(start >= newRows.length){
-          hideLoading();
-          if(btn){ btn.disabled=false; btn.textContent='💾'; }
-          if(errors.length){
-            alert('⚠️ تم رفع '+sent+' صف، فشل '+errors.length+' دفعة:\n'+errors.slice(0,3).join('\n'));
-          } else {
-            alert('✅ تم رفع '+sent+' صف بنجاح إلى Supabase');
-            // أعد تحميل البيانات من Supabase لتحديث الواجهة
-            loadFromGoogleSheets(eduType);
-          }
-          return;
-        }
-        var batch = newRows.slice(start, start+BATCH);
-        fetch(SUPABASE_URL+'/rest/v1/assessments',{
+      var sent = 0, dupSkipped = 0, errors = [];
+
+      function postRows(rowsArr){
+        return fetch(SUPABASE_URL+'/rest/v1/assessments',{
           method:'POST',
           headers:{
             'apikey':SUPABASE_KEY,
@@ -2062,12 +2065,53 @@ function saveAssessmentsToSupabase(eduType){
             'Content-Type':'application/json',
             'Prefer':'return=minimal'
           },
-          body: JSON.stringify(batch)
-        }).then(function(resp){
-          if(!resp.ok) return resp.text().then(function(t){throw new Error('HTTP '+resp.status+': '+t.slice(0,200));});
-          sent += batch.length;
-          showLoading('تم رفع '+sent+' من '+newRows.length+'...');
-          sendBatch(start+BATCH);
+          body: JSON.stringify(rowsArr)
+        });
+      }
+
+      // عند فشل دفعة بسبب تكرار → نرفع صف صف ونعدّ المتجاهَل
+      function retryRowByRow(rowsArr, doneCb){
+        var i = 0;
+        function next(){
+          if(i >= rowsArr.length){ doneCb(); return; }
+          postRows([rowsArr[i]]).then(function(r){
+            if(r.ok){ sent++; }
+            else { dupSkipped++; }
+            i++; next();
+          }).catch(function(){ dupSkipped++; i++; next(); });
+        }
+        next();
+      }
+
+      function sendBatch(start){
+        if(start >= newRows.length){
+          hideLoading();
+          if(btn){ btn.disabled=false; btn.textContent='💾'; }
+          var msg = '✅ تم رفع '+sent+' صف';
+          if(dupSkipped) msg += '\n🔁 مكرّر تم تجاهله: '+dupSkipped;
+          if(errors.length) msg += '\n⚠️ أخطاء أخرى: '+errors.length+'\n'+errors.slice(0,2).join('\n');
+          alert(msg);
+          if(sent>0) loadFromGoogleSheets(eduType);
+          return;
+        }
+        var batch = newRows.slice(start, start+BATCH);
+        postRows(batch).then(function(resp){
+          if(resp.ok){
+            sent += batch.length;
+            showLoading('تم رفع '+sent+' من '+newRows.length+'...');
+            sendBatch(start+BATCH);
+            return;
+          }
+          return resp.text().then(function(t){
+            // 409 / duplicate key → نرفع الدفعة صف صف
+            if(resp.status===409 || /duplicate|unique/i.test(t)){
+              showLoading('فحص دفعة بها مكرّر... ('+sent+'/'+newRows.length+')');
+              retryRowByRow(batch, function(){ sendBatch(start+BATCH); });
+            } else {
+              errors.push('HTTP '+resp.status+': '+t.slice(0,200));
+              sendBatch(start+BATCH);
+            }
+          });
         }).catch(function(err){
           errors.push(err.message);
           sendBatch(start+BATCH);
@@ -6023,6 +6067,48 @@ function showDashboard(){
     try{ if(typeof applyFilters === 'function') applyFilters(); }catch(e){}
     try{ if(typeof drawUscCharts === 'function') drawUscCharts(); }catch(e){}
   }, 50);
+}
+
+/* ===== صفحة الدعم الموحد المستقلة ===== */
+function showUnifiedSupport(){
+  var ws = document.getElementById('welcome-state');
+  var dc = document.getElementById('dashboard-content');
+  var fs = document.getElementById('filters-section');
+  var ss = document.getElementById('src-status');
+  function applyUscOnly(){
+    if(ws) ws.style.display = 'none';
+    if(dc) dc.style.display = 'block';
+    if(fs) fs.style.display = 'none';
+    if(ss) ss.style.display = 'flex';
+    dc.classList.add('usc-only');
+    var bar = document.getElementById('usc-back-bar');
+    if(bar) bar.style.display = 'flex';
+    var usc = document.getElementById('usc-section');
+    if(usc) usc.scrollIntoView({behavior:'smooth', block:'start'});
+    // إعادة رسم رسومات الدعم الموحد
+    setTimeout(function(){ try{ if(typeof drawUscCharts === 'function') drawUscCharts(); }catch(e){} }, 80);
+  }
+  // إذا الداش بورد ما تحمّل بعد، شغل quickEnter ثم انتظر
+  var isDashLoaded = dc && dc.style.display !== 'none';
+  if(isDashLoaded){ applyUscOnly(); return; }
+  if(typeof quickEnter === 'function'){
+    quickEnter();
+    var n = 0, iv = setInterval(function(){
+      n++;
+      if(dc && dc.style.display !== 'none'){ applyUscOnly(); clearInterval(iv); }
+      if(n > 60) clearInterval(iv);
+    }, 500);
+  } else {
+    applyUscOnly();
+  }
+}
+
+function closeUscOnly(){
+  var dc = document.getElementById('dashboard-content');
+  if(dc) dc.classList.remove('usc-only');
+  var bar = document.getElementById('usc-back-bar');
+  if(bar) bar.style.display = 'none';
+  if(typeof goHome === 'function') goHome();
 }
 
 // أعد رسم المخططات عند تغيير حجم النافذة
