@@ -846,8 +846,12 @@
     })();
 
     const CANVAS_SIZES = {
-      story: { w: 360, h: 640, label: "ستوري", ratio: "9:16" },
-      post:  { w: 432, h: 540, label: "منشور", ratio: "4:5"  },
+      story:       { w: 360, h: 640, label: "ستوري طولي",   ratio: "9:16" },
+      storyLand:   { w: 640, h: 360, label: "ستوري عرضي",   ratio: "16:9" },
+      post:        { w: 432, h: 540, label: "منشور",        ratio: "4:5"  },
+      adA4:        { w: 480, h: 680, label: "إعلان A4",     ratio: "1:1.41" },
+      adTall:      { w: 360, h: 800, label: "إعلان طويل",   ratio: "9:20" },
+      adLong:      { w: 360, h: 960, label: "إعلان مرتفع",  ratio: "3:8"  },
     };
 
     const PALETTES = [
@@ -1721,7 +1725,7 @@
             if (typeof d.bannerSize === "number") setBannerSize(d.bannerSize);
             if (typeof d.titleSize === "number") setTitleSize(d.titleSize);
             if (typeof d.bodySize === "number") setBodySize(d.bodySize);
-            if (["story","post"].includes(d.canvas)) setCanvas(d.canvas);
+            if (["story","storyLand","post","adA4","adTall","adLong"].includes(d.canvas)) setCanvas(d.canvas);
             if (typeof d.bgPattern === "string" && BG_PATTERNS[d.bgPattern]) setBgPattern(d.bgPattern);
             if (["right","center","justify","left"].includes(d.bodyAlign)) setBodyAlign(d.bodyAlign);
             if (typeof d.showDate === "boolean") setShowDate(d.showDate);
@@ -1901,7 +1905,7 @@
         if (typeof d.bannerSize === "number") setBannerSize(d.bannerSize);
         if (typeof d.titleSize === "number") setTitleSize(d.titleSize);
         if (typeof d.bodySize === "number") setBodySize(d.bodySize);
-        if (["story","post"].includes(d.canvas)) setCanvas(d.canvas);
+        if (["story","storyLand","post","adA4","adTall","adLong"].includes(d.canvas)) setCanvas(d.canvas);
         if (typeof d.bgPattern === "string" && BG_PATTERNS[d.bgPattern]) setBgPattern(d.bgPattern);
         if (["right","center","justify","left"].includes(d.bodyAlign)) setBodyAlign(d.bodyAlign);
         if (typeof d.showDate === "boolean") setShowDate(d.showDate);
