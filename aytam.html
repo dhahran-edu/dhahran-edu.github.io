@@ -22,6 +22,11 @@
   body.dark tr:hover td{background:#243244}
   body.dark .upstat{background:#0f172a}
   body.dark input,body.dark select{background:#0f172a;color:var(--ink)}
+  body.dark .weights{background:#0f2a28;border-color:#155e56}
+  body.dark .clickhint{background:#0f2a28;border-color:#155e56;color:#5eead4}
+  body.dark .heat td.lbl{background:#0f172a}
+  body.dark .upcard[style]{background:#2a2410!important}
+  body.dark .reco{background:var(--card)}
   *{box-sizing:border-box}
   body{margin:0;font-family:"Segoe UI","Tajawal",system-ui,Tahoma,Arial,sans-serif;
     background:var(--bg);color:var(--ink);font-size:14px}
@@ -49,16 +54,16 @@
   .ms{position:relative;min-width:165px}
   .ms label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:700}
   .ms .btn{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:9px;
-    background:#fff;cursor:pointer;text-align:right;font-size:13px;display:flex;
+    background:var(--card);color:var(--ink);cursor:pointer;text-align:right;font-size:13px;display:flex;
     justify-content:space-between;align-items:center;gap:6px}
   .ms .btn .cnt{background:var(--green);color:#fff;border-radius:20px;padding:0 7px;font-size:11px;font-weight:700}
   .ms .pop{position:absolute;z-index:30;top:100%;right:0;margin-top:4px;width:240px;
-    background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.16);
+    background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.16);
     padding:8px;display:none;max-height:300px;overflow:auto}
   .ms.open .pop{display:block}
-  .ms .pop input.search{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:7px;margin-bottom:6px;font-size:12px}
+  .ms .pop input.search{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:7px;margin-bottom:6px;font-size:12px;background:var(--card);color:var(--ink)}
   .ms .pop .opt{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:13px}
-  .ms .pop .opt:hover{background:#f0fdfa}
+  .ms .pop .opt:hover{background:rgba(20,184,166,.14)}
   .ms .pop .opt .c{color:var(--muted);margin-right:auto;font-size:11px}
   .clr{background:var(--gold);color:#fff;border:none;border-radius:9px;padding:9px 16px;
     cursor:pointer;font-weight:700;font-size:13px;height:37px}
@@ -84,12 +89,12 @@
   .chart.vert .cv{height:300px}
   .chart.tall .cv{height:460px}
 
-  table{width:100%;border-collapse:collapse;background:#fff;font-size:12.5px}
+  table{width:100%;border-collapse:collapse;background:var(--card);color:var(--ink);font-size:12.5px}
   .tablecard{background:var(--card);border:1px solid var(--line);border-radius:14px;
     padding:14px 16px;margin-top:18px;overflow:auto}
-  th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;color:var(--ink)}
   th{background:#f0fdfa;color:var(--green-d);font-weight:800;position:sticky;top:0}
-  tr:hover td{background:#f8fafc}
+  tr:hover td{background:rgba(20,184,166,.08)}
   .note{color:var(--muted);font-size:12px;margin-top:8px}
 
   /* recommendations */
