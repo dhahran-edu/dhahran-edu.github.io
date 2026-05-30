@@ -3,7 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- منع التخزين المؤقت — يجبر المتصفح على جلب أحدث نسخة (فعّال خصوصاً على الإنترنت/GitHub Pages) -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>لوحة تحليل بيانات جمعية بناء لرعاية الأيتام</title>
+<script>window.__BUILD__='نسخة 2026-05-30 (v8)';</script>
 <script src="chart.min.js"></script>
 <script src="xlsx.full.min.js"></script>
 <style>
@@ -331,6 +336,27 @@
       <p class="note" style="margin:4px 0 10px">أعمار 17 فأكثر — يُنصح بالتأهيل والتوظيف قبل انتهاء الكفالة.</p>
       <div id="table-age"></div>
     </div>
+    <div class="tablecard">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0;color:#be123c">④ أطفال مرضى بلا تأمين طبي</h3>
+        <button class="exp" id="exp-uninsured">⬇ تصدير</button></div>
+      <p class="note" style="margin:4px 0 10px">تابعون حالتهم «مريض» ولا يوجد لديهم تأمين طبي — أولوية تغطية صحية.</p>
+      <div id="table-uninsured"></div>
+    </div>
+    <div class="tablecard">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0;color:#a16207">⑤ طلاب ضعاف أكاديمياً (أقل من 60%)</h3>
+        <button class="exp" id="exp-weak">⬇ تصدير</button></div>
+      <p class="note" style="margin:4px 0 10px">يحتاجون دعماً أكاديمياً عاجلاً قبل التعثّر أو التسرّب.</p>
+      <div id="table-weak"></div>
+    </div>
+    <div class="tablecard">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0;color:#9333ea">⑥ أسر بلا أي دعم (تحتاج كفالة ولا تستلم من جهات أخرى)</h3>
+        <button class="exp" id="exp-nosupport">⬇ تصدير</button></div>
+      <p class="note" style="margin:4px 0 10px">أسر تحتاج كفالة ولا تستلم دعماً من جمعيات أخرى — الأولى بالكفالة.</p>
+      <div id="table-nosupport"></div>
+    </div>
   </div>
   <div class="panel" id="panel-pipeline">
     <div class="ptitle">خط التعليم والتنبؤ</div>
@@ -356,6 +382,20 @@
     <div class="tablecard">
       <h3 style="margin:0 0 10px;color:var(--green-d)">خريطة حرارية: الحالة الصحية × شريحة الدخل</h3>
       <div id="heat-healthinc" style="overflow:auto"></div>
+    </div>
+    <div class="secttl" style="margin-top:6px">مقارنة حسب فئة الملف (أ / ب / ج / د)</div>
+    <div class="grid" id="grid-compare2"></div>
+    <div class="tablecard">
+      <h3 style="margin:0 0 10px;color:var(--green-d)">خريطة حرارية: المهنة × المحافظة</h3>
+      <div id="heat-occgov" style="overflow:auto"></div>
+    </div>
+    <div class="tablecard">
+      <h3 style="margin:0 0 10px;color:var(--green-d)">خريطة حرارية: المستوى الأكاديمي × النوع (التابعون)</h3>
+      <div id="heat-acadgender" style="overflow:auto"></div>
+    </div>
+    <div class="tablecard">
+      <h3 style="margin:0 0 10px;color:var(--green-d)">خريطة حرارية: التأمين الطبي × المحافظة (التابعون)</h3>
+      <div id="heat-insgov" style="overflow:auto"></div>
     </div>
   </div>
   <div class="panel" id="panel-quality">
@@ -420,7 +460,9 @@ const CONFIG={
    filters:[['category','فئة الملف'],['gov','المحافظة'],['marital','الحالة الاجتماعية'],
      ['nationality','الجنسية'],['education','المستوى التعليمي'],['health','الحالة الصحية'],
      ['needsKafala','يحتاج لكفالة'],['housingOwn','ملكية السكن'],['housingType','نوع السكن'],
-     ['district','الحي'],['ageRange','الفئة العمرية'],['disability','إعاقة']],
+     ['district','الحي'],['ageRange','الفئة العمرية'],['disability','إعاقة'],
+     ['occupation','المهنة'],['financeStatus','الوضع المالي'],['otherAid','دعم جمعيات أخرى'],
+     ['chronic','مرض مستعصي'],['deathCause','سبب اليُتم']],
    kpis:r=>[
      ['عدد الأسر (المستفيدات)',fmt(r.length)],
      ['إجمالي التابعين',fmt(sum(r,'dependents'))],
@@ -428,6 +470,9 @@ const CONFIG={
      ['بحاجة لكفالة',fmt(cnt(r,'needsKafala','نعم'))],
      ['متوسط دخل الأسرة (ر.س)',fmt(avg(r,'income'))],
      ['نسبة المريضات',pct(cnt(r,'health','مريض'),r.length)+'%'],
+     ['بها مرض مستعصي',fmt(cnt(r,'chronic','نعم'))],
+     ['أسر بعجز مالي',fmt(cnt(r,'financeStatus','عجز'))],
+     ['تستلم دعماً من جهات أخرى',fmt(cnt(r,'otherAid','نعم'))],
    ],
    charts:[
      {t:'التصنيف حسب فئة الملف',type:'bar',field:'category',f:r=>countBy(r,'category',{order:['أ','ب','ج','د','مؤقت']})},
@@ -445,6 +490,11 @@ const CONFIG={
      {t:'عدد الأيتام في الأسرة',type:'bar',f:r=>countBy(r,'orphans',{order:['1','2','3','4','5','6','7','8','9']})},
      {t:'أكثر 10 أحياء',type:'bar',field:'district',f:r=>countBy(r,'district',{top:10})},
      {t:'أكثر 8 جنسيات',type:'bar',field:'nationality',f:r=>countBy(r,'nationality',{top:8})},
+     {t:'المهنة / الحالة العملية',type:'bar',field:'occupation',f:r=>countBy(r,'occupation',{top:8})},
+     {t:'الوضع المالي (دخل مقابل مصروفات)',type:'doughnut',field:'financeStatus',f:r=>countBy(r,'financeStatus')},
+     {t:'تستلم دعماً من جمعيات أخرى',type:'doughnut',field:'otherAid',f:r=>countBy(r,'otherAid')},
+     {t:'مرض مستعصي في الأسرة',type:'doughnut',field:'chronic',f:r=>countBy(r,'chronic')},
+     {t:'سبب اليُتم (وفاة الأب)',type:'bar',field:'deathCause',f:r=>countBy(r,'deathCause')},
    ],
    table:[['name','الاسم'],['category','الفئة'],['gov','المحافظة'],['marital','الحالة الاجتماعية'],
      ['dependents','التابعين'],['orphans','الأيتام'],['income','دخل الأسرة'],['health','الصحة'],['needsKafala','كفالة']]
@@ -454,7 +504,8 @@ const CONFIG={
    filters:[['category','فئة الملف'],['gender','النوع'],['orphan','يتيم'],
      ['ageStage','المرحلة العمرية'],['ageRange','الفئة العمرية (سنوات)'],['schoolStage','المرحلة الدراسية'],
      ['eduStatus','الحالة التعليمية'],['health','الحالة الصحية'],
-     ['needsRehab','بحاجة لتأهيل'],['nationality','الجنسية']],
+     ['needsRehab','بحاجة لتأهيل'],['nationality','الجنسية'],
+     ['academicLevel','المستوى الأكاديمي'],['talents','لديه مواهب'],['insurance','التأمين الطبي'],['transport','يحتاج نقل']],
    kpis:r=>[
      ['عدد التابعين',fmt(r.length)],
      ['عدد الأيتام',fmt(cnt(r,'orphan','نعم'))],
@@ -462,6 +513,8 @@ const CONFIG={
      ['منتظمون دراسياً',pct(cnt(r,'eduStatus','منتظم دراسياً'),r.length)+'%'],
      ['متعثرون/منقطعون',fmt(cnt(r,'eduStatus','منقطع عن الدراسة')+cnt(r,'eduStatus','متأخر دراسياً'))],
      ['بحاجة لتأهيل',fmt(cnt(r,'needsRehab','نعم'))],
+     ['متفوقون (90%+)',fmt(cnt(r,'academicLevel','ممتاز (90+)'))],
+     ['مرضى بلا تأمين',fmt(r.filter(x=>String(x.health)==='مريض'&&String(x.insurance)==='لا').length)],
    ],
    charts:[
      {t:'النوع',type:'doughnut',field:'gender',f:r=>countBy(r,'gender')},
@@ -475,6 +528,10 @@ const CONFIG={
      {t:'الفئات العمرية (سنوات)',type:'bar',field:'ageRange',f:r=>bucket(r,'age',DAGE_EDGES,DAGE_LBL)},
      {t:'المرحلة الدراسية',type:'bar',tall:true,field:'schoolStage',f:r=>countBy(r,'schoolStage',{top:18})},
      {t:'الهرم العمري (ذكور / إناث)',type:'bar',pyramid:true,tall:true,f:r=>pyramid(r,DAGE_EDGES,DAGE_LBL)},
+     {t:'المستوى الأكاديمي',type:'bar',field:'academicLevel',f:r=>countBy(r,'academicLevel',{order:['ممتاز (90+)','جيد جداً (80-89)','جيد (70-79)','مقبول (60-69)','ضعيف (<60)']})},
+     {t:'لديه مواهب',type:'doughnut',field:'talents',f:r=>countBy(r,'talents')},
+     {t:'التأمين الطبي',type:'doughnut',field:'insurance',f:r=>countBy(r,'insurance')},
+     {t:'يحتاج وسيلة نقل',type:'doughnut',field:'transport',f:r=>countBy(r,'transport')},
    ],
    table:[['name','الاسم'],['gender','النوع'],['orphan','يتيم'],['age','العمر'],
      ['schoolStage','المرحلة الدراسية'],['eduStatus','الحالة التعليمية'],['health','الصحة'],['needsRehab','تأهيل']]
@@ -708,13 +765,33 @@ function buildRecos(){
   if(avgInc) recos.push({tag:'تمكين اقتصادي',h:'💼 الدخل والتمكين',
     b:`متوسط دخل الأسرة <b>≈ ${fmt(avgInc)} ر.س</b>${q1?`، وربع الأسر تحت ${fmt(q1)} ر.س`:''}:`,
     l:['استهداف الأسر في أدنى شرائح الدخل ببرامج تمكين/مشاريع صغيرة','ربط الأمهات القادرات على العمل بفرص عمل','متابعة الأبناء فوق 18 سنة ببرامج توظيف']});
+  // ---- recommendations from the new fields ----
+  const chronic=cnt(B,'chronic','نعم'), deficit=cnt(B,'financeStatus','عجز');
+  const noSup=B.filter(r=>String(r.needsKafala)==='نعم'&&String(r.otherAid)==='لا').length;
+  const unins=D.filter(r=>String(r.health)==='مريض'&&String(r.insurance)==='لا').length;
+  const weak=cnt(D,'academicLevel','ضعيف (<60)'), excellent=cnt(D,'academicLevel','ممتاز (90+)');
+  if(chronic) recos.push({tag:'أولوية صحية',h:'🩺 الأمراض المستعصية',
+    b:`<b>${fmt(chronic)} أسرة</b> بها مرض مستعصي:`,
+    l:['برنامج رعاية صحية/مالية خاص بالأمراض المستعصية','تنسيق مع جهات علاجية متخصصة','إعطاؤها أولوية قصوى في الكفالة والتدخل']});
+  if(unins) recos.push({tag:'أولوية صحية',h:'🏥 أطفال بلا تأمين طبي',
+    b:`<b>${fmt(unins)} طفلاً مريضاً بلا تأمين طبي</b>:`,
+    l:['توفير تغطية تأمينية أو دعم علاجي لهم','حصرهم من قائمة الإنذار المبكر وتوزيعها','شراكة مع جهات صحية لتغطية غير المؤمَّن عليهم']});
+  if(noSup) recos.push({tag:'فرص دعم',h:'🤝 أسر بلا أي دعم',
+    b:`<b>${fmt(noSup)} أسرة</b> تحتاج كفالة ولا تستلم دعماً من أي جهة أخرى:`,
+    l:['هذه الأسر الأولى بالكفالة (لا دعم بديل)','توجيه المانحين إليها أولاً','تجنّب ازدواجية الدعم بالتركيز على غير المدعومين']});
+  if(weak) recos.push({tag:'دعم تعليمي',h:'📚 ضعف أكاديمي',
+    b:`<b>${fmt(weak)} طالباً</b> معدّلهم أقل من 60% (و${fmt(excellent)} متفوق 90%+):`,
+    l:['برنامج دروس تقوية للطلاب الضعاف','برنامج منح/تميّز للمتفوقين','ربط المتفوقين قرب التخرج بفرص جامعية ومنح']});
+  if(deficit) recos.push({tag:'تمكين اقتصادي',h:'📉 أسر بعجز مالي',
+    b:`<b>${fmt(deficit)} أسرة</b> مصروفاتها تتجاوز دخلها:`,
+    l:['مراجعة أولوية الدعم المالي لها','برامج ترشيد/إدارة ميزانية الأسرة','إدراجها ضمن التمكين الاقتصادي']});
   recos.forEach(r=>{const d=document.createElement('div');d.className='reco';
     d.innerHTML=`<span class="tag">${r.tag}</span><h3>${r.h}</h3><div>${r.b}</div><ul>${r.l.map(x=>`<li>${x}</li>`).join('')}</ul>`;
     rh.appendChild(d)});
 }
 
 // ---------- combined analysis ----------
-const WEIGHTS={kafala:30,health:15,orphan:8,income:30};
+const WEIGHTS={kafala:30,health:15,orphan:8,income:30,chronic:15,deficit:12,noAid:10};
 let FAMS=[], PRIOQ='', COMBO_CHARTS=[];
 const COMBO_FILTER={nKids:null,band:null,stage:null};   // set by clicking the combined-tab charts
 const bandOf=s=>s>=70?'high':s>=45?'mid':'low';
@@ -734,6 +811,9 @@ function scoreFamily(f){
   const inc=f.inc;
   if(inc>0){if(inc<2000)s+=WEIGHTS.income;else if(inc<4000)s+=WEIGHTS.income*0.66;else if(inc<6000)s+=WEIGHTS.income*0.33}
   else s+=WEIGHTS.income*0.5;
+  if(String(b.chronic)==='نعم')s+=WEIGHTS.chronic;
+  if(String(b.financeStatus)==='عجز')s+=WEIGHTS.deficit;
+  if(String(b.otherAid)==='لا')s+=WEIGHTS.noAid;   // higher priority if NOT supported elsewhere
   return Math.round(s);
 }
 function buildCombo(){
@@ -784,10 +864,11 @@ function renderCombo(){
   const avgKids=linked.length?linked.reduce((a,f)=>a+f.nKids,0)/linked.length:0;
   const sickMany=fams.filter(f=>String(f.b.health)==='مريض'&&(Number(f.b.orphans)||0)>=3).length;
   const noKafalaOrphan=fams.filter(f=>String(f.b.needsKafala)==='نعم'&&(Number(f.b.orphans)||0)>=3).length;
+  const uninsFam=fams.filter(f=>f.kids.some(k=>String(k.health)==='مريض'&&String(k.insurance)==='لا')).length;
   const kh=document.getElementById('kpis-combo');kh.innerHTML='';
   [['أسر مرتبطة بأبناء',fmt(linked.length)],['متوسط الأبناء/الأسرة',avgKids.toFixed(1)],
    ['أسر (أم مريضة + 3 أيتام فأكثر)',fmt(sickMany)],['أسر تحتاج كفالة و3 أيتام+',fmt(noKafalaOrphan)],
-   ['أسر بلا أبناء مسجلين',fmt(fams.length-linked.length)]
+   ['أسر بها طفل مريض بلا تأمين',fmt(uninsFam)],['أسر بلا أبناء مسجلين',fmt(fams.length-linked.length)]
   ].forEach(([l,v])=>{const d=document.createElement('div');d.className='kpi';
     d.innerHTML=`<div class="v">${v}</div><div class="l">${l}</div>`;kh.appendChild(d)});
   COMBO_CHARTS.forEach(({ch,compute})=>{const r=compute(fams);ch.data.labels=r.labels;ch.data.datasets[0].data=r.data;ch.update();});
@@ -796,7 +877,8 @@ function renderCombo(){
 let PRIO_CHART=null;
 function buildWeights(){
   const defs=[['kafala','وزن الحاجة للكفالة',0,50],['health','وزن مرض الأم',0,40],
-    ['orphan','وزن كل يتيم',0,15],['income','وزن انخفاض الدخل',0,50]];
+    ['orphan','وزن كل يتيم',0,15],['income','وزن انخفاض الدخل',0,50],
+    ['chronic','وزن المرض المستعصي',0,40],['deficit','وزن العجز المالي',0,40],['noAid','وزن عدم وجود دعم آخر',0,40]];
   const h=document.getElementById('weights');h.innerHTML='';
   defs.forEach(([k,lbl,mn,mx])=>{
     const w=document.createElement('div');w.className='w';
@@ -809,7 +891,7 @@ function buildWeights(){
   });
   const reset=document.createElement('button');reset.className='clr';reset.style.alignSelf='flex-end';
   reset.textContent='استعادة الافتراضي';
-  reset.onclick=()=>{Object.assign(WEIGHTS,{kafala:30,health:15,orphan:8,income:30});
+  reset.onclick=()=>{Object.assign(WEIGHTS,{kafala:30,health:15,orphan:8,income:30,chronic:15,deficit:12,noAid:10});
     FAMS.forEach(f=>f.score=scoreFamily(f));buildWeights();renderCombo()};
   h.appendChild(reset);
 }
@@ -898,10 +980,12 @@ function buildQuality(){
   };
   const g=document.getElementById('grid-quality');
   g.innerHTML=fields(BENEFICIARIES,[['nid','رقم الهوية'],['phone','رقم الجوال'],['iban','رقم الأيبان'],
-      ['income','الدخل'],['orphans','عدد الأيتام'],['education','المستوى التعليمي'],
-      ['district','الحي'],['housingOwn','ملكية السكن']],'اكتمال بيانات المستفيدين')
+      ['income','الدخل'],['expenses','المصروفات'],['orphans','عدد الأيتام'],['education','المستوى التعليمي'],
+      ['district','الحي'],['housingOwn','ملكية السكن'],['occupation','المهنة'],['otherAid','دعم جهات أخرى'],
+      ['chronic','مرض مستعصي'],['deathCause','سبب الوفاة']],'اكتمال بيانات المستفيدين')
     +fields(DEPENDENTS,[['nid','رقم الهوية'],['schoolStage','المرحلة الدراسية'],['nationality','الجنسية'],
-      ['eduStatus','الحالة التعليمية'],['health','الحالة الصحية'],['ageStage','المرحلة العمرية']],'اكتمال بيانات التابعين');
+      ['eduStatus','الحالة التعليمية'],['health','الحالة الصحية'],['ageStage','المرحلة العمرية'],
+      ['gradePct','النسبة المئوية'],['insurance','التأمين الطبي'],['talents','المواهب'],['transport','وسيلة النقل']],'اكتمال بيانات التابعين');
   g.innerHTML+=`<div class="chart wide" style="background:#fffbeb;border-color:#fde68a">
     <h3>ℹ️ ملاحظات لتحسين الجودة</h3>
     <ul style="line-height:2;margin:0;padding-right:18px">
@@ -940,9 +1024,17 @@ function parseExcel(file){
     return XLSX.utils.sheet_to_json(ws,{defval:null,raw:true});
   });
 }
+// derive financeStatus (income vs expenses) and academicLevel (from grade %) — like ageRange stamping
+function stampExtras(){
+  BENEFICIARIES.forEach(r=>{const inc=Number(r.income),exp=Number(r.expenses);
+    r.financeStatus=(inc>0&&exp>0)?(exp>inc?'عجز':'متوازن/فائض'):null;});
+  DEPENDENTS.forEach(r=>{const g=Number(r.gradePct);
+    r.academicLevel=(r.gradePct==null||isNaN(g))?null:(g>=90?'ممتاز (90+)':g>=80?'جيد جداً (80-89)':g>=70?'جيد (70-79)':g>=60?'مقبول (60-69)':'ضعيف (<60)');});
+}
 function replaceData(benRows,depRows){
   if(benRows){BENEFICIARIES.length=0;BENEFICIARIES.push(...benRows);stampAgeRange(BENEFICIARIES,AGE_B_EDGES,AGE_B_LBL)}
   if(depRows){DEPENDENTS.length=0;DEPENDENTS.push(...depRows);stampAgeRange(DEPENDENTS,DAGE_EDGES,DAGE_LBL)}
+  stampExtras();
 }
 function rebuildAll(){
   Object.keys(tabCharts).forEach(k=>{tabCharts[k].forEach(c=>{try{c.destroy()}catch(e){}});tabCharts[k]=[]});
@@ -1021,17 +1113,21 @@ function csvFrom(headers,rows,cellVals,name){
 }
 
 // ---------- 🚨 early-warning / alerts ----------
-let RISK=[],DROP=[],AGEOUT=[];
+let RISK=[],DROP=[],AGEOUT=[],UNINS=[],WEAK=[],NOSUP=[];
 function riskScore(f){let s=0;const b=f.b;
   if(String(b.health)==='مريض')s+=3;
+  if(String(b.chronic)==='نعم')s+=3;
   const o=Number(b.orphans)||f.orphanKids||0; s+=o>=4?3:o>=2?2:o>=1?1:0;
   if(f.inc>0){if(f.inc<2000)s+=3;else if(f.inc<4000)s+=2;else if(f.inc<6000)s+=1}else s+=2;
+  if(String(b.financeStatus)==='عجز')s+=2;
   if(String(b.needsKafala)==='نعم')s+=1;
   return s;}
 function riskReasons(f){const r=[],b=f.b;
   if(String(b.health)==='مريض')r.push('الأم مريضة');
+  if(String(b.chronic)==='نعم')r.push('مرض مستعصي');
   const o=Number(b.orphans)||0;if(o>=3)r.push(o+' أيتام');
   if(f.inc>0&&f.inc<3000)r.push('دخل منخفض');else if(!f.inc)r.push('دخل غير مسجل');
+  if(String(b.financeStatus)==='عجز')r.push('عجز مالي');
   if(String(b.needsKafala)==='نعم')r.push('بحاجة كفالة');
   return r.join(' · ');}
 function buildAlerts(){
@@ -1040,9 +1136,14 @@ function buildAlerts(){
   const high=RISK.filter(x=>x.score>=8).length, mid=RISK.filter(x=>x.score>=6&&x.score<8).length;
   DROP=DEPENDENTS.filter(d=>['منقطع عن الدراسة','متأخر دراسياً','مؤجل ','مؤجل'].includes(String(d.eduStatus).trim()));
   AGEOUT=DEPENDENTS.filter(d=>{const a=Number(d.age);return !isNaN(a)&&a>=17&&a<=18&&String(d.orphan)==='نعم';}).sort((a,b)=>Number(b.age)-Number(a.age));
+  UNINS=DEPENDENTS.filter(d=>String(d.health)==='مريض'&&String(d.insurance)==='لا');
+  WEAK=DEPENDENTS.filter(d=>String(d.academicLevel)==='ضعيف (<60)').sort((a,b)=>Number(a.gradePct)-Number(b.gradePct));
+  NOSUP=fams.filter(f=>String(f.b.needsKafala)==='نعم'&&String(f.b.otherAid)==='لا')
+    .map(f=>({f,score:riskScore(f)})).sort((a,b)=>b.score-a.score);
   const k=document.getElementById('kpis-alerts');k.innerHTML='';
   [['أسر عالية الخطورة',fmt(high)],['أسر متوسطة الخطورة',fmt(mid)],
-   ['طلاب معرّضون للتسرّب',fmt(DROP.length)],['أيتام بعمر 17-18',fmt(AGEOUT.length)]
+   ['طلاب معرّضون للتسرّب',fmt(DROP.length)],['أيتام بعمر 17-18',fmt(AGEOUT.length)],
+   ['مرضى بلا تأمين',fmt(UNINS.length)],['ضعاف أكاديمياً',fmt(WEAK.length)],['أسر بلا أي دعم',fmt(NOSUP.length)]
   ].forEach(([l,v])=>k.appendChild(kpiCard(l,v)));
   // risk table
   pagedTable('table-risk',
@@ -1058,6 +1159,19 @@ function buildAlerts(){
   pagedTable('table-age',
     ['#','الاسم','العمر','المرحلة الدراسية','النوع','رقم ملف الولي'],AGEOUT,
     [(d,i)=>i+1,d=>d.name,d=>d.age,d=>d.schoolStage,d=>d.gender,d=>d.guardianFile],'تابع بعمر 17-18 سنة');
+  // sick & uninsured
+  pagedTable('table-uninsured',
+    ['#','الاسم','العمر','النوع','المرحلة الدراسية','رقم ملف الولي'],UNINS,
+    [(d,i)=>i+1,d=>d.name,d=>d.age,d=>d.gender,d=>d.schoolStage,d=>d.guardianFile],'تابع مريض بلا تأمين');
+  // academically weak
+  pagedTable('table-weak',
+    ['#','الاسم','العمر','المرحلة الدراسية','النسبة %','رقم ملف الولي'],WEAK,
+    [(d,i)=>i+1,d=>d.name,d=>d.age,d=>d.schoolStage,d=>d.gradePct!=null?d.gradePct+'%':'—',d=>d.guardianFile],'طالب ضعيف أكاديمياً');
+  // no support at all
+  pagedTable('table-nosupport',
+    ['#','الاسم','الفئة','المحافظة','الأيتام','الدخل','المؤشر'],NOSUP,
+    [(x,i)=>i+1,x=>x.f.b.name,x=>x.f.b.category,x=>x.f.b.gov,x=>x.f.b.orphans,x=>x.f.inc?fmt(x.f.inc):'—',
+     x=>`<span class="riskbadge ${x.score>=8?'rb-high':x.score>=6?'rb-mid':'rb-low'}">${x.score}</span>`],'أسرة بلا أي دعم');
 }
 
 // ---------- 📈 education pipeline & forecast ----------
@@ -1136,10 +1250,33 @@ function buildCompare(){
     datasets:govs.map((g,i)=>({label:g,data:metrics.map(m=>m[1](g)),backgroundColor:i===0?'#0f766e':'#d97706',borderRadius:5}))},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'},tooltip:{rtl:true}},
       scales:{x:{ticks:{font:{size:12}}},y:{ticks:{font:{size:11}}}}}});tabCharts.compare.push(ch);
+  // category (أ/ب/ج/د) comparison — grouped chart
+  const cats=['أ','ب','ج','د'];
+  const host2=document.getElementById('grid-compare2');host2.innerHTML='';
+  const cmetrics=[['عدد الأسر',c=>BENEFICIARIES.filter(r=>String(r.category)===c).length],
+    ['الأيتام',c=>sum(BENEFICIARIES.filter(r=>String(r.category)===c),'orphans')],
+    ['محتاجو كفالة',c=>cnt(BENEFICIARIES.filter(r=>String(r.category)===c),'needsKafala','نعم')],
+    ['متوسط الدخل',c=>Math.round(avg(BENEFICIARIES.filter(r=>String(r.category)===c),'income'))]];
+  const card2=document.createElement('div');card2.className='chart wide';
+  card2.innerHTML=`<h3>مؤشرات حسب فئة الملف</h3><div class="cv"><canvas></canvas></div>`;host2.appendChild(card2);
+  const pal=['#0f766e','#14b8a6','#d97706','#6366f1'];
+  const ch2=new Chart(card2.querySelector('canvas'),{type:'bar',data:{labels:cmetrics.map(m=>m[0]),
+    datasets:cats.map((c,i)=>({label:'فئة '+c,data:cmetrics.map(m=>m[1](c)),backgroundColor:pal[i],borderRadius:5}))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'},tooltip:{rtl:true}},
+      scales:{x:{ticks:{font:{size:12}}},y:{ticks:{font:{size:11}}}}}});tabCharts.compare.push(ch2);
   // heatmaps
   heatmap('heat-catgov',BENEFICIARIES,'category',['أ','ب','ج','د','مؤقت'],'gov',['الدمام','الخبر']);
   const incBracket=r=>{const v=Number(r.income);if(isNaN(v)||v<=0)return 'غير مسجل';return v<2000?'<2000':v<4000?'2000-3999':v<6000?'4000-5999':'6000+';};
   heatmapFn('heat-healthinc',BENEFICIARIES,r=>String(r.health),['سليم','مريض'],incBracket,['<2000','2000-3999','4000-5999','6000+','غير مسجل']);
+  // occupation × gov
+  const topOcc=countBy(BENEFICIARIES,'occupation',{top:5}).labels;
+  heatmap('heat-occgov',BENEFICIARIES,'occupation',topOcc,'gov',['الدمام','الخبر']);
+  // academic level × gender (dependents)
+  heatmapFn('heat-acadgender',DEPENDENTS,r=>String(r.academicLevel),
+    ['ممتاز (90+)','جيد جداً (80-89)','جيد (70-79)','مقبول (60-69)','ضعيف (<60)'],r=>String(r.gender),['ذكر','أنثى']);
+  // insurance × gov (dependents, gov via guardian)
+  const govByFile={};BENEFICIARIES.forEach(b=>govByFile[String(b.fileNo)]=String(b.gov));
+  heatmapFn('heat-insgov',DEPENDENTS,r=>String(r.insurance),['نعم','لا'],r=>govByFile[String(r.guardianFile)]||'—',['الدمام','الخبر']);
 }
 function heatmap(id,rows,rowKey,rowVals,colKey,colVals){heatmapFn(id,rows,r=>String(r[rowKey]),rowVals,r=>String(r[colKey]),colVals);}
 function heatmapFn(id,rows,rowFn,rowVals,colFn,colVals){
@@ -1170,7 +1307,7 @@ function buildCover(){
 
 // ---------- init ----------
 const ORIG_BEN=[...BENEFICIARIES], ORIG_DEP=[...DEPENDENTS];   // pristine copy for reset
-stampAgeRange(BENEFICIARIES,AGE_B_EDGES,AGE_B_LBL);stampAgeRange(DEPENDENTS,DAGE_EDGES,DAGE_LBL);
+stampAgeRange(BENEFICIARIES,AGE_B_EDGES,AGE_B_LBL);stampAgeRange(DEPENDENTS,DAGE_EDGES,DAGE_LBL);stampExtras();
 const META={ben:'البيانات الأصلية',dep:'البيانات الأصلية',benCls:'',depCls:''};
 // restore previously-saved uploads — each file independently; an empty/missing save keeps the ORIGINAL data
 try{
@@ -1230,10 +1367,21 @@ document.getElementById('exp-drop').onclick=()=>csvFrom(
 document.getElementById('exp-age').onclick=()=>csvFrom(
   ['#','الاسم','العمر','المرحلة الدراسية','النوع','رقم ملف الولي'],AGEOUT,
   (d,i)=>[i+1,d.name,d.age,d.schoolStage,d.gender,d.guardianFile],'الأيتام_المقبلون_على_18');
+document.getElementById('exp-uninsured').onclick=()=>csvFrom(
+  ['#','الاسم','العمر','النوع','المرحلة الدراسية','رقم ملف الولي'],UNINS,
+  (d,i)=>[i+1,d.name,d.age,d.gender,d.schoolStage,d.guardianFile],'مرضى_بلا_تأمين');
+document.getElementById('exp-weak').onclick=()=>csvFrom(
+  ['#','الاسم','العمر','المرحلة الدراسية','النسبة المئوية','رقم ملف الولي'],WEAK,
+  (d,i)=>[i+1,d.name,d.age,d.schoolStage,d.gradePct,d.guardianFile],'ضعاف_أكاديمياً');
+document.getElementById('exp-nosupport').onclick=()=>csvFrom(
+  ['#','الاسم','الفئة','المحافظة','الجوال','الأيتام','الدخل','المؤشر'],NOSUP,
+  (x,i)=>[i+1,x.f.b.name,x.f.b.category,x.f.b.gov,x.f.b.phone,x.f.b.orphans,x.f.inc||'',x.score],'أسر_بلا_دعم');
 
 // theme toggle
 document.getElementById('btn-theme').onclick=()=>applyTheme(!document.body.classList.contains('dark'));
 try{if(localStorage.getItem('banaa_theme')==='dark')applyTheme(true)}catch(e){}
+// visible build stamp — if you don't see this exact version after refresh, the browser is showing a cached copy
+try{const hp=document.querySelector('header p');if(hp&&window.__BUILD__)hp.innerHTML+=` &nbsp;•&nbsp; <span style="opacity:.85">${window.__BUILD__}</span>`;}catch(e){}
 
 buildFilters('ben');buildFilters('dep');   // filters work fine while hidden
 buildRecos();refreshStatus();
