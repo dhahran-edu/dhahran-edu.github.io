@@ -75,11 +75,11 @@
   .exp{background:var(--green);color:#fff;border:none;border-radius:9px;padding:9px 16px;
     cursor:pointer;font-weight:700;font-size:13px;height:37px}
 
-  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:13px;margin-bottom:20px}
-  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;
+  .kpis{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+  .kpi{flex:1 1 180px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 18px;
     position:relative;overflow:hidden}
   .kpi::before{content:"";position:absolute;top:0;right:0;width:5px;height:100%;background:var(--green-l)}
-  .kpi .v{font-size:27px;font-weight:800;color:var(--green-d)}
+  .kpi .v{font-size:25px;font-weight:800;color:var(--green-d);white-space:nowrap}
   .kpi .l{color:var(--muted);font-size:12.5px;margin-top:3px;font-weight:600}
 
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px}
@@ -146,7 +146,8 @@
   .danger:hover{background:#b91c1c}
 
   /* alerts / risk */
-  .alertgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:13px;margin-bottom:20px}
+  .alertgrid{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:20px}
+  .alertgrid .kpi{flex:1 1 180px}
   .riskbadge{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px}
   .rb-high{background:#fee2e2;color:#991b1b} .rb-mid{background:#fef3c7;color:#92400e} .rb-low{background:#dcfce7;color:#166534}
   .reasons{font-size:11px;color:var(--muted)}
@@ -179,9 +180,9 @@
     .grid{grid-template-columns:1fr!important}
     #grid-quality{grid-template-columns:1fr!important}
     .cmp{grid-template-columns:1fr}
-    .kpis{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
-    .alertgrid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
-    .kpi .v{font-size:22px}
+    .kpis,.alertgrid{gap:10px}
+    .kpi{padding:12px 14px}
+    .kpi .v{font-size:21px}
     .chart .cv{height:240px}
     .chart.wide .cv,.chart.tall .cv,.chart.vert .cv{height:300px}
     .filters{padding:10px;gap:8px}
@@ -464,15 +465,15 @@ const CONFIG={
      ['occupation','المهنة'],['financeStatus','الوضع المالي'],['otherAid','دعم جمعيات أخرى'],
      ['chronic','مرض مستعصي'],['deathCause','سبب اليُتم']],
    kpis:r=>[
-     ['عدد الأسر (المستفيدات)',fmt(r.length)],
-     ['إجمالي التابعين',fmt(sum(r,'dependents'))],
-     ['إجمالي الأيتام',fmt(sum(r,'orphans'))],
-     ['بحاجة لكفالة',fmt(cnt(r,'needsKafala','نعم'))],
-     ['متوسط دخل الأسرة (ر.س)',fmt(avg(r,'income'))],
-     ['نسبة المريضات',pct(cnt(r,'health','مريض'),r.length)+'%'],
-     ['بها مرض مستعصي',fmt(cnt(r,'chronic','نعم'))],
-     ['أسر بعجز مالي',fmt(cnt(r,'financeStatus','عجز'))],
-     ['تستلم دعماً من جهات أخرى',fmt(cnt(r,'otherAid','نعم'))],
+     ['👨‍👩‍👧‍👦 عدد الأسر (المستفيدات)',fmt(r.length)],
+     ['🧒 إجمالي التابعين',fmt(sum(r,'dependents'))],
+     ['🕊️ إجمالي الأيتام',fmt(sum(r,'orphans'))],
+     ['🤲 بحاجة لكفالة',fmt(cnt(r,'needsKafala','نعم'))],
+     ['💰 متوسط دخل الأسرة (ر.س)',fmt(avg(r,'income'))],
+     ['🩺 نسبة المريضات',pct(cnt(r,'health','مريض'),r.length)+'%'],
+     ['🏥 بها مرض مستعصي',fmt(cnt(r,'chronic','نعم'))],
+     ['📉 أسر بعجز مالي',fmt(cnt(r,'financeStatus','عجز'))],
+     ['🤝 تستلم دعماً من جهات أخرى',fmt(cnt(r,'otherAid','نعم'))],
    ],
    charts:[
      {t:'التصنيف حسب فئة الملف',type:'bar',field:'category',f:r=>countBy(r,'category',{order:['أ','ب','ج','د','مؤقت']})},
@@ -507,14 +508,14 @@ const CONFIG={
      ['needsRehab','بحاجة لتأهيل'],['nationality','الجنسية'],
      ['academicLevel','المستوى الأكاديمي'],['talents','لديه مواهب'],['insurance','التأمين الطبي'],['transport','يحتاج نقل']],
    kpis:r=>[
-     ['عدد التابعين',fmt(r.length)],
-     ['عدد الأيتام',fmt(cnt(r,'orphan','نعم'))],
-     ['الذكور / الإناث',fmt(cnt(r,'gender','ذكر'))+' / '+fmt(cnt(r,'gender','أنثى'))],
-     ['منتظمون دراسياً',pct(cnt(r,'eduStatus','منتظم دراسياً'),r.length)+'%'],
-     ['متعثرون/منقطعون',fmt(cnt(r,'eduStatus','منقطع عن الدراسة')+cnt(r,'eduStatus','متأخر دراسياً'))],
-     ['بحاجة لتأهيل',fmt(cnt(r,'needsRehab','نعم'))],
-     ['متفوقون (90%+)',fmt(cnt(r,'academicLevel','ممتاز (90+)'))],
-     ['مرضى بلا تأمين',fmt(r.filter(x=>String(x.health)==='مريض'&&String(x.insurance)==='لا').length)],
+     ['🧒 عدد التابعين',fmt(r.length)],
+     ['🕊️ عدد الأيتام',fmt(cnt(r,'orphan','نعم'))],
+     ['👦👧 الذكور / الإناث',fmt(cnt(r,'gender','ذكر'))+' / '+fmt(cnt(r,'gender','أنثى'))],
+     ['🎓 منتظمون دراسياً',pct(cnt(r,'eduStatus','منتظم دراسياً'),r.length)+'%'],
+     ['⚠️ متعثرون/منقطعون',fmt(cnt(r,'eduStatus','منقطع عن الدراسة')+cnt(r,'eduStatus','متأخر دراسياً'))],
+     ['♿ بحاجة لتأهيل',fmt(cnt(r,'needsRehab','نعم'))],
+     ['🏆 متفوقون (90%+)',fmt(cnt(r,'academicLevel','ممتاز (90+)'))],
+     ['🏥 مرضى بلا تأمين',fmt(r.filter(x=>String(x.health)==='مريض'&&String(x.insurance)==='لا').length)],
    ],
    charts:[
      {t:'النوع',type:'doughnut',field:'gender',f:r=>countBy(r,'gender')},
@@ -866,9 +867,9 @@ function renderCombo(){
   const noKafalaOrphan=fams.filter(f=>String(f.b.needsKafala)==='نعم'&&(Number(f.b.orphans)||0)>=3).length;
   const uninsFam=fams.filter(f=>f.kids.some(k=>String(k.health)==='مريض'&&String(k.insurance)==='لا')).length;
   const kh=document.getElementById('kpis-combo');kh.innerHTML='';
-  [['أسر مرتبطة بأبناء',fmt(linked.length)],['متوسط الأبناء/الأسرة',avgKids.toFixed(1)],
-   ['أسر (أم مريضة + 3 أيتام فأكثر)',fmt(sickMany)],['أسر تحتاج كفالة و3 أيتام+',fmt(noKafalaOrphan)],
-   ['أسر بها طفل مريض بلا تأمين',fmt(uninsFam)],['أسر بلا أبناء مسجلين',fmt(fams.length-linked.length)]
+  [['🔗 أسر مرتبطة بأبناء',fmt(linked.length)],['📊 متوسط الأبناء/الأسرة',avgKids.toFixed(1)],
+   ['🩺 أسر (أم مريضة + 3 أيتام فأكثر)',fmt(sickMany)],['🤲 أسر تحتاج كفالة و3 أيتام+',fmt(noKafalaOrphan)],
+   ['🏥 أسر بها طفل مريض بلا تأمين',fmt(uninsFam)],['❓ أسر بلا أبناء مسجلين',fmt(fams.length-linked.length)]
   ].forEach(([l,v])=>{const d=document.createElement('div');d.className='kpi';
     d.innerHTML=`<div class="v">${v}</div><div class="l">${l}</div>`;kh.appendChild(d)});
   COMBO_CHARTS.forEach(({ch,compute})=>{const r=compute(fams);ch.data.labels=r.labels;ch.data.datasets[0].data=r.data;ch.update();});
@@ -959,10 +960,10 @@ function buildQuality(){
     const k=String(v);m.set(k,(m.get(k)||0)+1)});return [...m.values()].filter(n=>n>1).length};
   const missBen=BENEFICIARIES.filter(r=>r.nid==null||r.nid==='').length;
   const k=document.getElementById('kpis-quality');k.innerHTML='';
-  [['سجلات المستفيدين',fmt(BENEFICIARIES.length)],['سجلات التابعين',fmt(DEPENDENTS.length)],
-   ['تكرار رقم هوية (مستفيدين)',fmt(dup(BENEFICIARIES,'nid'))],
-   ['تكرار رقم هوية (تابعين)',fmt(dup(DEPENDENTS,'nid'))],
-   ['مستفيدات بلا رقم هوية',fmt(missBen)]
+  [['📋 سجلات المستفيدين',fmt(BENEFICIARIES.length)],['📑 سجلات التابعين',fmt(DEPENDENTS.length)],
+   ['👯 تكرار رقم هوية (مستفيدين)',fmt(dup(BENEFICIARIES,'nid'))],
+   ['👯 تكرار رقم هوية (تابعين)',fmt(dup(DEPENDENTS,'nid'))],
+   ['🚫 مستفيدات بلا رقم هوية',fmt(missBen)]
   ].forEach(([l,v])=>{const d=document.createElement('div');d.className='kpi';
     d.innerHTML=`<div class="v">${v}</div><div class="l">${l}</div>`;k.appendChild(d)});
 
@@ -1141,9 +1142,9 @@ function buildAlerts(){
   NOSUP=fams.filter(f=>String(f.b.needsKafala)==='نعم'&&String(f.b.otherAid)==='لا')
     .map(f=>({f,score:riskScore(f)})).sort((a,b)=>b.score-a.score);
   const k=document.getElementById('kpis-alerts');k.innerHTML='';
-  [['أسر عالية الخطورة',fmt(high)],['أسر متوسطة الخطورة',fmt(mid)],
-   ['طلاب معرّضون للتسرّب',fmt(DROP.length)],['أيتام بعمر 17-18',fmt(AGEOUT.length)],
-   ['مرضى بلا تأمين',fmt(UNINS.length)],['ضعاف أكاديمياً',fmt(WEAK.length)],['أسر بلا أي دعم',fmt(NOSUP.length)]
+  [['🔴 أسر عالية الخطورة',fmt(high)],['🟠 أسر متوسطة الخطورة',fmt(mid)],
+   ['📚 طلاب معرّضون للتسرّب',fmt(DROP.length)],['🎂 أيتام بعمر 17-18',fmt(AGEOUT.length)],
+   ['🏥 مرضى بلا تأمين',fmt(UNINS.length)],['📉 ضعاف أكاديمياً',fmt(WEAK.length)],['🆘 أسر بلا أي دعم',fmt(NOSUP.length)]
   ].forEach(([l,v])=>k.appendChild(kpiCard(l,v)));
   // risk table
   pagedTable('table-risk',
@@ -1188,10 +1189,10 @@ function buildPipeline(){
   const toSec=DEPENDENTS.filter(d=>String(d.schoolStage).trim()==='الثالث المتوسط').length;
   const grads=DEPENDENTS.filter(d=>['خريج','جامعي'].includes(String(d.schoolStage).trim())).length;
   const k=document.getElementById('kpis-pipeline');k.innerHTML='';
-  [['متوقع دخولهم الجامعة العام القادم',fmt(toUni)],
-   ['ينتقلون للثانوي (من 3 متوسط)',fmt(toSec)],
-   ['ينتقلون للمتوسط (من 6 ابتدائي)',fmt(toMid)],
-   ['جامعيون/خريجون حالياً',fmt(grads)]
+  [['🎓 متوقع دخولهم الجامعة العام القادم',fmt(toUni)],
+   ['🏫 ينتقلون للثانوي (من 3 متوسط)',fmt(toSec)],
+   ['📖 ينتقلون للمتوسط (من 6 ابتدائي)',fmt(toMid)],
+   ['👨‍🎓 جامعيون/خريجون حالياً',fmt(grads)]
   ].forEach(([l,v])=>k.appendChild(kpiCard(l,v)));
   // next-year stage distribution
   const nextCount={};
