@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة تحليل بيانات جمعية بناء لرعاية الأيتام</title>
+<script src="chart.min.js"></script>
+<script src="xlsx.full.min.js"></script>
+<style>
+  :root{
+    --green:#0f766e; --green-d:#115e59; --green-l:#14b8a6;
+    --bg:#f1f5f4; --card:#ffffff; --ink:#0f172a; --muted:#64748b;
+    --line:#e2e8f0; --gold:#d97706;
+    --c1:#0f766e;--c2:#14b8a6;--c3:#0ea5e9;--c4:#6366f1;--c5:#d97706;
+    --c6:#dc2626;--c7:#65a30d;--c8:#db2777;--c9:#7c3aed;--c10:#0891b2;
+  }
+  body.dark{
+    --bg:#0f172a; --card:#1e293b; --ink:#e2e8f0; --muted:#94a3b8; --line:#334155;
+    --green-d:#0d9488; --green-l:#2dd4bf;
+  }
+  body.dark th{background:#0f3b37;color:#5eead4}
+  body.dark tr:hover td{background:#243244}
+  body.dark .upstat{background:#0f172a}
+  body.dark input,body.dark select{background:#0f172a;color:var(--ink)}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Segoe UI","Tajawal",system-ui,Tahoma,Arial,sans-serif;
+    background:var(--bg);color:var(--ink);font-size:14px}
+  header{background:linear-gradient(135deg,var(--green-d),var(--green-l));color:#fff;
+    padding:18px 26px;box-shadow:0 2px 10px rgba(0,0,0,.12)}
+  header h1{margin:0;font-size:21px;font-weight:800}
+  header p{margin:4px 0 0;opacity:.9;font-size:13px}
+  .hd{display:flex;align-items:center;gap:16px}
+  .logo{width:56px;height:56px;flex:0 0 56px;border-radius:50%;background:#fff;color:var(--green-d);
+    display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px;
+    box-shadow:0 2px 8px rgba(0,0,0,.2)}
+  .print{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.4);
+    border-radius:9px;padding:9px 15px;cursor:pointer;font-weight:700;font-size:13px}
+  .print:hover{background:rgba(255,255,255,.28)}
+  .tabs{display:flex;gap:6px;padding:0 20px;background:var(--green-d)}
+  .tab{padding:13px 22px;color:#cbeae6;cursor:pointer;font-weight:700;font-size:15px;
+    border:none;background:none;border-bottom:3px solid transparent}
+  .tab.active{color:#fff;border-bottom-color:#fff;background:rgba(255,255,255,.08)}
+  .wrap{padding:20px 26px;max-width:1500px;margin:0 auto}
+  .panel{display:none} .panel.active{display:block}
+
+  .filters{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:14px 16px;margin-bottom:18px;display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+  .filters .ttl{width:100%;font-weight:800;color:var(--green-d);margin-bottom:2px;font-size:13px}
+  .ms{position:relative;min-width:165px}
+  .ms label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:700}
+  .ms .btn{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:9px;
+    background:#fff;cursor:pointer;text-align:right;font-size:13px;display:flex;
+    justify-content:space-between;align-items:center;gap:6px}
+  .ms .btn .cnt{background:var(--green);color:#fff;border-radius:20px;padding:0 7px;font-size:11px;font-weight:700}
+  .ms .pop{position:absolute;z-index:30;top:100%;right:0;margin-top:4px;width:240px;
+    background:#fff;border:1px solid var(--line);border-radius:10px;box-shadow:0 8px 28px rgba(0,0,0,.16);
+    padding:8px;display:none;max-height:300px;overflow:auto}
+  .ms.open .pop{display:block}
+  .ms .pop input.search{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:7px;margin-bottom:6px;font-size:12px}
+  .ms .pop .opt{display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:6px;cursor:pointer;font-size:13px}
+  .ms .pop .opt:hover{background:#f0fdfa}
+  .ms .pop .opt .c{color:var(--muted);margin-right:auto;font-size:11px}
+  .clr{background:var(--gold);color:#fff;border:none;border-radius:9px;padding:9px 16px;
+    cursor:pointer;font-weight:700;font-size:13px;height:37px}
+  .exp{background:var(--green);color:#fff;border:none;border-radius:9px;padding:9px 16px;
+    cursor:pointer;font-weight:700;font-size:13px;height:37px}
+
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:13px;margin-bottom:20px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;
+    position:relative;overflow:hidden}
+  .kpi::before{content:"";position:absolute;top:0;right:0;width:5px;height:100%;background:var(--green-l)}
+  .kpi .v{font-size:27px;font-weight:800;color:var(--green-d)}
+  .kpi .l{color:var(--muted);font-size:12.5px;margin-top:3px;font-weight:600}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px}
+  .chart{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+  .chart h3{margin:0 0 10px;font-size:14.5px;color:var(--ink);font-weight:800}
+  .clickhint{float:left;font-size:10.5px;font-weight:700;color:var(--green);background:#f0fdfa;
+    border:1px solid #ccfbf1;border-radius:20px;padding:1px 8px}
+  .chart .cv{position:relative;height:250px;width:100%}
+  .chart .cv canvas{width:100%!important}
+  .chart.wide{grid-column:1/-1;width:100%}
+  .chart.wide .cv{height:420px}
+  .chart.vert .cv{height:300px}
+  .chart.tall .cv{height:460px}
+
+  table{width:100%;border-collapse:collapse;background:#fff;font-size:12.5px}
+  .tablecard{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:14px 16px;margin-top:18px;overflow:auto}
+  th,td{padding:7px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+  th{background:#f0fdfa;color:var(--green-d);font-weight:800;position:sticky;top:0}
+  tr:hover td{background:#f8fafc}
+  .note{color:var(--muted);font-size:12px;margin-top:8px}
+
+  /* recommendations */
+  .recos{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:16px}
+  .reco{background:#fff;border:1px solid var(--line);border-right:5px solid var(--green-l);
+    border-radius:12px;padding:16px 18px}
+  .reco h3{margin:0 0 8px;color:var(--green-d);font-size:16px}
+  .reco .tag{display:inline-block;background:#fef3c7;color:#92400e;font-size:11px;
+    font-weight:800;padding:2px 9px;border-radius:20px;margin-bottom:8px}
+  .reco ul{margin:6px 0 0;padding-right:18px;line-height:1.9}
+  .reco b{color:var(--green-d)}
+
+  /* combined */
+  .secttl{font-size:17px;font-weight:800;color:var(--green-d);margin:6px 0 12px;
+    border-right:5px solid var(--green-l);padding-right:10px}
+  .prio-high{color:#dc2626;font-weight:800} .prio-mid{color:#d97706;font-weight:700}
+  .score-bar{display:inline-block;height:9px;border-radius:6px;background:var(--green-l);vertical-align:middle}
+  .weights{display:flex;flex-wrap:wrap;gap:14px;background:#f0fdfa;border:1px solid #ccfbf1;
+    border-radius:10px;padding:12px 14px;margin-bottom:8px}
+  .weights .w{display:flex;flex-direction:column;gap:3px;min-width:150px}
+  .weights .w label{font-size:12px;font-weight:700;color:var(--green-d);display:flex;justify-content:space-between}
+  .weights .w label b{color:var(--gold)}
+  .weights input[type=range]{accent-color:var(--green)}
+  /* quality */
+  .qrow{margin-bottom:9px}
+  .qrow .qh{display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:3px}
+  .qrow .qt{font-weight:600} .qrow .qp{font-weight:800}
+  .qbar{height:11px;background:#eef2f1;border-radius:7px;overflow:hidden}
+  .qbar span{display:block;height:100%;border-radius:7px}
+  .q-good{background:#16a34a} .q-mid{background:#d97706} .q-bad{background:#dc2626}
+  /* control panel */
+  .uploads{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+  .upcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+  .upcard h3{margin:0 0 12px;color:var(--green-d);font-size:16px}
+  .filebtn{display:inline-block;background:var(--green);color:#fff;padding:11px 20px;border-radius:9px;
+    cursor:pointer;font-weight:700;font-size:14px}
+  .filebtn:hover{background:var(--green-d)}
+  .upstat{margin-top:12px;font-size:13px;line-height:1.8;color:var(--ink);
+    background:#f8fafc;border-radius:8px;padding:10px 12px;border:1px solid var(--line)}
+  .upstat.ok{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+  .upstat.err{background:#fef2f2;border-color:#fecaca;color:#991b1b}
+  .danger{background:#dc2626;color:#fff;border:none;border-radius:9px;padding:9px 16px;
+    cursor:pointer;font-weight:700;font-size:13px}
+  .danger:hover{background:#b91c1c}
+
+  /* alerts / risk */
+  .alertgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:13px;margin-bottom:20px}
+  .riskbadge{display:inline-block;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px}
+  .rb-high{background:#fee2e2;color:#991b1b} .rb-mid{background:#fef3c7;color:#92400e} .rb-low{background:#dcfce7;color:#166534}
+  .reasons{font-size:11px;color:var(--muted)}
+  /* compare columns */
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+  .cmpcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;text-align:center}
+  .cmpcard h3{margin:0 0 12px;color:var(--green-d)}
+  .cmprow{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px dashed var(--line);font-size:13.5px}
+  .cmprow b{color:var(--green-d)}
+  /* heatmap */
+  .heat{width:100%;border-collapse:collapse;font-size:12.5px}
+  .heat th,.heat td{border:1px solid var(--line);padding:7px 9px;text-align:center}
+  .heat th{background:#f0fdfa;color:var(--green-d)}
+  body.dark .heat th{background:#0f3b37}
+  .heat td.lbl{font-weight:700;background:var(--bg);text-align:right}
+  /* report cover (print only) */
+  #cover{display:none}
+  /* while preparing the PDF, reveal every panel on screen so all charts size correctly before printing */
+  body.printing .panel{display:block!important;margin-bottom:26px}
+  body.printing .ptitle{display:block}
+  .ptitle{display:none;font-size:20px;font-weight:800;color:var(--green-d);
+    border-bottom:3px solid var(--green-l);padding-bottom:6px;margin:10px 0 16px}
+  body.printing #cover,.report-only{display:block}
+  @media print{
+    @page{margin:10mm}
+    .tabs,.filters,.print,.note,.weights,.tblsearch,#prio-search,#prio-export,#prio-size,.pagesize,.ms,.clr,.exp,.danger,.filebtn,.clickhint,#panel-control{display:none!important}
+    #cover{display:block!important;page-break-after:always;text-align:center;padding-top:120px}
+    #cover h1{font-size:34px;color:var(--green-d);margin:0 0 12px}
+    #cover .clogo{width:90px;height:90px;border-radius:50%;background:var(--green-d);color:#fff;
+      display:inline-flex;align-items:center;justify-content:center;font-size:32px;font-weight:900;margin-bottom:20px;
+      -webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .panel{display:block!important;page-break-after:always}
+    .ptitle{display:block!important}
+    body{background:#fff;font-size:11px}
+    header{background:var(--green-d)!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    .grid{grid-template-columns:repeat(2,1fr);gap:8px}
+    .chart,.kpi,.reco{break-inside:avoid;page-break-inside:avoid;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    /* let each chart scale to fit its print column proportionally so it is never cropped */
+    .chart .cv{height:auto!important;min-height:0!important}
+    .chart .cv canvas{width:100%!important;height:auto!important;max-width:100%!important}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="hd">
+    <div class="logo">بناء</div>
+    <div>
+      <h1>لوحة تحليل بيانات جمعية بناء لرعاية الأيتام</h1>
+      <p>تحليل تفاعلي لبيانات المستفيدين والتابعين — استخدم الفلاتر لتصفية البيانات وتُحدَّث جميع المؤشرات والرسوم تلقائياً</p>
+    </div>
+    <div style="margin-right:auto;display:flex;gap:8px">
+      <button class="print" id="btn-theme">🌙 وضع ليلي</button>
+      <button class="print" id="btn-print">📄 تصدير تقرير PDF</button>
+    </div>
+  </div>
+</header>
+<div class="tabs">
+  <button class="tab" data-tab="control">⚙️ لوحة التحكم</button>
+  <button class="tab active" data-tab="ben">المستفيدون (الأمهات/الأولياء)</button>
+  <button class="tab" data-tab="dep">التابعون (الأبناء/الأيتام)</button>
+  <button class="tab" data-tab="combo">🔗 تحليل مدمج</button>
+  <button class="tab" data-tab="alerts">🚨 إنذار مبكر</button>
+  <button class="tab" data-tab="pipeline">📈 خط التعليم</button>
+  <button class="tab" data-tab="compare">🔀 مقارنات</button>
+  <button class="tab" data-tab="quality">🧹 جودة البيانات</button>
+  <button class="tab" data-tab="reco">💡 التوصيات</button>
+</div>
+
+<div class="wrap">
+  <div id="cover"></div>
+  <div class="panel" id="panel-control">
+    <div class="secttl">تحديث ملفات البيانات</div>
+    <p style="margin:0 0 16px;color:var(--muted);line-height:1.8">
+      ارفع ملفات الإكسل المحدّثة <b>بنفس تنسيق الأعمدة الحالي</b>. تتم القراءة داخل متصفحك (لا تُرفع لأي خادم)،
+      وتُحفظ نسخة في المتصفح ليبقى التحديث بعد الإغلاق، وتُحدَّث جميع التبويبات فوراً.</p>
+    <div class="uploads">
+      <div class="upcard">
+        <h3>👩 ملف المستفيدين</h3>
+        <label class="filebtn">📁 اختر ملف الإكسل<input type="file" accept=".xlsx,.xls" id="up-ben" hidden></label>
+        <div class="upstat" id="status-ben">—</div>
+      </div>
+      <div class="upcard">
+        <h3>🧒 ملف التابعين</h3>
+        <label class="filebtn">📁 اختر ملف الإكسل<input type="file" accept=".xlsx,.xls" id="up-dep" hidden></label>
+        <div class="upstat" id="status-dep">—</div>
+      </div>
+    </div>
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="clr" id="btn-reset-data">↺ استعادة البيانات الأصلية</button>
+      <button class="danger" id="btn-clear-data">🗑️ حذف البيانات الحالية (تصفير)</button>
+    </div>
+    <div class="upcard" style="margin-top:18px;background:#fffbeb;border-color:#fde68a">
+      <h3 style="color:#92400e">ℹ️ ملاحظات مهمة</h3>
+      <ul style="line-height:2;margin:6px 0 0;padding-right:18px">
+        <li>يجب أن تحتوي الصفحة الأولى من الملف على نفس أسماء الأعمدة (الترويسة) الحالية.</li>
+        <li>الأعمدة المستخدمة في التحليل تُقرأ بأسمائها؛ أي عمود إضافي يُتجاهَل بأمان.</li>
+        <li>يمكنك رفع ملف واحد فقط أو كليهما — كل ملف يُحدَّث على حدة.</li>
+        <li>زر «استعادة البيانات الأصلية» يرجع للبيانات المُحمّلة مع اللوحة ويمسح النسخة المحفوظة.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="panel active" id="panel-ben">
+    <div class="ptitle">تحليل بيانات المستفيدين (الأمهات/الأولياء)</div>
+    <div class="filters" id="filters-ben"></div>
+    <div class="kpis" id="kpis-ben"></div>
+    <div class="grid" id="grid-ben"></div>
+    <div class="tablecard"><h3 style="margin:0 0 10px;color:var(--green-d)">عينة من البيانات المُصفّاة</h3>
+      <div id="table-ben"></div></div>
+  </div>
+  <div class="panel" id="panel-dep">
+    <div class="ptitle">تحليل بيانات التابعين (الأبناء/الأيتام)</div>
+    <div class="filters" id="filters-dep"></div>
+    <div class="kpis" id="kpis-dep"></div>
+    <div class="grid" id="grid-dep"></div>
+    <div class="tablecard"><h3 style="margin:0 0 10px;color:var(--green-d)">عينة من البيانات المُصفّاة</h3>
+      <div id="table-dep"></div></div>
+  </div>
+  <div class="panel" id="panel-combo">
+    <div class="secttl">نظرة مدمجة على الأسر وأبنائها (الربط عبر رقم الملف)</div>
+    <div class="kpis" id="kpis-combo"></div>
+    <div class="grid" id="grid-combo"></div>
+    <div class="tablecard">
+      <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <h3 style="margin:0;color:var(--green-d)">🎯 قائمة الأسر ذات الأولوية للتدخل</h3>
+        <div style="display:flex;gap:8px">
+          <input id="prio-search" placeholder="🔍 بحث بالاسم / الفئة / الحي..."
+            style="padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px;min-width:230px">
+          <button class="exp" id="prio-export">⬇ تصدير القائمة</button>
+        </div>
+      </div>
+      <div class="weights" id="weights"></div>
+      <p class="note" style="margin:0 0 10px">عدّل الأوزان أدناه لتطابق سياسة الجمعية، وتُعاد ترتيب القائمة فوراً.</p>
+      <div id="table-combo"></div>
+    </div>
+  </div>
+  <div class="panel" id="panel-alerts">
+    <div class="ptitle">الإنذار المبكر</div>
+    <div class="secttl">🚨 مؤشرات الإنذار المبكر — قوائم تدخّل عاجلة</div>
+    <div class="alertgrid" id="kpis-alerts"></div>
+    <div class="tablecard">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0;color:#b91c1c">① الأسر عالية الخطورة (تدخّل عاجل)</h3>
+        <button class="exp" id="exp-risk">⬇ تصدير</button></div>
+      <p class="note" style="margin:4px 0 10px">مؤشر الخطورة يجمع: مرض الأم + كثرة الأيتام + انخفاض الدخل + الحاجة للكفالة.</p>
+      <div id="table-risk"></div>
+    </div>
+    <div class="tablecard">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0;color:#b45309">② الطلاب المعرّضون للتسرّب الدراسي</h3>
+        <button class="exp" id="exp-drop">⬇ تصدير</button></div>
+      <p class="note" style="margin:4px 0 10px">الحالات «منقطع / متأخر / مؤجل» — تحتاج متابعة فردية لإعادتها للمسار.</p>
+      <div id="table-drop"></div>
+    </div>
+    <div class="tablecard">
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0;color:#0e7490">③ الأيتام المقبلون على سن 18 (خطة انتقال/توظيف)</h3>
+        <button class="exp" id="exp-age">⬇ تصدير</button></div>
+      <p class="note" style="margin:4px 0 10px">أعمار 17 فأكثر — يُنصح بالتأهيل والتوظيف قبل انتهاء الكفالة.</p>
+      <div id="table-age"></div>
+    </div>
+  </div>
+  <div class="panel" id="panel-pipeline">
+    <div class="ptitle">خط التعليم والتنبؤ</div>
+    <div class="secttl">📈 خط التعليم المتوقع للعام القادم وتقدير الكفالة</div>
+    <div class="kpis" id="kpis-pipeline"></div>
+    <div class="grid" id="grid-pipeline"></div>
+    <div class="tablecard">
+      <h3 style="margin:0 0 4px;color:var(--green-d)">💰 تقدير فجوة الكفالة الشهرية</h3>
+      <p class="note" style="margin:0 0 10px">تقدير تقريبي = عدد الأسر المحتاجة للكفالة × متوسط مبلغ الكفالة الشهري. عدّل المبلغ ليطابق سياستكم.</p>
+      <div class="weights" id="kafala-ctrl"></div>
+      <div id="kafala-out" style="font-size:15px;margin-top:10px"></div>
+    </div>
+  </div>
+  <div class="panel" id="panel-compare">
+    <div class="ptitle">مقارنات</div>
+    <div class="secttl">🔀 مقارنة المحافظات وجداول تقاطعية</div>
+    <div class="cmp" id="cmp-gov"></div>
+    <div class="grid" id="grid-compare"></div>
+    <div class="tablecard">
+      <h3 style="margin:0 0 10px;color:var(--green-d)">خريطة حرارية: فئة الملف × المحافظة</h3>
+      <div id="heat-catgov" style="overflow:auto"></div>
+    </div>
+    <div class="tablecard">
+      <h3 style="margin:0 0 10px;color:var(--green-d)">خريطة حرارية: الحالة الصحية × شريحة الدخل</h3>
+      <div id="heat-healthinc" style="overflow:auto"></div>
+    </div>
+  </div>
+  <div class="panel" id="panel-quality">
+    <div class="secttl">مؤشرات اكتمال وسلامة البيانات</div>
+    <div class="kpis" id="kpis-quality"></div>
+    <div class="grid" id="grid-quality" style="grid-template-columns:repeat(auto-fit,minmax(420px,1fr))"></div>
+  </div>
+  <div class="panel" id="panel-reco">
+    <div class="ptitle">التوصيات</div>
+    <div class="recos" id="recos"></div>
+  </div>
+</div>
+
+<script src="data.js"></script>
+<script>
+if(window.Chart)Chart.defaults.animation=false;   // draw charts instantly (also fixes blank/partial charts in printed PDF)
+const PALETTE=['#0f766e','#14b8a6','#0ea5e9','#6366f1','#d97706','#dc2626','#65a30d','#db2777','#7c3aed','#0891b2','#ca8a04','#475569'];
+const fmt=n=>(n==null||isNaN(n))?'—':Math.round(n).toLocaleString('en-US');
+
+// ---------- generic helpers ----------
+function countBy(rows,key,opt={}){
+  const m=new Map();
+  rows.forEach(r=>{let v=r[key];if(v===null||v===undefined||v==='')return;v=String(v);m.set(v,(m.get(v)||0)+1)});
+  let arr=[...m.entries()].sort((a,b)=>b[1]-a[1]);
+  if(opt.top)arr=arr.slice(0,opt.top);
+  if(opt.order)arr.sort((a,b)=>opt.order.indexOf(a[0])-opt.order.indexOf(b[0]));
+  return {labels:arr.map(x=>x[0]),data:arr.map(x=>x[1])};
+}
+function bucket(rows,key,edges,labels){
+  const c=new Array(labels.length).fill(0);
+  rows.forEach(r=>{const v=r[key];if(v===null||v===undefined||isNaN(v))return;
+    let i=edges.findIndex(e=>v<e);if(i===-1)i=labels.length-1;c[i]++});
+  return {labels,data:c};
+}
+// back-to-back age/gender pyramid: males as negative, females as positive
+function pyramid(rows,edges,labels){
+  const m=new Array(labels.length).fill(0), f=new Array(labels.length).fill(0);
+  rows.forEach(r=>{const v=r.age;if(v===null||v===undefined||isNaN(v))return;
+    let i=edges.findIndex(e=>v<e);if(i===-1)i=labels.length-1;
+    if(String(r.gender)==='ذكر')m[i]++;else if(String(r.gender)==='أنثى')f[i]++});
+  return {labels,datasets:[{data:m.map(x=>-x)},{data:f}]};
+}
+// stamp each row with an "ageRange" bucket label so age becomes a clickable/filterable category
+function stampAgeRange(rows,edges,labels){
+  rows.forEach(r=>{const v=r.age;
+    if(v===null||v===undefined||isNaN(v)){r.ageRange=null;return;}
+    let i=edges.findIndex(e=>v<e);if(i===-1)i=labels.length-1;r.ageRange=labels[i];});
+}
+const sum=(rows,k)=>rows.reduce((a,r)=>a+(Number(r[k])||0),0);
+const avg=(rows,k)=>{const v=rows.map(r=>Number(r[k])).filter(x=>!isNaN(x)&&x>0);return v.length?v.reduce((a,b)=>a+b,0)/v.length:0};
+const cnt=(rows,k,val)=>rows.filter(r=>String(r[k])===val).length;
+const pct=(a,b)=>b?Math.round(a/b*100):0;
+
+// ---------- dataset config ----------
+const AGE_B_EDGES=[30,40,50,60], AGE_B_LBL=['أقل من 30','30-39','40-49','50-59','60+'];
+const INC_EDGES=[2000,4000,6000,8000], INC_LBL=['أقل من 2000','2000-3999','4000-5999','6000-7999','8000+'];
+const DAGE_EDGES=[6,12,15,18,22], DAGE_LBL=['0-5','6-11','12-14','15-17','18-21','22+'];
+
+const CONFIG={
+ ben:{
+   rows:BENEFICIARIES,
+   filters:[['category','فئة الملف'],['gov','المحافظة'],['marital','الحالة الاجتماعية'],
+     ['nationality','الجنسية'],['education','المستوى التعليمي'],['health','الحالة الصحية'],
+     ['needsKafala','يحتاج لكفالة'],['housingOwn','ملكية السكن'],['housingType','نوع السكن'],
+     ['district','الحي'],['ageRange','الفئة العمرية'],['disability','إعاقة']],
+   kpis:r=>[
+     ['عدد الأسر (المستفيدات)',fmt(r.length)],
+     ['إجمالي التابعين',fmt(sum(r,'dependents'))],
+     ['إجمالي الأيتام',fmt(sum(r,'orphans'))],
+     ['بحاجة لكفالة',fmt(cnt(r,'needsKafala','نعم'))],
+     ['متوسط دخل الأسرة (ر.س)',fmt(avg(r,'income'))],
+     ['نسبة المريضات',pct(cnt(r,'health','مريض'),r.length)+'%'],
+   ],
+   charts:[
+     {t:'التصنيف حسب فئة الملف',type:'bar',field:'category',f:r=>countBy(r,'category',{order:['أ','ب','ج','د','مؤقت']})},
+     {t:'التوزيع حسب المحافظة',type:'doughnut',field:'gov',f:r=>countBy(r,'gov')},
+     {t:'الحالة الاجتماعية',type:'doughnut',field:'marital',f:r=>countBy(r,'marital')},
+     {t:'الحالة الصحية للمستفيدة',type:'doughnut',field:'health',f:r=>countBy(r,'health')},
+     {t:'يحتاج إلى كفالة',type:'doughnut',field:'needsKafala',f:r=>countBy(r,'needsKafala')},
+     {t:'لديه إعاقة',type:'doughnut',field:'disability',f:r=>countBy(r,'disability')},
+     {t:'المستوى التعليمي',type:'bar',field:'education',f:r=>countBy(r,'education')},
+     {t:'ملكية السكن',type:'bar',field:'housingOwn',f:r=>countBy(r,'housingOwn')},
+     {t:'نوع السكن',type:'doughnut',field:'housingType',f:r=>countBy(r,'housingType')},
+     {t:'الفئات العمرية',type:'bar',field:'ageRange',f:r=>bucket(r,'age',AGE_B_EDGES,AGE_B_LBL)},
+     {t:'شرائح دخل الأسرة (ر.س)',type:'bar',f:r=>bucket(r,'income',INC_EDGES,INC_LBL)},
+     {t:'عدد التابعين في الأسرة',type:'bar',f:r=>countBy(r,'dependents',{order:['1','2','3','4','5','6','7','8','9']})},
+     {t:'عدد الأيتام في الأسرة',type:'bar',f:r=>countBy(r,'orphans',{order:['1','2','3','4','5','6','7','8','9']})},
+     {t:'أكثر 10 أحياء',type:'bar',field:'district',f:r=>countBy(r,'district',{top:10})},
+     {t:'أكثر 8 جنسيات',type:'bar',field:'nationality',f:r=>countBy(r,'nationality',{top:8})},
+   ],
+   table:[['name','الاسم'],['category','الفئة'],['gov','المحافظة'],['marital','الحالة الاجتماعية'],
+     ['dependents','التابعين'],['orphans','الأيتام'],['income','دخل الأسرة'],['health','الصحة'],['needsKafala','كفالة']]
+ },
+ dep:{
+   rows:DEPENDENTS,
+   filters:[['category','فئة الملف'],['gender','النوع'],['orphan','يتيم'],
+     ['ageStage','المرحلة العمرية'],['ageRange','الفئة العمرية (سنوات)'],['schoolStage','المرحلة الدراسية'],
+     ['eduStatus','الحالة التعليمية'],['health','الحالة الصحية'],
+     ['needsRehab','بحاجة لتأهيل'],['nationality','الجنسية']],
+   kpis:r=>[
+     ['عدد التابعين',fmt(r.length)],
+     ['عدد الأيتام',fmt(cnt(r,'orphan','نعم'))],
+     ['الذكور / الإناث',fmt(cnt(r,'gender','ذكر'))+' / '+fmt(cnt(r,'gender','أنثى'))],
+     ['منتظمون دراسياً',pct(cnt(r,'eduStatus','منتظم دراسياً'),r.length)+'%'],
+     ['متعثرون/منقطعون',fmt(cnt(r,'eduStatus','منقطع عن الدراسة')+cnt(r,'eduStatus','متأخر دراسياً'))],
+     ['بحاجة لتأهيل',fmt(cnt(r,'needsRehab','نعم'))],
+   ],
+   charts:[
+     {t:'النوع',type:'doughnut',field:'gender',f:r=>countBy(r,'gender')},
+     {t:'يتيم / غير يتيم',type:'doughnut',field:'orphan',f:r=>countBy(r,'orphan')},
+     {t:'الحالة التعليمية',type:'bar',field:'eduStatus',f:r=>countBy(r,'eduStatus')},
+     {t:'الحالة الصحية',type:'doughnut',field:'health',f:r=>countBy(r,'health')},
+     {t:'المرحلة العمرية',type:'doughnut',field:'ageStage',f:r=>countBy(r,'ageStage')},
+     {t:'بحاجة إلى تأهيل',type:'doughnut',field:'needsRehab',f:r=>countBy(r,'needsRehab')},
+     {t:'الجنسية',type:'doughnut',field:'nationality',f:r=>countBy(r,'nationality',{top:6})},
+     {t:'التصنيف حسب فئة الملف',type:'bar',field:'category',f:r=>countBy(r,'category',{order:['أ','ب','ج','د','مؤقت']})},
+     {t:'الفئات العمرية (سنوات)',type:'bar',field:'ageRange',f:r=>bucket(r,'age',DAGE_EDGES,DAGE_LBL)},
+     {t:'المرحلة الدراسية',type:'bar',tall:true,field:'schoolStage',f:r=>countBy(r,'schoolStage',{top:18})},
+     {t:'الهرم العمري (ذكور / إناث)',type:'bar',pyramid:true,tall:true,f:r=>pyramid(r,DAGE_EDGES,DAGE_LBL)},
+   ],
+   table:[['name','الاسم'],['gender','النوع'],['orphan','يتيم'],['age','العمر'],
+     ['schoolStage','المرحلة الدراسية'],['eduStatus','الحالة التعليمية'],['health','الصحة'],['needsRehab','تأهيل']]
+ }
+};
+
+// ---------- state ----------
+const STATE={ben:{},dep:{}};
+const FILTER_UI={ben:{},dep:{}};   // field -> {ms, cbs:{value->checkbox}} so chart clicks can sync the dropdowns
+const charts={};
+// charts are tracked per-tab and fully recreated each time a tab is opened —
+// creating a chart while its panel is visible is the only reliable way to avoid
+// the "blank chart until refresh" problem with display:none tab panels.
+const tabCharts={ben:[],dep:[],combo:[],quality:[],alerts:[],pipeline:[],compare:[]};
+let curTab='ben';
+
+// ---------- build filters ----------
+function buildFilters(ds){
+  const cfg=CONFIG[ds], host=document.getElementById('filters-'+ds);
+  host.innerHTML='<div class="ttl">🔍 الفلاتر</div>';
+  cfg.filters.forEach(([key,lbl])=>{
+    const opts=countBy(cfg.rows,key).labels;
+    const ms=document.createElement('div');ms.className='ms';
+    ms.innerHTML=`<label>${lbl}</label>
+      <div class="btn"><span class="txt">الكل</span><span class="cnt" style="display:none">0</span></div>
+      <div class="pop"><input class="search" placeholder="بحث..."><div class="list"></div></div>`;
+    const list=ms.querySelector('.list');
+    const cbs={};
+    opts.forEach(o=>{
+      const c=cfg.rows.filter(r=>String(r[key])===o).length;
+      const d=document.createElement('div');d.className='opt';
+      d.innerHTML=`<input type="checkbox" value="${o}"><span>${o}</span><span class="c">${c}</span>`;
+      const cb=d.querySelector('input');cbs[o]=cb;
+      cb.onclick=e=>{e.stopPropagation();toggle(ds,key,o,e.target.checked,ms)};
+      d.onclick=e=>{if(e.target.tagName!=='INPUT'){cb.checked=!cb.checked;toggle(ds,key,o,cb.checked,ms)}};
+      list.appendChild(d);
+    });
+    FILTER_UI[ds][key]={ms,cbs};
+    ms.querySelector('.btn').onclick=()=>{document.querySelectorAll('.ms.open').forEach(x=>x!==ms&&x.classList.remove('open'));ms.classList.toggle('open')};
+    ms.querySelector('.search').oninput=e=>{const q=e.target.value;list.querySelectorAll('.opt').forEach(o=>o.style.display=o.textContent.includes(q)?'flex':'none')};
+    STATE[ds][key]=new Set();
+    host.appendChild(ms);
+  });
+  const clr=document.createElement('button');clr.className='clr';clr.textContent='مسح الفلاتر';
+  clr.onclick=()=>{Object.values(STATE[ds]).forEach(s=>s.clear());
+    host.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=false);
+    host.querySelectorAll('.ms').forEach(m=>updBtn(m,0));render(ds)};
+  host.appendChild(clr);
+  const exp=document.createElement('button');exp.className='exp';exp.textContent='⬇ تصدير CSV';
+  exp.onclick=()=>exportCsv(ds);host.appendChild(exp);
+}
+function toggle(ds,key,val,on,ms){
+  const s=STATE[ds][key];on?s.add(val):s.delete(val);updBtn(ms,s.size);render(ds)}
+// called when a chart segment/bar is clicked — toggle that value in the matching filter and sync the dropdown
+function toggleFilterValue(ds,field,val){
+  const s=STATE[ds][field];if(!s)return;
+  s.has(val)?s.delete(val):s.add(val);
+  const ui=FILTER_UI[ds][field];
+  if(ui){if(ui.cbs[val])ui.cbs[val].checked=s.has(val);updBtn(ui.ms,s.size);}
+  render(ds);
+}
+function updBtn(ms,n){const c=ms.querySelector('.cnt'),t=ms.querySelector('.txt');
+  if(n>0){c.style.display='inline-block';c.textContent=n;t.textContent='محدد'}else{c.style.display='none';t.textContent='الكل'}}
+document.addEventListener('click',e=>{if(!e.target.closest('.ms'))document.querySelectorAll('.ms.open').forEach(x=>x.classList.remove('open'))});
+
+// ---------- filtering ----------
+function filtered(ds){
+  const f=STATE[ds];
+  return CONFIG[ds].rows.filter(r=>Object.entries(f).every(([k,set])=>set.size===0||set.has(String(r[k]))));
+}
+
+// ---------- build charts ----------
+function buildCharts(ds){
+  const cfg=CONFIG[ds],host=document.getElementById('grid-'+ds);host.innerHTML='';charts[ds]=[];
+  cfg.charts.forEach((c,i)=>{
+    const card=document.createElement('div');card.className='chart'+(c.wide?' wide':'')+(c.tall?' tall':'')+(c.vertical?' vert':'');
+    card.innerHTML=`<h3>${c.t}${(c.field||c.pyramid)?'<span class="clickhint">انقر للتصفية</span>':''}</h3><div class="cv"><canvas></canvas></div>`;
+    host.appendChild(card);
+    const ctx=card.querySelector('canvas');
+    const dough=c.type==='doughnut';
+    let ch;
+    if(c.pyramid){
+      ch=new Chart(ctx,{type:'bar',data:{labels:[],datasets:[
+        {label:'ذكور',data:[],backgroundColor:'#0ea5e9',borderRadius:4},
+        {label:'إناث',data:[],backgroundColor:'#db2777',borderRadius:4}]},
+        options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+          // click a side (blue=males / pink=females) to filter by gender
+          onClick:(e,els)=>{if(!els.length)return;
+            toggleFilterValue(ds,'gender',els[0].datasetIndex===0?'ذكر':'أنثى');},
+          onHover:(e,els)=>{if(e.native&&e.native.target)e.native.target.style.cursor=els.length?'pointer':'default';},
+          plugins:{legend:{display:true,position:'bottom',labels:{font:{size:12},padding:8}},
+            tooltip:{rtl:true,callbacks:{label:cx=>cx.dataset.label+': '+Math.abs(cx.parsed.x)}}},
+          scales:{x:{stacked:true,ticks:{font:{size:11},callback:v=>Math.abs(v)}},y:{stacked:true,ticks:{font:{size:11}}}}}});
+    }else{
+      const xticks=c.vertical?{font:{size:11},autoSkip:false,maxRotation:90,minRotation:45}:{font:{size:11}};
+      const opts={responsive:true,maintainAspectRatio:false,indexAxis:(dough||c.vertical)?'x':'y',
+          plugins:{legend:{display:dough,position:'bottom',labels:{font:{family:'Segoe UI',size:11},padding:8}},
+            tooltip:{rtl:true,bodyFont:{family:'Segoe UI'}}},
+          scales:dough?{}:{x:{ticks:xticks},y:{ticks:{font:{size:11}}}}};
+      if(c.field){   // click a segment/bar to filter by that value
+        opts.onClick=(e,els,chart)=>{if(!els.length)return;
+          const lbl=chart.data.labels[els[0].index];if(lbl!=null)toggleFilterValue(ds,c.field,String(lbl));};
+        opts.onHover=(e,els)=>{if(e.native&&e.native.target)e.native.target.style.cursor=els.length?'pointer':'default';};
+      }
+      ch=new Chart(ctx,{type:c.type,data:{labels:[],datasets:[{data:[],
+        backgroundColor:dough?PALETTE:'#0f766e',borderRadius:dough?0:5,borderWidth:dough?2:0,borderColor:'#fff'}]},
+        options:opts});
+    }
+    // doughnuts: fix a stable color per category (computed from full data) so a segment keeps its
+    // colour when you click it and the ring collapses to that single value
+    let colorMap=null;
+    if(dough){colorMap={};c.f(cfg.rows).labels.forEach((l,idx)=>colorMap[l]=PALETTE[idx%PALETTE.length]);}
+    charts[ds].push({ch,f:c.f,multi:!!c.pyramid,colorMap});tabCharts[ds].push(ch);
+  });
+}
+
+// ---------- render ----------
+function render(ds){
+  const rows=filtered(ds),cfg=CONFIG[ds];
+  // kpis
+  const kh=document.getElementById('kpis-'+ds);kh.innerHTML='';
+  cfg.kpis(rows).forEach(([l,v])=>{const d=document.createElement('div');d.className='kpi';
+    d.innerHTML=`<div class="v">${v}</div><div class="l">${l}</div>`;kh.appendChild(d)});
+  // charts
+  charts[ds].forEach(({ch,f,multi,colorMap})=>{const res=f(rows);ch.data.labels=res.labels;
+    if(multi)res.datasets.forEach((d,i)=>{ch.data.datasets[i].data=d.data});
+    else ch.data.datasets[0].data=res.data;
+    if(colorMap)ch.data.datasets[0].backgroundColor=res.labels.map(l=>colorMap[l]||'#94a3b8');
+    ch.update()});
+  // table (with text search + page-size selector)
+  const th=document.getElementById('table-'+ds),cols=cfg.table;
+  const q=(TBLQ[ds]||'').trim();
+  const shown=q?rows.filter(r=>cols.some(c=>String(r[c[0]]??'').includes(q))):rows;
+  const size=PAGESIZE[ds], n=(size==='all')?shown.length:Math.min(size,shown.length);
+  const opt=v=>`<option value="${v}"${String(size)===String(v)?' selected':''}>${v==='all'?'الكل':v}</option>`;
+  let html=`<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px">
+      <input class="tblsearch" data-ds="${ds}" value="${q}" placeholder="🔍 بحث في الجدول..."
+        style="padding:8px 10px;border:1px solid var(--line);border-radius:9px;font-size:13px;min-width:240px">
+      <label style="font-size:12.5px;color:var(--muted)">عرض
+        <select class="pagesize" data-ds="${ds}" style="padding:7px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px">
+          ${opt(10)}${opt(20)}${opt(50)}${opt('all')}
+        </select> صف</label></div>`;
+  html+='<table><thead><tr>'+cols.map(c=>`<th>${c[1]}</th>`).join('')+'</tr></thead><tbody>';
+  shown.slice(0,n).forEach(r=>{html+='<tr>'+cols.map(c=>`<td>${r[c[0]]??'—'}</td>`).join('')+'</tr>'});
+  html+='</tbody></table>';
+  th.innerHTML=html+`<div class="note">عرض ${n} من أصل ${shown.length} سجل${q?' مطابق للبحث':' مُصفّى'}.</div>`;
+  const si=th.querySelector('.tblsearch');si.oninput=e=>{TBLQ[ds]=e.target.value;render(ds);
+    const el=document.querySelector(`.tblsearch[data-ds="${ds}"]`);if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length)}};
+  th.querySelector('.pagesize').onchange=e=>{PAGESIZE[ds]=e.target.value==='all'?'all':+e.target.value;render(ds)};
+}
+const TBLQ={ben:'',dep:''};
+const PAGESIZE={ben:10,dep:10};
+
+function exportCsv(ds){
+  const rows=filtered(ds),cols=CONFIG[ds].table;
+  let csv='﻿'+cols.map(c=>c[1]).join(',')+'\n';
+  rows.forEach(r=>{csv+=cols.map(c=>{let v=r[c[0]]??'';v=String(v).replace(/"/g,'""');return /[",\n]/.test(v)?`"${v}"`:v}).join(',')+'\n'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=(ds==='ben'?'المستفيدون':'التابعون')+'_مصفى.csv';a.click();
+}
+
+// ---------- tabs ----------
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+  const tab=t.dataset.tab;
+  t.classList.add('active');document.getElementById('panel-'+tab).classList.add('active');
+  activateTab(tab);
+});
+// Recreate the opened tab's charts from scratch (while its panel is visible) so they always render.
+function activateTab(tab){
+  curTab=tab;
+  (tabCharts[tab]||[]).forEach(c=>{try{c.destroy()}catch(e){}});
+  tabCharts[tab]=[];
+  if(tab==='ben'){buildCharts('ben');render('ben');}
+  else if(tab==='dep'){buildCharts('dep');render('dep');}
+  else if(tab==='combo'){buildCombo();}
+  else if(tab==='alerts'){buildAlerts();}
+  else if(tab==='pipeline'){buildPipeline();}
+  else if(tab==='compare'){buildCompare();}
+  else if(tab==='quality'){buildQuality();}
+  // 'control' and 'reco' have no Chart.js charts
+  resizeTab(tab);
+}
+// resize a tab's charts repeatedly after layout settles so wide charts fill the full card width
+function resizeTab(tab){
+  const fn=()=>(tabCharts[tab]||[]).forEach(c=>{try{c.resize()}catch(e){}});
+  requestAnimationFrame(()=>requestAnimationFrame(fn));
+  setTimeout(fn,120);setTimeout(fn,400);
+}
+// keep the current tab's charts crisp when the window is resized
+window.addEventListener('resize',()=>{(tabCharts[curTab]||[]).forEach(c=>{try{c.resize()}catch(e){}})});
+document.getElementById('prio-search').oninput=e=>{PRIOQ=e.target.value;renderPrio()};
+document.getElementById('prio-export').onclick=exportPrio;
+
+// ---------- recommendations (computed live from current data) ----------
+function buildRecos(){
+  const rh=document.getElementById('recos');rh.innerHTML='';
+  const B=BENEFICIARIES,D=DEPENDENTS;
+  if(!B.length&&!D.length){
+    rh.innerHTML=`<div class="reco" style="border-right-color:#94a3b8"><h3>لا توجد بيانات</h3>
+      <div>اللوحة فارغة حالياً. ارفع ملفات الإكسل من <b>⚙️ لوحة التحكم</b> أو اضغط
+      «استعادة البيانات الأصلية» لعرض التوصيات.</div></div>`;
+    return;
+  }
+  const sick=cnt(B,'health','مريض'), kaf=cnt(B,'needsKafala','نعم');
+  const drop=cnt(D,'eduStatus','منقطع عن الدراسة'), late=cnt(D,'eduStatus','متأخر دراسياً'),
+        defer=cnt(D,'eduStatus','مؤجل ')+cnt(D,'eduStatus','مؤجل');
+  const govs=countBy(B,'gov'), dists=countBy(B,'district',{top:4});
+  const avgInc=avg(B,'income');
+  const incV=B.map(r=>Number(r.income)).filter(x=>!isNaN(x)&&x>0).sort((a,b)=>a-b);
+  const q1=incV.length?incV[Math.floor(incV.length*0.25)]:0;
+  const incMiss=B.filter(r=>r.income==null).length, orphMiss=B.filter(r=>r.orphans==null).length;
+  const recos=[];
+  if(sick) recos.push({tag:'أولوية عالية',h:'🩺 الحالة الصحية للأمهات',
+    b:`<b>${fmt(sick)} مستفيدة (${pct(sick,B.length)}%)</b> مصنّفات «مريض»:`,
+    l:['برنامج صحي وقائي/علاجي مخصص للأمهات المريضات','الربط مع جمعيات ومستشفيات شريكة لتغطية العلاج','أولوية في الكفالة للأسر التي تجمع بين مرض الأم وتعدد الأيتام']});
+  if(drop+late+defer) recos.push({tag:'أولوية عالية',h:'🎓 التعثر والانقطاع الدراسي للأبناء',
+    b:`<b>${fmt(late)} متأخر دراسياً و${fmt(drop)} منقطع و${fmt(defer)} مؤجل</b> بين التابعين:`,
+    l:['برنامج دعم أكاديمي (دروس تقوية) يستهدفهم تحديداً','متابعة فردية لكل منقطع لإعادته للمسار التعليمي','استخراج قوائمهم من فلتر «الحالة التعليمية» وتوزيعها على الأخصائيين']});
+  if(kaf) recos.push({tag:'فرص دعم',h:'🤝 احتياجات الكفالة',
+    b:`<b>${fmt(kaf)} أسرة (${pct(kaf,B.length)}%)</b> بحاجة لكفالة:`,
+    l:['إعداد ملف حملة كفالة موجّه للمانحين بهذه الأرقام','ترتيب الأولوية: الفئة (أ) ثم الأسر منخفضة الدخل وكثيرة الأيتام','استخدام شرائح الدخل لمطابقة مبلغ الكفالة مع حجم الفجوة']});
+  if(govs.labels.length) recos.push({tag:'استهداف جغرافي',h:'📍 التركّز الجغرافي',
+    b:`الأكثر تركّزاً: <b>${govs.labels.slice(0,2).map((g,i)=>g+' ('+pct(govs.data[i],B.length)+'%)').join(' ثم ')}</b>`+
+      (dists.labels.length?`، وأكثر الأحياء: ${dists.labels.join('، ')}:`:':'),
+    l:['تركيز الزيارات المنزلية والبرامج في الأحياء الأكثر كثافة','دراسة فتح نقطة خدمة/شراكة في مناطق التركّز','استخدام رسم «أكثر 10 أحياء» لتوزيع الموارد']});
+  if(incMiss+orphMiss) recos.push({tag:'جودة البيانات',h:'🧹 استكمال البيانات الناقصة',
+    b:`حقول ناقصة: <b>الدخل (${fmt(incMiss)} سجل)</b> وعدد الأيتام (${fmt(orphMiss)} سجل):`,
+    l:['حملة تحديث بيانات لاستكمال الحقول الناقصة','توحيد إدخال الحقول النصية الحرة','اعتماد قوائم منسدلة موحّدة لتقليل التباين','راجع تبويب «جودة البيانات» لمتابعة نسب الاكتمال']});
+  if(avgInc) recos.push({tag:'تمكين اقتصادي',h:'💼 الدخل والتمكين',
+    b:`متوسط دخل الأسرة <b>≈ ${fmt(avgInc)} ر.س</b>${q1?`، وربع الأسر تحت ${fmt(q1)} ر.س`:''}:`,
+    l:['استهداف الأسر في أدنى شرائح الدخل ببرامج تمكين/مشاريع صغيرة','ربط الأمهات القادرات على العمل بفرص عمل','متابعة الأبناء فوق 18 سنة ببرامج توظيف']});
+  recos.forEach(r=>{const d=document.createElement('div');d.className='reco';
+    d.innerHTML=`<span class="tag">${r.tag}</span><h3>${r.h}</h3><div>${r.b}</div><ul>${r.l.map(x=>`<li>${x}</li>`).join('')}</ul>`;
+    rh.appendChild(d)});
+}
+
+// ---------- combined analysis ----------
+const WEIGHTS={kafala:30,health:15,orphan:8,income:30};
+let FAMS=[], PRIOQ='', COMBO_CHARTS=[];
+const COMBO_FILTER={nKids:null,band:null,stage:null};   // set by clicking the combined-tab charts
+const bandOf=s=>s>=70?'high':s>=45?'mid':'low';
+// families after applying the chart-click cross-filters (drives ALL combined-tab charts + KPIs + table)
+function comboFams(){
+  let arr=FAMS;
+  if(COMBO_FILTER.nKids!=null)arr=arr.filter(f=>f.nKids===COMBO_FILTER.nKids);
+  if(COMBO_FILTER.band)arr=arr.filter(f=>bandOf(f.score)===COMBO_FILTER.band);
+  if(COMBO_FILTER.stage)arr=arr.filter(f=>f.kids.some(k=>String(k.schoolStage)===COMBO_FILTER.stage));
+  return arr;
+}
+function scoreFamily(f){
+  const b=f.b;let s=0;
+  if(String(b.needsKafala)==='نعم')s+=WEIGHTS.kafala;
+  if(String(b.health)==='مريض')s+=WEIGHTS.health;
+  s+=Math.min((Number(b.orphans)||f.orphanKids||0)*WEIGHTS.orphan,WEIGHTS.orphan*5);
+  const inc=f.inc;
+  if(inc>0){if(inc<2000)s+=WEIGHTS.income;else if(inc<4000)s+=WEIGHTS.income*0.66;else if(inc<6000)s+=WEIGHTS.income*0.33}
+  else s+=WEIGHTS.income*0.5;
+  return Math.round(s);
+}
+function buildCombo(){
+  const byGuardian=new Map();
+  DEPENDENTS.forEach(d=>{const k=String(d.guardianFile);if(!byGuardian.has(k))byGuardian.set(k,[]);byGuardian.get(k).push(d)});
+  FAMS=BENEFICIARIES.map(b=>{
+    const kids=byGuardian.get(String(b.fileNo))||[];
+    return {b,kids,nKids:kids.length,orphanKids:kids.filter(k=>String(k.orphan)==='نعم').length,inc:Number(b.income)||0};
+  });
+  FAMS.forEach(f=>f.score=scoreFamily(f));
+  COMBO_FILTER.nKids=null;COMBO_FILTER.band=null;COMBO_FILTER.stage=null;
+
+  const host=document.getElementById('grid-combo');host.innerHTML='';COMBO_CHARTS=[];
+  const mk=(title,type,onPick,compute)=>{
+    const card=document.createElement('div');card.className='chart';
+    card.innerHTML=`<h3>${title}${onPick?'<span class="clickhint">انقر للتصفية</span>':''}</h3><div class="cv"><canvas></canvas></div>`;host.appendChild(card);
+    const dough=type==='doughnut';
+    const opts={responsive:true,maintainAspectRatio:false,indexAxis:dough?'x':'y',
+        plugins:{legend:{display:dough,position:'bottom',labels:{font:{size:11},padding:8}},tooltip:{rtl:true}},
+        scales:dough?{}:{x:{ticks:{font:{size:11}}},y:{ticks:{font:{size:11}}}}};
+    if(onPick){opts.onClick=(e,els,chart)=>{if(els.length)onPick(chart.data.labels[els[0].index],els[0].index);};
+      opts.onHover=(e,els)=>{if(e.native&&e.native.target)e.native.target.style.cursor=els.length?'pointer':'default';};}
+    const ch=new Chart(card.querySelector('canvas'),{type,data:{labels:[],datasets:[{data:[],
+      backgroundColor:dough?PALETTE:'#0f766e',borderRadius:dough?0:5,borderWidth:dough?2:0,borderColor:'#fff'}]},options:opts});
+    tabCharts.combo.push(ch);COMBO_CHARTS.push({ch,compute});return ch;
+  };
+  const pickKids=lbl=>{const n=+lbl;COMBO_FILTER.nKids=COMBO_FILTER.nKids===n?null:n;renderCombo();};
+  mk('توزيع عدد الأبناء لكل أسرة','bar',pickKids,fams=>{
+    const linked=fams.filter(f=>f.nKids>0),m=new Map();linked.forEach(f=>m.set(f.nKids,(m.get(f.nKids)||0)+1));
+    const k=[...m.keys()].sort((a,b)=>a-b);return {labels:k.map(String),data:k.map(x=>m.get(x))};});
+  mk('متوسط دخل الأسرة حسب عدد الأبناء (ر.س)','bar',pickKids,fams=>{
+    const by={};fams.filter(f=>f.nKids>0).forEach(f=>{if(f.inc>0)(by[f.nKids]=by[f.nKids]||[]).push(f.inc)});
+    const k=Object.keys(by).map(Number).sort((a,b)=>a-b);
+    return {labels:k.map(String),data:k.map(x=>Math.round(by[x].reduce((a,b)=>a+b,0)/by[x].length))};});
+  PRIO_CHART=mk('توزيع مؤشر الأولوية','doughnut',
+    (lbl,idx)=>{const b=['high','mid','low'][idx];COMBO_FILTER.band=COMBO_FILTER.band===b?null:b;renderCombo();},
+    fams=>{const h=fams.filter(f=>f.score>=70).length,m=fams.filter(f=>f.score>=45&&f.score<70).length;
+      return {labels:['مرتفعة (70+)','متوسطة (45-69)','منخفضة (<45)'],data:[h,m,fams.length-h-m]};});
+  mk('المراحل الدراسية لأبناء الأسر المرتبطة','bar',
+    lbl=>{COMBO_FILTER.stage=COMBO_FILTER.stage===lbl?null:lbl;renderCombo();},
+    fams=>countBy(fams.filter(f=>f.nKids>0).flatMap(f=>f.kids),'schoolStage',{top:12}));
+
+  buildWeights();renderCombo();
+}
+// re-render every combined-tab chart + KPIs + table from the cross-filtered family set
+function renderCombo(){
+  const fams=comboFams(), linked=fams.filter(f=>f.nKids>0);
+  const avgKids=linked.length?linked.reduce((a,f)=>a+f.nKids,0)/linked.length:0;
+  const sickMany=fams.filter(f=>String(f.b.health)==='مريض'&&(Number(f.b.orphans)||0)>=3).length;
+  const noKafalaOrphan=fams.filter(f=>String(f.b.needsKafala)==='نعم'&&(Number(f.b.orphans)||0)>=3).length;
+  const kh=document.getElementById('kpis-combo');kh.innerHTML='';
+  [['أسر مرتبطة بأبناء',fmt(linked.length)],['متوسط الأبناء/الأسرة',avgKids.toFixed(1)],
+   ['أسر (أم مريضة + 3 أيتام فأكثر)',fmt(sickMany)],['أسر تحتاج كفالة و3 أيتام+',fmt(noKafalaOrphan)],
+   ['أسر بلا أبناء مسجلين',fmt(fams.length-linked.length)]
+  ].forEach(([l,v])=>{const d=document.createElement('div');d.className='kpi';
+    d.innerHTML=`<div class="v">${v}</div><div class="l">${l}</div>`;kh.appendChild(d)});
+  COMBO_CHARTS.forEach(({ch,compute})=>{const r=compute(fams);ch.data.labels=r.labels;ch.data.datasets[0].data=r.data;ch.update();});
+  renderPrio();
+}
+let PRIO_CHART=null;
+function buildWeights(){
+  const defs=[['kafala','وزن الحاجة للكفالة',0,50],['health','وزن مرض الأم',0,40],
+    ['orphan','وزن كل يتيم',0,15],['income','وزن انخفاض الدخل',0,50]];
+  const h=document.getElementById('weights');h.innerHTML='';
+  defs.forEach(([k,lbl,mn,mx])=>{
+    const w=document.createElement('div');w.className='w';
+    w.innerHTML=`<label>${lbl} <b>${WEIGHTS[k]}</b></label>
+      <input type="range" min="${mn}" max="${mx}" value="${WEIGHTS[k]}">`;
+    w.querySelector('input').oninput=e=>{WEIGHTS[k]=+e.target.value;
+      w.querySelector('b').textContent=WEIGHTS[k];
+      FAMS.forEach(f=>f.score=scoreFamily(f));renderCombo()};
+    h.appendChild(w);
+  });
+  const reset=document.createElement('button');reset.className='clr';reset.style.alignSelf='flex-end';
+  reset.textContent='استعادة الافتراضي';
+  reset.onclick=()=>{Object.assign(WEIGHTS,{kafala:30,health:15,orphan:8,income:30});
+    FAMS.forEach(f=>f.score=scoreFamily(f));buildWeights();renderCombo()};
+  h.appendChild(reset);
+}
+function prioList(){
+  const q=PRIOQ.trim();
+  let arr=[...FAMS].sort((a,b)=>b.score-a.score);
+  if(COMBO_FILTER.nKids!=null)arr=arr.filter(f=>f.nKids===COMBO_FILTER.nKids);
+  if(COMBO_FILTER.band)arr=arr.filter(f=>bandOf(f.score)===COMBO_FILTER.band);
+  if(COMBO_FILTER.stage)arr=arr.filter(f=>f.kids.some(k=>String(k.schoolStage)===COMBO_FILTER.stage));
+  if(q)arr=arr.filter(f=>[f.b.name,f.b.category,f.b.gov,f.b.district].some(x=>String(x??'').includes(q)));
+  return arr;
+}
+function comboChips(){
+  const p=[];
+  if(COMBO_FILTER.nKids!=null)p.push('عدد الأبناء = '+COMBO_FILTER.nKids);
+  if(COMBO_FILTER.band)p.push('الأولوية: '+({high:'مرتفعة',mid:'متوسطة',low:'منخفضة'}[COMBO_FILTER.band]));
+  if(COMBO_FILTER.stage)p.push('المرحلة الدراسية: '+COMBO_FILTER.stage);
+  return p;
+}
+let PRIO_SIZE=10;
+function renderPrio(){
+  const arr=prioList();
+  const n=(PRIO_SIZE==='all')?arr.length:Math.min(PRIO_SIZE,arr.length);
+  const top=arr.slice(0,n);
+  const cols=['#','الاسم','الفئة','المحافظة','الأبناء','الأيتام','الدخل','صحة الأم','كفالة','الأولوية'];
+  let html='<table><thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
+  top.forEach((f,i)=>{const cls=f.score>=70?'prio-high':f.score>=45?'prio-mid':'';
+    html+=`<tr><td>${i+1}</td><td>${f.b.name??'—'}</td><td>${f.b.category??'—'}</td>
+      <td>${f.b.gov??'—'}</td><td>${f.nKids||'—'}</td><td>${f.b.orphans??'—'}</td>
+      <td>${f.inc?fmt(f.inc):'—'}</td><td>${f.b.health??'—'}</td><td>${f.b.needsKafala??'—'}</td>
+      <td class="${cls}">${f.score} <span class="score-bar" style="width:${Math.min(f.score,100)/2}px"></span></td></tr>`});
+  html+='</tbody></table>';
+  const chips=comboChips();
+  const chipBar=chips.length?`<div style="margin-bottom:8px;font-size:12.5px;color:var(--green-d)">
+    🔎 تصفية من الرسوم: <b>${chips.join(' · ')}</b>
+    <button id="clr-combo" class="clr" style="padding:3px 11px;height:auto;margin-right:8px">مسح</button></div>`:'';
+  const opt=v=>`<option value="${v}"${String(PRIO_SIZE)===String(v)?' selected':''}>${v==='all'?'الكل':v}</option>`;
+  const sizeSel=`<label style="font-size:12.5px;color:var(--muted);margin-bottom:10px;display:inline-block">عرض
+    <select id="prio-size" style="padding:7px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px">
+      ${opt(10)}${opt(20)}${opt(50)}${opt('all')}</select> صف</label>`;
+  const el=document.getElementById('table-combo');
+  el.innerHTML=chipBar+sizeSel+html+
+    `<div class="note">عرض ${n} من ${arr.length} أسرة${(chips.length||PRIOQ.trim())?' بعد التصفية':''} (مرتبة حسب الأولوية).</div>`;
+  const cb=el.querySelector('#clr-combo');
+  if(cb)cb.onclick=()=>{COMBO_FILTER.nKids=null;COMBO_FILTER.band=null;COMBO_FILTER.stage=null;renderCombo();};
+  el.querySelector('#prio-size').onchange=e=>{PRIO_SIZE=e.target.value==='all'?'all':+e.target.value;renderPrio();};
+}
+function exportPrio(){
+  const arr=prioList();
+  const cols=[['','#'],['name','الاسم'],['category','الفئة'],['gov','المحافظة'],['phone','الجوال'],
+    ['nKids','عدد الأبناء'],['orphans','الأيتام'],['income','الدخل'],['health','صحة الأم'],
+    ['needsKafala','كفالة'],['score','مؤشر الأولوية']];
+  let csv='﻿'+cols.map(c=>c[1]).join(',')+'\n';
+  arr.forEach((f,i)=>{
+    const row=['', f.b.name,f.b.category,f.b.gov,f.b.phone,f.nKids,f.b.orphans,f.inc||'',f.b.health,f.b.needsKafala,f.score];
+    row[0]=i+1;
+    csv+=row.map(v=>{v=String(v??'').replace(/"/g,'""');return /[",\n]/.test(v)?`"${v}"`:v}).join(',')+'\n'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='قائمة_الأولوية.csv';a.click();
+}
+
+// ---------- data quality ----------
+function buildQuality(){
+  const dup=(rows,key)=>{const m=new Map();rows.forEach(r=>{const v=r[key];if(v==null||v==='')return;
+    const k=String(v);m.set(k,(m.get(k)||0)+1)});return [...m.values()].filter(n=>n>1).length};
+  const missBen=BENEFICIARIES.filter(r=>r.nid==null||r.nid==='').length;
+  const k=document.getElementById('kpis-quality');k.innerHTML='';
+  [['سجلات المستفيدين',fmt(BENEFICIARIES.length)],['سجلات التابعين',fmt(DEPENDENTS.length)],
+   ['تكرار رقم هوية (مستفيدين)',fmt(dup(BENEFICIARIES,'nid'))],
+   ['تكرار رقم هوية (تابعين)',fmt(dup(DEPENDENTS,'nid'))],
+   ['مستفيدات بلا رقم هوية',fmt(missBen)]
+  ].forEach(([l,v])=>{const d=document.createElement('div');d.className='kpi';
+    d.innerHTML=`<div class="v">${v}</div><div class="l">${l}</div>`;k.appendChild(d)});
+
+  const fields=(rows,defs,title)=>{
+    let h=`<div class="chart"><h3>${title}</h3>`;
+    defs.forEach(([key,lbl])=>{
+      const filled=rows.filter(r=>r[key]!=null&&r[key]!=='').length;
+      const p=rows.length?Math.round(filled/rows.length*100):0;
+      const cls=p>=90?'q-good':p>=60?'q-mid':'q-bad';
+      h+=`<div class="qrow"><div class="qh"><span class="qt">${lbl}</span>
+        <span class="qp">${p}% <span style="color:var(--muted);font-weight:400">(${fmt(rows.length-filled)} ناقص)</span></span></div>
+        <div class="qbar"><span class="${cls}" style="width:${p}%"></span></div></div>`;
+    });
+    return h+'</div>';
+  };
+  const g=document.getElementById('grid-quality');
+  g.innerHTML=fields(BENEFICIARIES,[['nid','رقم الهوية'],['phone','رقم الجوال'],['iban','رقم الأيبان'],
+      ['income','الدخل'],['orphans','عدد الأيتام'],['education','المستوى التعليمي'],
+      ['district','الحي'],['housingOwn','ملكية السكن']],'اكتمال بيانات المستفيدين')
+    +fields(DEPENDENTS,[['nid','رقم الهوية'],['schoolStage','المرحلة الدراسية'],['nationality','الجنسية'],
+      ['eduStatus','الحالة التعليمية'],['health','الحالة الصحية'],['ageStage','المرحلة العمرية']],'اكتمال بيانات التابعين');
+  g.innerHTML+=`<div class="chart wide" style="background:#fffbeb;border-color:#fde68a">
+    <h3>ℹ️ ملاحظات لتحسين الجودة</h3>
+    <ul style="line-height:2;margin:0;padding-right:18px">
+      <li>الحقول ذات النسبة المنخفضة (بالأحمر) تحتاج حملة استكمال بيانات.</li>
+      <li>راجع السجلات المكرّرة في رقم الهوية للتأكد من عدم تكرار التسجيل.</li>
+      <li>وحّد إدخال الحقول النصية الحرة (مثل اسم الجمعية الداعمة) بقوائم منسدلة لتقليل التباين.</li>
+    </ul></div>`;
+}
+
+// ---------- data management (upload / update excel) ----------
+// header (Arabic, trimmed) -> internal key  — must mirror the columns the analysis uses
+const BEN_HMAP={'الإسم':'name','حالة الملف':'fileStatus','فئة الملف':'category','الحالة الإجتماعية':'marital',
+ 'دولة الجنسية':'nationality','القطاع - المحافظة':'gov','القرية أو الحي':'district','المستوى التعليمي':'education',
+ 'حالة الصحة':'health','لديه إعاقة':'disability','يحتاج لكفالة':'needsKafala','نوع السكن':'housingType',
+ 'ملكية السكن':'housingOwn','العمر':'age','عدد التابعين':'dependents','عدد الأيتام':'orphans',
+ 'إجمالي دخل المستفيد':'income','رقم الملف':'fileNo','رقم الجوال':'phone','رقم الهوية':'nid','رقم الأيبان':'iban'};
+const DEP_HMAP={'الإسم':'name','رقم ملف الولي':'guardianFile','فئة الملف':'category','النوع':'gender','يتيم':'orphan',
+ 'المرحلة العمرية':'ageStage','المرحلة الدراسية':'schoolStage','الحالة الصحية':'health','الجنسية':'nationality',
+ 'بحاجة للتأهيل':'needsRehab','العمر':'age','الحالة التعليمية':'eduStatus','حالة الملف':'fileStatus',
+ 'صلة القرابة':'relation','رقم الهوية':'nid'};
+function cleanVal(v){if(v===undefined||v===null)return null;
+  if(typeof v==='string'){v=v.trim();return v===''?null:v}
+  if(typeof v==='number'&&isNaN(v))return null;return v}
+function normalize(json,hmap,isBen){
+  return json.map(raw=>{
+    const tr={};for(const k in raw)tr[String(k).trim()]=raw[k];   // trim headers
+    const o={};for(const h in hmap)o[hmap[h]]=cleanVal(tr[h]);
+    if(isBen&&typeof o.income==='number'&&(o.income>50000||o.income<0))o.income=null;
+    return o;
+  });
+}
+function parseExcel(file){
+  return file.arrayBuffer().then(buf=>{
+    const wb=XLSX.read(new Uint8Array(buf),{type:'array'});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    return XLSX.utils.sheet_to_json(ws,{defval:null,raw:true});
+  });
+}
+function replaceData(benRows,depRows){
+  if(benRows){BENEFICIARIES.length=0;BENEFICIARIES.push(...benRows);stampAgeRange(BENEFICIARIES,AGE_B_EDGES,AGE_B_LBL)}
+  if(depRows){DEPENDENTS.length=0;DEPENDENTS.push(...depRows);stampAgeRange(DEPENDENTS,DAGE_EDGES,DAGE_LBL)}
+}
+function rebuildAll(){
+  Object.keys(tabCharts).forEach(k=>{tabCharts[k].forEach(c=>{try{c.destroy()}catch(e){}});tabCharts[k]=[]});
+  charts.ben=[];charts.dep=[];TBLQ.ben='';TBLQ.dep='';PRIOQ='';FAMS=[];PRIO_CHART=null;
+  buildFilters('ben');buildFilters('dep');buildRecos();
+  const active=(document.querySelector('.tab.active')||{}).dataset?.tab||'ben';
+  activateTab(active==='reco'||active==='control'?'ben':active);
+  curTab=active;
+}
+const LS={ben:'banaa_ben_v1',dep:'banaa_dep_v1',meta:'banaa_meta_v1'};
+// save ONE dataset independently; on failure remove its key so no partial/stale copy lingers
+function saveDataset(key,arr){
+  try{localStorage.setItem(key,JSON.stringify(arr));return true}
+  catch(e){try{localStorage.removeItem(key)}catch(_){}return false}
+}
+function saveMeta(){try{localStorage.setItem(LS.meta,JSON.stringify(META))}catch(e){}}
+function setStatus(ds,msg,cls){const el=document.getElementById('status-'+ds);
+  el.className='upstat'+(cls?' '+cls:'');el.innerHTML=msg}
+function refreshStatus(){
+  setStatus('ben',`عدد السجلات الحالي: <b>${fmt(BENEFICIARIES.length)}</b><br>المصدر: ${META.ben}`,META.benCls);
+  setStatus('dep',`عدد السجلات الحالي: <b>${fmt(DEPENDENTS.length)}</b><br>المصدر: ${META.dep}`,META.depCls);
+}
+function handleUpload(ds){
+  const inp=document.getElementById('up-'+ds);
+  inp.onchange=()=>{const file=inp.files[0];if(!file)return;
+    setStatus(ds,'⏳ جاري قراءة الملف...');
+    parseExcel(file).then(json=>{
+      const rows=normalize(json,ds==='ben'?BEN_HMAP:DEP_HMAP,ds==='ben');
+      const named=rows.filter(r=>r.name).length;
+      if(!rows.length||!named){setStatus(ds,'⚠️ لم يتم العثور على بيانات مطابقة. تأكد من أسماء الأعمدة في الصفحة الأولى.','err');return}
+      ds==='ben'?replaceData(rows,null):replaceData(null,rows);
+      const stamp=new Date().toLocaleString('ar-SA');
+      META[ds]='ملف مرفوع ('+file.name+') بتاريخ '+stamp;META[ds+'Cls']='ok';
+      const saved=saveDataset(ds==='ben'?LS.ben:LS.dep, ds==='ben'?BENEFICIARIES:DEPENDENTS);saveMeta();
+      rebuildAll();refreshStatus();
+      setStatus(ds,`✅ تم التحديث: <b>${fmt(rows.length)}</b> سجل من «${file.name}».`+
+        (saved?' (محفوظ في المتصفح)':' ⚠️ تعذّر الحفظ الدائم (الحجم كبير) — التحديث فعّال لهذه الجلسة فقط.'),'ok');
+    }).catch(err=>{setStatus(ds,'❌ خطأ في قراءة الملف: '+err.message,'err')});
+    inp.value='';
+  };
+}
+
+// ---------- shared family linkage ----------
+function familiesData(){
+  const byG=new Map();
+  DEPENDENTS.forEach(d=>{const k=String(d.guardianFile);if(!byG.has(k))byG.set(k,[]);byG.get(k).push(d)});
+  return BENEFICIARIES.map(b=>{const kids=byG.get(String(b.fileNo))||[];
+    return {b,kids,nKids:kids.length,orphanKids:kids.filter(k=>String(k.orphan)==='نعم').length,inc:Number(b.income)||0};});
+}
+const kpiCard=(l,v,cls)=>{const d=document.createElement('div');d.className='kpi'+(cls?' '+cls:'');
+  d.innerHTML=`<div class="v">${v}</div><div class="l">${l}</div>`;return d;};
+function tableHTML(cols,rows,cellFns,note){
+  let h='<table><thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
+  rows.forEach((r,i)=>{h+='<tr>'+cellFns.map(fn=>`<td>${fn(r,i)??'—'}</td>`).join('')+'</tr>'});
+  h+='</tbody></table>';return h+(note?`<div class="note">${note}</div>`:'');
+}
+// reusable table with a page-size selector (10/20/50/all, default 10) — persists choice per container id
+const TBL_SIZE={};
+function pagedTable(id,cols,rows,cellFns,label){
+  const size=TBL_SIZE[id]??10;
+  const n=(size==='all')?rows.length:Math.min(size,rows.length);
+  const opt=v=>`<option value="${v}"${String(size)===String(v)?' selected':''}>${v==='all'?'الكل':v}</option>`;
+  const sel=`<label style="font-size:12.5px;color:var(--muted);margin-bottom:10px;display:inline-block">عرض
+    <select class="psz" style="padding:7px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px">
+      ${opt(10)}${opt(20)}${opt(50)}${opt('all')}</select> صف</label>`;
+  let h=sel+'<table><thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
+  rows.slice(0,n).forEach((r,i)=>{h+='<tr>'+cellFns.map(fn=>`<td>${fn(r,i)??'—'}</td>`).join('')+'</tr>'});
+  h+='</tbody></table>'+`<div class="note">عرض ${n} من ${rows.length} ${label||'سجل'}.</div>`;
+  const el=document.getElementById(id);el.innerHTML=h;
+  el.querySelector('.psz').onchange=e=>{TBL_SIZE[id]=e.target.value==='all'?'all':+e.target.value;pagedTable(id,cols,rows,cellFns,label);};
+}
+function csvFrom(headers,rows,cellVals,name){
+  let csv='﻿'+headers.join(',')+'\n';
+  rows.forEach((r,i)=>{csv+=cellVals(r,i).map(v=>{v=String(v??'').replace(/"/g,'""');return /[",\n]/.test(v)?`"${v}"`:v}).join(',')+'\n'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download=name+'.csv';a.click();
+}
+
+// ---------- 🚨 early-warning / alerts ----------
+let RISK=[],DROP=[],AGEOUT=[];
+function riskScore(f){let s=0;const b=f.b;
+  if(String(b.health)==='مريض')s+=3;
+  const o=Number(b.orphans)||f.orphanKids||0; s+=o>=4?3:o>=2?2:o>=1?1:0;
+  if(f.inc>0){if(f.inc<2000)s+=3;else if(f.inc<4000)s+=2;else if(f.inc<6000)s+=1}else s+=2;
+  if(String(b.needsKafala)==='نعم')s+=1;
+  return s;}
+function riskReasons(f){const r=[],b=f.b;
+  if(String(b.health)==='مريض')r.push('الأم مريضة');
+  const o=Number(b.orphans)||0;if(o>=3)r.push(o+' أيتام');
+  if(f.inc>0&&f.inc<3000)r.push('دخل منخفض');else if(!f.inc)r.push('دخل غير مسجل');
+  if(String(b.needsKafala)==='نعم')r.push('بحاجة كفالة');
+  return r.join(' · ');}
+function buildAlerts(){
+  const fams=familiesData();
+  RISK=fams.map(f=>({f,score:riskScore(f)})).sort((a,b)=>b.score-a.score);
+  const high=RISK.filter(x=>x.score>=8).length, mid=RISK.filter(x=>x.score>=6&&x.score<8).length;
+  DROP=DEPENDENTS.filter(d=>['منقطع عن الدراسة','متأخر دراسياً','مؤجل ','مؤجل'].includes(String(d.eduStatus).trim()));
+  AGEOUT=DEPENDENTS.filter(d=>{const a=Number(d.age);return !isNaN(a)&&a>=17&&a<=18&&String(d.orphan)==='نعم';}).sort((a,b)=>Number(b.age)-Number(a.age));
+  const k=document.getElementById('kpis-alerts');k.innerHTML='';
+  [['أسر عالية الخطورة',fmt(high)],['أسر متوسطة الخطورة',fmt(mid)],
+   ['طلاب معرّضون للتسرّب',fmt(DROP.length)],['أيتام بعمر 17-18',fmt(AGEOUT.length)]
+  ].forEach(([l,v])=>k.appendChild(kpiCard(l,v)));
+  // risk table
+  pagedTable('table-risk',
+    ['#','الاسم','الفئة','المحافظة','الأيتام','الدخل','صحة الأم','عوامل الخطورة','المؤشر'],RISK,
+    [(x,i)=>i+1,x=>x.f.b.name,x=>x.f.b.category,x=>x.f.b.gov,x=>x.f.b.orphans,x=>x.f.inc?fmt(x.f.inc):'—',
+     x=>x.f.b.health,x=>`<span class="reasons">${riskReasons(x.f)}</span>`,
+     x=>`<span class="riskbadge ${x.score>=8?'rb-high':x.score>=6?'rb-mid':'rb-low'}">${x.score}</span>`],'أسرة (مرتبة حسب الخطورة)');
+  // dropout table
+  pagedTable('table-drop',
+    ['#','الاسم','العمر','المرحلة الدراسية','الحالة التعليمية','رقم ملف الولي'],DROP,
+    [(d,i)=>i+1,d=>d.name,d=>d.age,d=>d.schoolStage,d=>d.eduStatus,d=>d.guardianFile],'طالب');
+  // aging out
+  pagedTable('table-age',
+    ['#','الاسم','العمر','المرحلة الدراسية','النوع','رقم ملف الولي'],AGEOUT,
+    [(d,i)=>i+1,d=>d.name,d=>d.age,d=>d.schoolStage,d=>d.gender,d=>d.guardianFile],'تابع بعمر 17-18 سنة');
+}
+
+// ---------- 📈 education pipeline & forecast ----------
+const STAGE_NEXT={'الروضة':'الأول الابتدائي','الأول الابتدائي':'الثاني الابتدائي','الثاني الابتدائي':'الثالث الابتدائي',
+ 'الثالث الابتدائي':'الرابع الابتدائي','الرابع الابتدائي':'الخامس الابتدائي','الخامس الابتدائي':'السادس الابتدائي',
+ 'السادس الابتدائي':'الأول المتوسط','الأول المتوسط':'الثاني المتوسط','الثاني المتوسط':'الثالث المتوسط',
+ 'الثالث المتوسط':'الأول الثانوي','الأول الثانوي':'الثاني الثانوي','الثاني الثانوي':'الثالث الثانوي',
+ 'الثالث الثانوي':'جامعي / تخرج'};
+let KAFALA_AMT=800;
+function buildPipeline(){
+  const students=DEPENDENTS.filter(d=>STAGE_NEXT[String(d.schoolStage).trim()]!==undefined||String(d.schoolStage).trim()==='جامعي');
+  const toUni=DEPENDENTS.filter(d=>String(d.schoolStage).trim()==='الثالث الثانوي').length;
+  const toMid=DEPENDENTS.filter(d=>String(d.schoolStage).trim()==='السادس الابتدائي').length;
+  const toSec=DEPENDENTS.filter(d=>String(d.schoolStage).trim()==='الثالث المتوسط').length;
+  const grads=DEPENDENTS.filter(d=>['خريج','جامعي'].includes(String(d.schoolStage).trim())).length;
+  const k=document.getElementById('kpis-pipeline');k.innerHTML='';
+  [['متوقع دخولهم الجامعة العام القادم',fmt(toUni)],
+   ['ينتقلون للثانوي (من 3 متوسط)',fmt(toSec)],
+   ['ينتقلون للمتوسط (من 6 ابتدائي)',fmt(toMid)],
+   ['جامعيون/خريجون حالياً',fmt(grads)]
+  ].forEach(([l,v])=>k.appendChild(kpiCard(l,v)));
+  // next-year stage distribution
+  const nextCount={};
+  DEPENDENTS.forEach(d=>{const cur=String(d.schoolStage).trim();const nx=STAGE_NEXT[cur];if(nx)nextCount[nx]=(nextCount[nx]||0)+1});
+  const entries=Object.entries(nextCount).sort((a,b)=>b[1]-a[1]);
+  const host=document.getElementById('grid-pipeline');host.innerHTML='';tabCharts.pipeline=[];
+  const mk=(title,labels,data,wide)=>{const card=document.createElement('div');card.className='chart tall'+(wide?' wide':'');
+    card.innerHTML=`<h3>${title}</h3><div class="cv"><canvas></canvas></div>`;host.appendChild(card);
+    const ch=new Chart(card.querySelector('canvas'),{type:'bar',data:{labels,datasets:[{data,backgroundColor:'#0f766e',borderRadius:5}]},
+      options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{rtl:true}},
+        scales:{x:{ticks:{font:{size:11}}},y:{ticks:{font:{size:11}}}}}});tabCharts.pipeline.push(ch);};
+  mk('التوزيع المتوقع للمراحل العام القادم',entries.map(e=>e[0]),entries.map(e=>e[1]),false);
+  const cur=countBy(DEPENDENTS,'schoolStage',{top:18});
+  mk('التوزيع الحالي للمراحل الدراسية',cur.labels,cur.data,false);
+  // kafala estimate
+  const need=cnt(BENEFICIARIES,'needsKafala','نعم');
+  const ctrl=document.getElementById('kafala-ctrl');ctrl.innerHTML='';
+  const w=document.createElement('div');w.className='w';w.style.minWidth='240px';
+  w.innerHTML=`<label>متوسط مبلغ الكفالة الشهري (ر.س) <b>${KAFALA_AMT}</b></label>
+    <input type="range" min="200" max="3000" step="50" value="${KAFALA_AMT}">`;
+  const out=document.getElementById('kafala-out');
+  const renderKaf=()=>{const monthly=need*KAFALA_AMT;
+    out.innerHTML=`الأسر المحتاجة للكفالة: <b>${fmt(need)}</b> &nbsp;|&nbsp; الاحتياج الشهري التقديري:
+      <b style="color:var(--gold)">${fmt(monthly)} ر.س</b> &nbsp;|&nbsp; السنوي: <b style="color:var(--gold)">${fmt(monthly*12)} ر.س</b>`;};
+  w.querySelector('input').oninput=e=>{KAFALA_AMT=+e.target.value;w.querySelector('b').textContent=KAFALA_AMT;renderKaf();};
+  ctrl.appendChild(w);renderKaf();
+}
+
+// ---------- 🔀 comparisons ----------
+function buildCompare(){
+  const govs=['الدمام','الخبر'];
+  const cmp=document.getElementById('cmp-gov');cmp.innerHTML='';
+  const fams=familiesData();
+  govs.forEach(g=>{
+    const rows=BENEFICIARIES.filter(r=>String(r.gov)===g);
+    const orph=sum(rows,'orphans');
+    const card=document.createElement('div');card.className='cmpcard';
+    card.innerHTML=`<h3>${g}</h3>
+      <div class="cmprow"><span>عدد الأسر</span><b>${fmt(rows.length)}</b></div>
+      <div class="cmprow"><span>إجمالي الأيتام</span><b>${fmt(orph)}</b></div>
+      <div class="cmprow"><span>متوسط الدخل</span><b>${fmt(avg(rows,'income'))} ر.س</b></div>
+      <div class="cmprow"><span>نسبة المريضات</span><b>${pct(cnt(rows,'health','مريض'),rows.length)}%</b></div>
+      <div class="cmprow"><span>بحاجة لكفالة</span><b>${pct(cnt(rows,'needsKafala','نعم'),rows.length)}%</b></div>
+      <div class="cmprow"><span>إيجار (لا يملكون سكن)</span><b>${pct(cnt(rows,'housingOwn','إيجار'),rows.length)}%</b></div>`;
+    cmp.appendChild(card);
+  });
+  // grouped comparison chart
+  const host=document.getElementById('grid-compare');host.innerHTML='';tabCharts.compare=[];
+  const metrics=[['عدد الأسر',g=>BENEFICIARIES.filter(r=>String(r.gov)===g).length],
+    ['الأيتام',g=>sum(BENEFICIARIES.filter(r=>String(r.gov)===g),'orphans')],
+    ['محتاجو كفالة',g=>cnt(BENEFICIARIES.filter(r=>String(r.gov)===g),'needsKafala','نعم')],
+    ['مريضات',g=>cnt(BENEFICIARIES.filter(r=>String(r.gov)===g),'health','مريض')]];
+  const card=document.createElement('div');card.className='chart wide';
+  card.innerHTML=`<h3>مقارنة المؤشرات: الدمام مقابل الخبر</h3><div class="cv"><canvas></canvas></div>`;host.appendChild(card);
+  const ch=new Chart(card.querySelector('canvas'),{type:'bar',data:{labels:metrics.map(m=>m[0]),
+    datasets:govs.map((g,i)=>({label:g,data:metrics.map(m=>m[1](g)),backgroundColor:i===0?'#0f766e':'#d97706',borderRadius:5}))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'},tooltip:{rtl:true}},
+      scales:{x:{ticks:{font:{size:12}}},y:{ticks:{font:{size:11}}}}}});tabCharts.compare.push(ch);
+  // heatmaps
+  heatmap('heat-catgov',BENEFICIARIES,'category',['أ','ب','ج','د','مؤقت'],'gov',['الدمام','الخبر']);
+  const incBracket=r=>{const v=Number(r.income);if(isNaN(v)||v<=0)return 'غير مسجل';return v<2000?'<2000':v<4000?'2000-3999':v<6000?'4000-5999':'6000+';};
+  heatmapFn('heat-healthinc',BENEFICIARIES,r=>String(r.health),['سليم','مريض'],incBracket,['<2000','2000-3999','4000-5999','6000+','غير مسجل']);
+}
+function heatmap(id,rows,rowKey,rowVals,colKey,colVals){heatmapFn(id,rows,r=>String(r[rowKey]),rowVals,r=>String(r[colKey]),colVals);}
+function heatmapFn(id,rows,rowFn,rowVals,colFn,colVals){
+  const grid={};let max=0;
+  rowVals.forEach(rv=>{grid[rv]={};colVals.forEach(cv=>grid[rv][cv]=0)});
+  rows.forEach(r=>{const rv=rowFn(r),cv=colFn(r);if(grid[rv]&&grid[rv][cv]!==undefined){grid[rv][cv]++;if(grid[rv][cv]>max)max=grid[rv][cv]}});
+  let h='<table class="heat"><thead><tr><th></th>'+colVals.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
+  rowVals.forEach(rv=>{h+=`<tr><td class="lbl">${rv}</td>`+colVals.map(cv=>{const n=grid[rv][cv];
+    const a=max?n/max:0;const bg=`rgba(15,118,110,${(0.08+a*0.85).toFixed(2)})`;const col=a>0.5?'#fff':'var(--ink)';
+    return `<td style="background:${bg};color:${col};font-weight:${n?700:400}">${n||''}</td>`;}).join('')+'</tr>'});
+  h+='</tbody></table>';document.getElementById(id).innerHTML=h;
+}
+
+// ---------- theme + report cover ----------
+function applyTheme(dark){document.body.classList.toggle('dark',dark);
+  const btn=document.getElementById('btn-theme');if(btn)btn.textContent=dark?'☀️ وضع نهاري':'🌙 وضع ليلي';
+  try{localStorage.setItem('banaa_theme',dark?'dark':'light')}catch(e){}
+  ALLRESIZE();}
+function ALLRESIZE(){Object.keys(tabCharts).forEach(k=>(tabCharts[k]||[]).forEach(c=>{try{c.resize()}catch(e){}}))}
+function buildCover(){
+  const c=document.getElementById('cover');if(!c)return;
+  c.innerHTML=`<div class="clogo">بناء</div>
+    <h1>تقرير تحليل بيانات جمعية بناء لرعاية الأيتام</h1>
+    <div style="font-size:16px;color:var(--muted);margin-bottom:8px">المنطقة الشرقية</div>
+    <div style="font-size:14px;color:var(--muted)">عدد المستفيدين: ${fmt(BENEFICIARIES.length)} &nbsp;•&nbsp; عدد التابعين: ${fmt(DEPENDENTS.length)}</div>
+    <div style="font-size:13px;color:var(--muted);margin-top:6px">تاريخ التقرير: ${new Date().toLocaleDateString('ar-SA')}</div>`;
+}
+
+// ---------- init ----------
+const ORIG_BEN=[...BENEFICIARIES], ORIG_DEP=[...DEPENDENTS];   // pristine copy for reset
+stampAgeRange(BENEFICIARIES,AGE_B_EDGES,AGE_B_LBL);stampAgeRange(DEPENDENTS,DAGE_EDGES,DAGE_LBL);
+const META={ben:'البيانات الأصلية',dep:'البيانات الأصلية',benCls:'',depCls:''};
+// restore previously-saved uploads — each file independently; an empty/missing save keeps the ORIGINAL data
+try{
+  const sm=localStorage.getItem(LS.meta);if(sm)Object.assign(META,JSON.parse(sm));
+  const sb=localStorage.getItem(LS.ben);if(sb){const a=JSON.parse(sb);if(Array.isArray(a)&&a.length)replaceData(a,null);else META.ben='البيانات الأصلية',META.benCls=''}
+  const sd=localStorage.getItem(LS.dep);if(sd){const a=JSON.parse(sd);if(Array.isArray(a)&&a.length)replaceData(null,a);else META.dep='البيانات الأصلية',META.depCls=''}
+}catch(e){}
+handleUpload('ben');handleUpload('dep');
+document.getElementById('btn-reset-data').onclick=()=>{
+  if(!confirm('استعادة البيانات الأصلية ومسح النسخة المحفوظة؟'))return;
+  replaceData([...ORIG_BEN],[...ORIG_DEP]);
+  Object.assign(META,{ben:'البيانات الأصلية',dep:'البيانات الأصلية',benCls:'',depCls:''});
+  try{localStorage.removeItem(LS.ben);localStorage.removeItem(LS.dep);localStorage.removeItem(LS.meta)}catch(e){}
+  rebuildAll();refreshStatus();
+};
+document.getElementById('btn-clear-data').onclick=()=>{
+  if(!confirm('سيتم تصفير اللوحة لهذه الجلسة لتبدأ من الصفر.\nملاحظة: عند إعادة فتح الصفحة دون رفع ملفات ستعود البيانات الأصلية.\nهل تريد المتابعة؟'))return;
+  replaceData([],[]);
+  Object.assign(META,{ben:'محذوفة (صفر)',dep:'محذوفة (صفر)',benCls:'err',depCls:'err'});
+  // remove any persisted copies so an empty state is NEVER restored automatically on reload
+  try{localStorage.removeItem(LS.ben);localStorage.removeItem(LS.dep);localStorage.removeItem(LS.meta)}catch(e){}
+  rebuildAll();refreshStatus();
+};
+// ---------- one-click PDF report ----------
+// reveal all panels on screen, (re)build every chart while visible, then open the print dialog
+function printReport(){
+  if(!BENEFICIARIES.length&&!DEPENDENTS.length){alert('لا توجد بيانات لإصدار التقرير.');return;}
+  document.body.classList.add('printing');
+  buildCover();
+  Object.keys(tabCharts).forEach(k=>{tabCharts[k].forEach(c=>{try{c.destroy()}catch(e){}});tabCharts[k]=[]});
+  buildCharts('ben');render('ben');
+  buildCharts('dep');render('dep');
+  buildCombo();
+  buildAlerts();
+  buildPipeline();
+  buildCompare();
+  buildQuality();
+  // resize so each chart fills its card, then give layout/paint a moment before opening the print dialog
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    ALLRESIZE();
+    setTimeout(()=>{
+      window.print();
+      document.body.classList.remove('printing');
+      activateTab(curTab);   // restore the normal single-tab view
+    },350);
+  }));
+}
+document.getElementById('btn-print').onclick=printReport;
+
+// alert exports
+document.getElementById('exp-risk').onclick=()=>csvFrom(
+  ['#','الاسم','الفئة','المحافظة','الجوال','الأيتام','الدخل','صحة الأم','عوامل الخطورة','مؤشر الخطورة'],RISK,
+  (x,i)=>[i+1,x.f.b.name,x.f.b.category,x.f.b.gov,x.f.b.phone,x.f.b.orphans,x.f.inc||'',x.f.b.health,riskReasons(x.f),x.score],'الأسر_عالية_الخطورة');
+document.getElementById('exp-drop').onclick=()=>csvFrom(
+  ['#','الاسم','العمر','المرحلة الدراسية','الحالة التعليمية','رقم ملف الولي'],DROP,
+  (d,i)=>[i+1,d.name,d.age,d.schoolStage,d.eduStatus,d.guardianFile],'الطلاب_المعرضون_للتسرب');
+document.getElementById('exp-age').onclick=()=>csvFrom(
+  ['#','الاسم','العمر','المرحلة الدراسية','النوع','رقم ملف الولي'],AGEOUT,
+  (d,i)=>[i+1,d.name,d.age,d.schoolStage,d.gender,d.guardianFile],'الأيتام_المقبلون_على_18');
+
+// theme toggle
+document.getElementById('btn-theme').onclick=()=>applyTheme(!document.body.classList.contains('dark'));
+try{if(localStorage.getItem('banaa_theme')==='dark')applyTheme(true)}catch(e){}
+
+buildFilters('ben');buildFilters('dep');   // filters work fine while hidden
+buildRecos();refreshStatus();
+activateTab('ben');                         // build the visible tab's charts; others build when opened
+</script>
+</body>
+</html>
