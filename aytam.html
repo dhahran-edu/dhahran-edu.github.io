@@ -739,16 +739,31 @@ function render(ds){
         <select class="pagesize" data-ds="${ds}" style="padding:7px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px">
           ${opt(10)}${opt(20)}${opt(50)}${opt('all')}
         </select> صف</label></div>`;
-  html+='<table><thead><tr>'+cols.map(c=>`<th>${c[1]}</th>`).join('')+'</tr></thead><tbody>';
-  shown.slice(0,n).forEach(r=>{html+='<tr>'+cols.map(c=>`<td>${r[c[0]]??'—'}</td>`).join('')+'</tr>'});
+  const st=TBLSORT[ds];
+  let sorted=shown;
+  if(st.field){sorted=shown.slice().sort((a,b)=>cmpVals(a[st.field],b[st.field])*st.dir);}
+  html+='<table><thead><tr>'+cols.map(c=>{const act=st.field===c[0];
+    return `<th data-f="${c[0]}" style="cursor:pointer;user-select:none">${c[1]}${act?(st.dir>0?' ▲':' ▼'):' ↕'}</th>`}).join('')+'</tr></thead><tbody>';
+  sorted.slice(0,n).forEach(r=>{html+='<tr>'+cols.map(c=>`<td>${r[c[0]]??'—'}</td>`).join('')+'</tr>'});
   html+='</tbody></table>';
   th.innerHTML=html+`<div class="note">عرض ${n} من أصل ${shown.length} سجل${q?' مطابق للبحث':' مُصفّى'}.</div>`;
   const si=th.querySelector('.tblsearch');si.oninput=e=>{TBLQ[ds]=e.target.value;render(ds);
     const el=document.querySelector(`.tblsearch[data-ds="${ds}"]`);if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length)}};
   th.querySelector('.pagesize').onchange=e=>{PAGESIZE[ds]=e.target.value==='all'?'all':+e.target.value;render(ds)};
+  th.querySelectorAll('th[data-f]').forEach(h=>h.onclick=()=>{const fld=h.dataset.f;
+    if(st.field===fld)st.dir=-st.dir;else{st.field=fld;st.dir=1;}render(ds);});
 }
 const TBLQ={ben:'',dep:''};
 const PAGESIZE={ben:10,dep:10};
+const TBLSORT={ben:{field:null,dir:1},dep:{field:null,dir:1}};
+// numeric-aware comparator; empty values sort to the end
+function cmpVals(a,b){
+  const ea=(a==null||a===''),eb=(b==null||b==='');
+  if(ea&&eb)return 0; if(ea)return 1; if(eb)return -1;
+  const na=Number(a),nb=Number(b);
+  if(!isNaN(na)&&!isNaN(nb))return na-nb;
+  return String(a).localeCompare(String(b),'ar');
+}
 
 function exportCsv(ds){
   const rows=filtered(ds),cols=CONFIG[ds].table;
@@ -978,13 +993,16 @@ function comboChips(){
   if(COMBO_FILTER.stage)p.push('المرحلة الدراسية: '+COMBO_FILTER.stage);
   return p;
 }
-let PRIO_SIZE=10;
+let PRIO_SIZE=10, PRIO_SORT={col:null,dir:1};
+const PRIO_ACCESS=[f=>0,f=>f.b.name,f=>f.b.category,f=>f.b.gov,f=>f.nKids,f=>f.b.orphans,f=>f.inc,f=>f.b.health,f=>f.b.needsKafala,f=>f.score];
 function renderPrio(){
-  const arr=prioList();
+  let arr=prioList();
+  if(PRIO_SORT.col!=null){const ac=PRIO_ACCESS[PRIO_SORT.col];arr=arr.slice().sort((a,b)=>cmpVals(ac(a),ac(b))*PRIO_SORT.dir);}
   const n=(PRIO_SIZE==='all')?arr.length:Math.min(PRIO_SIZE,arr.length);
   const top=arr.slice(0,n);
   const cols=['#','الاسم','الفئة','المحافظة','الأبناء','الأيتام','الدخل','صحة الأم','كفالة','الأولوية'];
-  let html='<table><thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
+  let html='<table><thead><tr>'+cols.map((c,i)=>{const act=PRIO_SORT.col===i;
+    return `<th data-col="${i}" style="cursor:pointer;user-select:none">${c}${act?(PRIO_SORT.dir>0?' ▲':' ▼'):' ↕'}</th>`}).join('')+'</tr></thead><tbody>';
   top.forEach((f,i)=>{const cls=f.score>=70?'prio-high':f.score>=45?'prio-mid':'';
     html+=`<tr><td>${i+1}</td><td>${f.b.name??'—'}</td><td>${f.b.category??'—'}</td>
       <td>${f.b.gov??'—'}</td><td>${f.nKids||'—'}</td><td>${f.b.orphans??'—'}</td>
@@ -1005,6 +1023,8 @@ function renderPrio(){
   const cb=el.querySelector('#clr-combo');
   if(cb)cb.onclick=()=>{COMBO_FILTER.nKids=null;COMBO_FILTER.band=null;COMBO_FILTER.stage=null;renderCombo();};
   el.querySelector('#prio-size').onchange=e=>{PRIO_SIZE=e.target.value==='all'?'all':+e.target.value;renderPrio();};
+  el.querySelectorAll('th[data-col]').forEach(t=>t.onclick=()=>{const ci=+t.dataset.col;
+    PRIO_SORT=(PRIO_SORT.col===ci)?{col:ci,dir:-PRIO_SORT.dir}:{col:ci,dir:1};renderPrio();});
 }
 function exportPrio(){
   const arr=prioList();
@@ -1159,19 +1179,26 @@ function tableHTML(cols,rows,cellFns,note){
   h+='</tbody></table>';return h+(note?`<div class="note">${note}</div>`:'');
 }
 // reusable table with a page-size selector (10/20/50/all, default 10) — persists choice per container id
-const TBL_SIZE={};
+const TBL_SIZE={},TBL_PSORT={};
+const stripTags=v=>String(v==null?'':v).replace(/<[^>]*>/g,'').trim();
 function pagedTable(id,cols,rows,cellFns,label){
   const size=TBL_SIZE[id]??10;
-  const n=(size==='all')?rows.length:Math.min(size,rows.length);
+  const st=TBL_PSORT[id];
+  let data=rows;
+  if(st){data=rows.slice().sort((a,b)=>cmpVals(stripTags(cellFns[st.col](a,0)),stripTags(cellFns[st.col](b,0)))*st.dir);}
+  const n=(size==='all')?data.length:Math.min(size,data.length);
   const opt=v=>`<option value="${v}"${String(size)===String(v)?' selected':''}>${v==='all'?'الكل':v}</option>`;
   const sel=`<label style="font-size:12.5px;color:var(--muted);margin-bottom:10px;display:inline-block">عرض
     <select class="psz" style="padding:7px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px">
       ${opt(10)}${opt(20)}${opt(50)}${opt('all')}</select> صف</label>`;
-  let h=sel+'<table><thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
-  rows.slice(0,n).forEach((r,i)=>{h+='<tr>'+cellFns.map(fn=>`<td>${fn(r,i)??'—'}</td>`).join('')+'</tr>'});
-  h+='</tbody></table>'+`<div class="note">عرض ${n} من ${rows.length} ${label||'سجل'}.</div>`;
+  let h=sel+'<table><thead><tr>'+cols.map((c,i)=>{const act=st&&st.col===i;
+    return `<th data-col="${i}" style="cursor:pointer;user-select:none">${c}${act?(st.dir>0?' ▲':' ▼'):' ↕'}</th>`}).join('')+'</tr></thead><tbody>';
+  data.slice(0,n).forEach((r,i)=>{h+='<tr>'+cellFns.map(fn=>`<td>${fn(r,i)??'—'}</td>`).join('')+'</tr>'});
+  h+='</tbody></table>'+`<div class="note">عرض ${n} من ${data.length} ${label||'سجل'}.</div>`;
   const el=document.getElementById(id);el.innerHTML=h;
   el.querySelector('.psz').onchange=e=>{TBL_SIZE[id]=e.target.value==='all'?'all':+e.target.value;pagedTable(id,cols,rows,cellFns,label);};
+  el.querySelectorAll('th[data-col]').forEach(t=>t.onclick=()=>{const ci=+t.dataset.col;
+    TBL_PSORT[id]=(st&&st.col===ci)?{col:ci,dir:-st.dir}:{col:ci,dir:1};pagedTable(id,cols,rows,cellFns,label);});
 }
 function csvFrom(headers,rows,cellVals,name){
   let csv='﻿'+headers.join(',')+'\n';
