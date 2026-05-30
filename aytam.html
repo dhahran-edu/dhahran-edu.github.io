@@ -340,6 +340,7 @@
   <div class="panel" id="panel-profile">
     <div class="ptitle">ملف الأسرة</div>
     <div class="secttl">🔎 بحث عن أسرة وعرض ملفها الكامل</div>
+    <div class="filters" id="filters-profile"></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
       <input id="pf-q" placeholder="🔍 ابحث بالاسم أو رقم الملف..."
         style="padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;min-width:300px;flex:1">
@@ -571,12 +572,18 @@ const CONFIG={
    ],
    table:[['name','الاسم'],['gender','النوع'],['orphan','يتيم'],['age','العمر'],
      ['schoolStage','المرحلة الدراسية'],['eduStatus','الحالة التعليمية'],['health','الصحة'],['needsRehab','تأهيل']]
+ },
+ profile:{
+   rows:BENEFICIARIES,
+   filters:[['category','فئة الملف'],['gov','المحافظة'],['district','الحي'],['marital','الحالة الاجتماعية'],
+     ['needsKafala','يحتاج لكفالة'],['health','الحالة الصحية'],['chronic','مرض مستعصي'],
+     ['otherAid','دعم جهات أخرى'],['financeStatus','الوضع المالي'],['occupation','المهنة']]
  }
 };
 
 // ---------- state ----------
-const STATE={ben:{},dep:{}};
-const FILTER_UI={ben:{},dep:{}};   // field -> {ms, cbs:{value->checkbox}} so chart clicks can sync the dropdowns
+const STATE={ben:{},dep:{},profile:{}};
+const FILTER_UI={ben:{},dep:{},profile:{}};   // field -> {ms, cbs:{value->checkbox}} so chart clicks can sync the dropdowns
 const charts={};
 // charts are tracked per-tab and fully recreated each time a tab is opened —
 // creating a chart while its panel is visible is the only reliable way to avoid
@@ -588,8 +595,13 @@ let curTab='ben';
 function buildFilters(ds){
   const cfg=CONFIG[ds], host=document.getElementById('filters-'+ds);
   host.innerHTML='<div class="ttl">🔍 الفلاتر</div>';
+  const FILTER_ORDER={category:['أ','ب','ج','د','مؤقت'],
+    academicLevel:['ممتاز (90+)','جيد جداً (80-89)','جيد (70-79)','مقبول (60-69)','ضعيف (<60)'],
+    ageRange:['أقل من 30','30-39','40-49','50-59','60+','0-5','6-11','12-14','15-17','18-21','22+']};
   cfg.filters.forEach(([key,lbl])=>{
-    const opts=countBy(cfg.rows,key).labels;
+    let opts=countBy(cfg.rows,key).labels;
+    if(FILTER_ORDER[key]){const o=FILTER_ORDER[key];
+      opts=opts.slice().sort((a,b)=>{const ia=o.indexOf(a),ib=o.indexOf(b);return (ia<0?99:ia)-(ib<0?99:ib)});}
     const ms=document.createElement('div');ms.className='ms';
     ms.innerHTML=`<label>${lbl}</label>
       <div class="btn"><span class="txt">الكل</span><span class="cnt" style="display:none">0</span></div>
@@ -611,23 +623,24 @@ function buildFilters(ds){
     STATE[ds][key]=new Set();
     host.appendChild(ms);
   });
+  const refresh=()=>{ds==='profile'?buildProfile():render(ds);};
   const clr=document.createElement('button');clr.className='clr';clr.textContent='مسح الفلاتر';
   clr.onclick=()=>{Object.values(STATE[ds]).forEach(s=>s.clear());
     host.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=false);
-    host.querySelectorAll('.ms').forEach(m=>updBtn(m,0));render(ds)};
+    host.querySelectorAll('.ms').forEach(m=>updBtn(m,0));refreshFilterCounts(ds);refresh()};
   host.appendChild(clr);
-  const exp=document.createElement('button');exp.className='exp';exp.textContent='⬇ تصدير CSV';
-  exp.onclick=()=>exportCsv(ds);host.appendChild(exp);
+  if(CONFIG[ds].table){const exp=document.createElement('button');exp.className='exp';exp.textContent='⬇ تصدير CSV';
+    exp.onclick=()=>exportCsv(ds);host.appendChild(exp);}
 }
 function toggle(ds,key,val,on,ms){
-  const s=STATE[ds][key];on?s.add(val):s.delete(val);updBtn(ms,s.size);render(ds)}
+  const s=STATE[ds][key];on?s.add(val):s.delete(val);updBtn(ms,s.size);refreshFilterCounts(ds);ds==='profile'?buildProfile():render(ds)}
 // called when a chart segment/bar is clicked — toggle that value in the matching filter and sync the dropdown
 function toggleFilterValue(ds,field,val){
   const s=STATE[ds][field];if(!s)return;
   s.has(val)?s.delete(val):s.add(val);
   const ui=FILTER_UI[ds][field];
   if(ui){if(ui.cbs[val])ui.cbs[val].checked=s.has(val);updBtn(ui.ms,s.size);}
-  render(ds);
+  refreshFilterCounts(ds);render(ds);
 }
 function updBtn(ms,n){const c=ms.querySelector('.cnt'),t=ms.querySelector('.txt');
   if(n>0){c.style.display='inline-block';c.textContent=n;t.textContent='محدد'}else{c.style.display='none';t.textContent='الكل'}}
@@ -637,6 +650,22 @@ document.addEventListener('click',e=>{if(!e.target.closest('.ms'))document.query
 function filtered(ds){
   const f=STATE[ds];
   return CONFIG[ds].rows.filter(r=>Object.entries(f).every(([k,set])=>set.size===0||set.has(String(r[k]))));
+}
+// rows matching all filters EXCEPT one (so that filter still shows its options in the current context)
+function filteredExcept(ds,exceptKey){
+  const f=STATE[ds];
+  return CONFIG[ds].rows.filter(r=>Object.entries(f).every(([k,set])=>k===exceptKey||set.size===0||set.has(String(r[k]))));
+}
+// cascading filters: update each filter's option counts to the current selection, hide options that became unavailable
+function refreshFilterCounts(ds){
+  CONFIG[ds].filters.forEach(([key])=>{
+    const ui=FILTER_UI[ds][key];if(!ui)return;
+    const subset=filteredExcept(ds,key), counts={};
+    subset.forEach(r=>{const v=r[key];if(v==null||v==='')return;const s=String(v);counts[s]=(counts[s]||0)+1});
+    for(const val in ui.cbs){const cb=ui.cbs[val],opt=cb.parentElement,c=counts[val]||0;
+      const cspan=opt.querySelector('.c');if(cspan)cspan.textContent=c;
+      opt.style.display=(c>0||cb.checked)?'flex':'none';}
+  });
 }
 
 // ---------- build charts ----------
@@ -1077,7 +1106,7 @@ function replaceData(benRows,depRows){
 function rebuildAll(){
   Object.keys(tabCharts).forEach(k=>{tabCharts[k].forEach(c=>{try{c.destroy()}catch(e){}});tabCharts[k]=[]});
   charts.ben=[];charts.dep=[];TBLQ.ben='';TBLQ.dep='';PRIOQ='';FAMS=[];PRIO_CHART=null;
-  buildFilters('ben');buildFilters('dep');buildRecos();
+  buildFilters('ben');buildFilters('dep');buildFilters('profile');buildRecos();
   const active=(document.querySelector('.tab.active')||{}).dataset?.tab||'ben';
   activateTab(active==='reco'||active==='control'?'ben':active);
   curTab=active;
@@ -1362,11 +1391,15 @@ function renderProfile(b,kids){
 function buildProfile(){
   const res=document.getElementById('pf-results'), card=document.getElementById('pf-card');
   const q=PF_Q.trim();
-  if(!q){res.innerHTML='';card.innerHTML='<div class="pf-empty">اكتب اسماً أو رقم ملف للبحث عن أسرة.</div>';return;}
+  const base=filtered('profile');   // apply the filter dropdowns
+  const hasFilter=Object.values(STATE.profile).some(s=>s.size>0);
+  if(!q && !hasFilter){res.innerHTML='';card.innerHTML='<div class="pf-empty">اكتب اسماً/رقم ملف، أو استخدم الفلاتر أعلاه لعرض الأسر.</div>';return;}
   const byG=new Map();DEPENDENTS.forEach(d=>{const k=String(d.guardianFile);if(!byG.has(k))byG.set(k,[]);byG.get(k).push(d)});
-  const matches=BENEFICIARIES.filter(b=>String(b.name??'').includes(q)||String(b.fileNo??'').includes(q)).slice(0,40);
+  let arr=q?base.filter(b=>String(b.name??'').includes(q)||String(b.fileNo??'').includes(q)):base;
+  const total=arr.length, matches=arr.slice(0,60);
   if(!matches.length){res.innerHTML='';card.innerHTML='<div class="pf-empty">لا توجد نتائج مطابقة.</div>';return;}
-  res.innerHTML=matches.map((b,i)=>`<div class="pf-result" data-i="${i}">
+  res.innerHTML=`<div class="note" style="margin:0 0 4px">عدد النتائج: ${total}${total>60?' (يُعرض أول 60 — ضيّق البحث/الفلاتر)':''}</div>`+
+    matches.map((b,i)=>`<div class="pf-result" data-i="${i}">
     <span>${b.name??'—'}</span><span class="meta">${b.gov??''} • ${b.category??''} • ملف ${b.fileNo??''}</span></div>`).join('');
   res.querySelectorAll('.pf-result').forEach(el=>{el.onclick=()=>renderProfile(matches[+el.dataset.i],byG.get(String(matches[+el.dataset.i].fileNo))||[]);});
   if(matches.length===1)renderProfile(matches[0],byG.get(String(matches[0].fileNo))||[]);
@@ -1466,7 +1499,7 @@ try{if(localStorage.getItem('banaa_theme')==='dark')applyTheme(true)}catch(e){}
 // visible build stamp — if you don't see this exact version after refresh, the browser is showing a cached copy
 try{const hp=document.querySelector('header p');if(hp&&window.__BUILD__)hp.innerHTML+=` &nbsp;•&nbsp; <span style="opacity:.85">${window.__BUILD__}</span>`;}catch(e){}
 
-buildFilters('ben');buildFilters('dep');   // filters work fine while hidden
+buildFilters('ben');buildFilters('dep');buildFilters('profile');   // filters work fine while hidden
 buildRecos();refreshStatus();
 activateTab('ben');                         // build the visible tab's charts; others build when opened
 </script>
