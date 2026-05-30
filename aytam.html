@@ -154,6 +154,34 @@
   .heat td.lbl{font-weight:700;background:var(--bg);text-align:right}
   /* report cover (print only) */
   #cover{display:none}
+  /* ===== responsive / mobile ===== */
+  @media (max-width:760px){
+    .wrap{padding:14px 12px}
+    header{padding:13px 14px}
+    header h1{font-size:16.5px}
+    header p{font-size:11px}
+    .hd{flex-wrap:wrap;gap:10px}
+    .logo{width:42px;height:42px;flex:0 0 42px;font-size:15px}
+    .hd>div{margin-right:auto}
+    .print{padding:8px 12px;font-size:12px}
+    .tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;padding:0 8px}
+    .tab{flex:0 0 auto;padding:11px 14px;font-size:13px;white-space:nowrap}
+    .grid{grid-template-columns:1fr!important}
+    #grid-quality{grid-template-columns:1fr!important}
+    .cmp{grid-template-columns:1fr}
+    .kpis{grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+    .alertgrid{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+    .kpi .v{font-size:22px}
+    .chart .cv{height:240px}
+    .chart.wide .cv,.chart.tall .cv,.chart.vert .cv{height:300px}
+    .filters{padding:10px;gap:8px}
+    .ms{min-width:47%}
+    .ms .pop{width:78vw;max-width:280px}
+    .secttl{font-size:15px}
+    .uploads{grid-template-columns:1fr}
+    table{font-size:12px}
+    th,td{padding:6px 7px}
+  }
   /* while preparing the PDF, reveal every panel on screen so all charts size correctly before printing */
   body.printing .panel{display:block!important;margin-bottom:26px}
   body.printing .ptitle{display:block}
