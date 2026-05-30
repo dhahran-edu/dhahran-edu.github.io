@@ -163,6 +163,25 @@
   .heat th{background:#f0fdfa;color:var(--green-d)}
   body.dark .heat th{background:#0f3b37}
   .heat td.lbl{font-weight:700;background:var(--bg);text-align:right}
+  /* family profile */
+  .pf-results{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;max-height:240px;overflow:auto}
+  .pf-result{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;
+    cursor:pointer;display:flex;justify-content:space-between;gap:10px;font-size:13.5px}
+  .pf-result:hover{background:#f0fdfa;border-color:var(--green-l)}
+  body.dark .pf-result:hover{background:#243244}
+  .pf-result .meta{color:var(--muted);font-size:12px}
+  .pf-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+  .pf-head{display:flex;align-items:center;gap:14px;border-bottom:2px solid var(--green-l);padding-bottom:14px;margin-bottom:16px;flex-wrap:wrap}
+  .pf-head .av{width:54px;height:54px;border-radius:50%;background:var(--green-d);color:#fff;display:flex;
+    align-items:center;justify-content:center;font-size:24px;flex:0 0 54px}
+  .pf-head h2{margin:0;font-size:20px;color:var(--green-d)}
+  .pf-head .sub{color:var(--muted);font-size:13px;margin-top:2px}
+  .pf-sec{font-weight:800;color:var(--green-d);margin:18px 0 8px;font-size:14.5px}
+  .pf-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+  .pf-field{background:var(--bg);border-radius:9px;padding:8px 11px}
+  .pf-field .k{color:var(--muted);font-size:11.5px;font-weight:600}
+  .pf-field .val{font-size:14px;font-weight:700;margin-top:2px}
+  .pf-empty{color:var(--muted);padding:20px;text-align:center}
   /* report cover (print only) */
   #cover{display:none}
   /* ===== responsive / mobile ===== */
@@ -201,7 +220,12 @@
   body.printing #cover,.report-only{display:block}
   @media print{
     @page{margin:10mm}
-    .tabs,.filters,.print,.note,.weights,.tblsearch,#prio-search,#prio-export,#prio-size,.pagesize,.ms,.clr,.exp,.danger,.filebtn,.clickhint,#panel-control{display:none!important}
+    .tabs,.filters,.print,.note,.weights,.tblsearch,#prio-search,#prio-export,#prio-size,.pagesize,.ms,.clr,.exp,.danger,.filebtn,.clickhint,#panel-control,#pf-q,.pf-results{display:none!important}
+    /* printing a single family file: show only that card */
+    body.print-profile #cover,body.print-profile header,body.print-profile .panel{display:none!important}
+    body.print-profile #panel-profile{display:block!important;page-break-after:auto}
+    body.print-profile #panel-profile .secttl,body.print-profile #panel-profile .ptitle{display:none!important}
+    body.print-profile #pf-card{display:block!important}
     #cover{display:block!important;page-break-after:always;text-align:center;padding-top:120px}
     #cover h1{font-size:34px;color:var(--green-d);margin:0 0 12px}
     #cover .clogo{width:90px;height:90px;border-radius:50%;background:var(--green-d);color:#fff;
@@ -238,6 +262,7 @@
   <button class="tab active" data-tab="ben">المستفيدون (الأمهات/الأولياء)</button>
   <button class="tab" data-tab="dep">التابعون (الأبناء/الأيتام)</button>
   <button class="tab" data-tab="combo">🔗 تحليل مدمج</button>
+  <button class="tab" data-tab="profile">🔎 ملف الأسرة</button>
   <button class="tab" data-tab="alerts">🚨 إنذار مبكر</button>
   <button class="tab" data-tab="pipeline">📈 خط التعليم</button>
   <button class="tab" data-tab="compare">🔀 مقارنات</button>
@@ -311,6 +336,16 @@
       <p class="note" style="margin:0 0 10px">عدّل الأوزان أدناه لتطابق سياسة الجمعية، وتُعاد ترتيب القائمة فوراً.</p>
       <div id="table-combo"></div>
     </div>
+  </div>
+  <div class="panel" id="panel-profile">
+    <div class="ptitle">ملف الأسرة</div>
+    <div class="secttl">🔎 بحث عن أسرة وعرض ملفها الكامل</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:6px">
+      <input id="pf-q" placeholder="🔍 ابحث بالاسم أو رقم الملف..."
+        style="padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;min-width:300px;flex:1">
+    </div>
+    <div id="pf-results" class="pf-results"></div>
+    <div id="pf-card"></div>
   </div>
   <div class="panel" id="panel-alerts">
     <div class="ptitle">الإنذار المبكر</div>
@@ -710,6 +745,7 @@ function activateTab(tab){
   if(tab==='ben'){buildCharts('ben');render('ben');}
   else if(tab==='dep'){buildCharts('dep');render('dep');}
   else if(tab==='combo'){buildCombo();}
+  else if(tab==='profile'){buildProfile();}
   else if(tab==='alerts'){buildAlerts();}
   else if(tab==='pipeline'){buildPipeline();}
   else if(tab==='compare'){buildCompare();}
@@ -727,6 +763,7 @@ function resizeTab(tab){
 window.addEventListener('resize',()=>{(tabCharts[curTab]||[]).forEach(c=>{try{c.resize()}catch(e){}})});
 document.getElementById('prio-search').oninput=e=>{PRIOQ=e.target.value;renderPrio()};
 document.getElementById('prio-export').onclick=exportPrio;
+document.getElementById('pf-q').oninput=e=>{PF_Q=e.target.value;buildProfile()};
 
 // ---------- recommendations (computed live from current data) ----------
 function buildRecos(){
@@ -1289,6 +1326,51 @@ function heatmapFn(id,rows,rowFn,rowVals,colFn,colVals){
     const a=max?n/max:0;const bg=`rgba(15,118,110,${(0.08+a*0.85).toFixed(2)})`;const col=a>0.5?'#fff':'var(--ink)';
     return `<td style="background:${bg};color:${col};font-weight:${n?700:400}">${n||''}</td>`;}).join('')+'</tr>'});
   h+='</tbody></table>';document.getElementById(id).innerHTML=h;
+}
+
+// ---------- 🔎 family profile ----------
+let PF_Q='';
+function pfFields(b){return [
+  ['الفئة',b.category],['الحالة الاجتماعية',b.marital],['الجنسية',b.nationality],['المحافظة',b.gov],['الحي',b.district],
+  ['المستوى التعليمي',b.education],['المهنة',b.occupation],['الجوال',b.phone],['العمر',b.age],
+  ['الحالة الصحية',b.health],['مرض مستعصي',b.chronic],['إعاقة',b.disability],['يحتاج كفالة',b.needsKafala],
+  ['دعم جهات أخرى',b.otherAid],['عدد التابعين',b.dependents],['عدد الأيتام',b.orphans],
+  ['الدخل',b.income!=null?fmt(b.income)+' ر.س':null],['المصروفات',b.expenses!=null?fmt(b.expenses)+' ر.س':null],
+  ['الوضع المالي',b.financeStatus],['سبب اليُتم',b.deathCause],['نوع السكن',b.housingType],['ملكية السكن',b.housingOwn],
+  ['رقم الملف',b.fileNo],['رقم الهوية',b.nid],['الأيبان',b.iban]];}
+function renderProfile(b,kids){
+  const f=v=>(v==null||v==='')?'—':v;
+  let h=`<div class="pf-card"><div class="pf-head"><div class="av">👩</div>
+      <div><h2>${f(b.name)}</h2><div class="sub">رقم الملف: ${f(b.fileNo)} • ${f(b.category)} • ${f(b.gov)}</div></div>
+      <button class="exp" id="pf-print" style="margin-right:auto">🖨️ طباعة ملف الأسرة</button></div>
+    <div class="pf-sec">بيانات المستفيدة</div><div class="pf-grid">`;
+  pfFields(b).forEach(([k,v])=>{h+=`<div class="pf-field"><div class="k">${k}</div><div class="val">${f(v)}</div></div>`});
+  h+=`</div><div class="pf-sec">الأبناء / التابعون (${kids.length})</div>`;
+  if(kids.length){
+    const cols=['الاسم','النوع','العمر','يتيم','المرحلة الدراسية','الحالة التعليمية','النسبة %','المستوى الأكاديمي','الصحة','التأمين','تأهيل'];
+    h+='<div style="overflow:auto"><table><thead><tr>'+cols.map(c=>`<th>${c}</th>`).join('')+'</tr></thead><tbody>';
+    kids.forEach(k=>{h+=`<tr><td>${f(k.name)}</td><td>${f(k.gender)}</td><td>${f(k.age)}</td><td>${f(k.orphan)}</td>
+      <td>${f(k.schoolStage)}</td><td>${f(k.eduStatus)}</td><td>${k.gradePct!=null?k.gradePct+'%':'—'}</td>
+      <td>${f(k.academicLevel)}</td><td>${f(k.health)}</td><td>${f(k.insurance)}</td><td>${f(k.needsRehab)}</td></tr>`});
+    h+='</tbody></table></div>';
+  }else h+=`<div class="pf-empty">لا يوجد أبناء مسجّلون لهذه الأسرة.</div>`;
+  h+=`</div>`;
+  document.getElementById('pf-card').innerHTML=h;
+  document.getElementById('pf-print').onclick=()=>{document.body.classList.add('print-profile');window.print();
+    setTimeout(()=>document.body.classList.remove('print-profile'),300);};
+}
+function buildProfile(){
+  const res=document.getElementById('pf-results'), card=document.getElementById('pf-card');
+  const q=PF_Q.trim();
+  if(!q){res.innerHTML='';card.innerHTML='<div class="pf-empty">اكتب اسماً أو رقم ملف للبحث عن أسرة.</div>';return;}
+  const byG=new Map();DEPENDENTS.forEach(d=>{const k=String(d.guardianFile);if(!byG.has(k))byG.set(k,[]);byG.get(k).push(d)});
+  const matches=BENEFICIARIES.filter(b=>String(b.name??'').includes(q)||String(b.fileNo??'').includes(q)).slice(0,40);
+  if(!matches.length){res.innerHTML='';card.innerHTML='<div class="pf-empty">لا توجد نتائج مطابقة.</div>';return;}
+  res.innerHTML=matches.map((b,i)=>`<div class="pf-result" data-i="${i}">
+    <span>${b.name??'—'}</span><span class="meta">${b.gov??''} • ${b.category??''} • ملف ${b.fileNo??''}</span></div>`).join('');
+  res.querySelectorAll('.pf-result').forEach(el=>{el.onclick=()=>renderProfile(matches[+el.dataset.i],byG.get(String(matches[+el.dataset.i].fileNo))||[]);});
+  if(matches.length===1)renderProfile(matches[0],byG.get(String(matches[0].fileNo))||[]);
+  else card.innerHTML='<div class="pf-empty">اختر أسرة من نتائج البحث لعرض ملفها.</div>';
 }
 
 // ---------- theme + report cover ----------
