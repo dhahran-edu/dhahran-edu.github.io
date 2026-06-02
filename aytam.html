@@ -446,7 +446,12 @@
   </div>
 </div>
 
-<script src="data.js"></script>
+<script>
+// لا توجد بيانات مضمّنة — ارفع ملفات الإكسل من «⚙️ لوحة التحكم»
+const BENEFICIARIES = [];
+const DEPENDENTS = [];
+
+</script>
 <script>
 if(window.Chart)Chart.defaults.animation=false;   // draw charts instantly (also fixes blank/partial charts in printed PDF)
 const PALETTE=['#0f766e','#14b8a6','#0ea5e9','#6366f1','#d97706','#dc2626','#65a30d','#db2777','#7c3aed','#0891b2','#ca8a04','#475569'];
@@ -1529,6 +1534,53 @@ try{const hp=document.querySelector('header p');if(hp&&window.__BUILD__)hp.inner
 buildFilters('ben');buildFilters('dep');buildFilters('profile');   // filters work fine while hidden
 buildRecos();refreshStatus();
 activateTab('ben');                         // build the visible tab's charts; others build when opened
+</script>
+<!-- ctrl-pwd-protection -->
+<script>
+(function(){
+  var PWD_KEY='dash_ctrl_pwd', DEFAULT_PWD='ALIa@7896';
+  function getPwd(){ return localStorage.getItem(PWD_KEY) || DEFAULT_PWD; }
+  function setPwd(p){ localStorage.setItem(PWD_KEY, p); }
+  var unlocked=false;
+  var ctrlBtn=document.querySelector('.tab[data-tab="control"]');
+  if(ctrlBtn){
+    ctrlBtn.addEventListener('click',function(e){
+      if(unlocked) return;
+      e.stopImmediatePropagation();
+      e.preventDefault();
+      var inp=prompt('\u{1F512} لوحة التحكم محمية. أدخل كلمة السر:');
+      if(inp===null) return;
+      if(inp===getPwd()){ unlocked=true; ctrlBtn.click(); }
+      else { alert('\u274C كلمة السر غير صحيحة'); }
+    }, true);
+  }
+  function addChangeUI(){
+    var panel=document.getElementById('panel-control');
+    if(!panel || document.getElementById('btn-change-pwd')) return;
+    var card=document.createElement('div');
+    card.className='upcard';
+    card.style.cssText='margin-top:18px;background:#eef2ff;border-color:#c7d2fe';
+    card.innerHTML='<h3 style="color:#3730a3">\u{1F511} كلمة سر لوحة التحكم</h3>'+
+      '<p style="margin:6px 0 12px;color:var(--muted);line-height:1.8">يمكنك تغيير كلمة السر المطلوبة للدخول إلى لوحة التحكم. تُحفظ داخل متصفحك فقط.</p>'+
+      '<button class="filebtn" id="btn-change-pwd" style="cursor:pointer">\u{1F511} تغيير كلمة السر</button>';
+    panel.appendChild(card);
+    document.getElementById('btn-change-pwd').addEventListener('click',function(){
+      var cur=prompt('أدخل كلمة السر الحالية:');
+      if(cur===null) return;
+      if(cur!==getPwd()){ alert('\u274C كلمة السر الحالية غير صحيحة'); return; }
+      var n1=prompt('أدخل كلمة السر الجديدة:');
+      if(n1===null) return;
+      if(!n1 || n1.length<4){ alert('\u274C كلمة السر يجب أن تكون 4 أحرف على الأقل'); return; }
+      var n2=prompt('أعد إدخال كلمة السر الجديدة للتأكيد:');
+      if(n2===null) return;
+      if(n1!==n2){ alert('\u274C كلمتا السر غير متطابقتين'); return; }
+      setPwd(n1);
+      alert('\u2705 تم تغيير كلمة السر بنجاح');
+    });
+  }
+  if(document.readyState!=='loading') addChangeUI();
+  else document.addEventListener('DOMContentLoaded', addChangeUI);
+})();
 </script>
 </body>
 </html>
