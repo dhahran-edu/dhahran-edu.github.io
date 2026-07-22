@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="بطاقات التغريدات">
+<meta name="theme-color" content="#0D1117">
+<title>مولّد بطاقات التغريدات الدينية</title>
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0D1117; --panel:#151C26; --panel2:#1B2432; --line:#2A3648;
+  --gold:#C9A45C; --gold-soft:#E3C98F; --ink:#EDEAE2; --muted:#8A93A3;
+}
+*{box-sizing:border-box; margin:0; padding:0}
+body{
+  font-family:'Tajawal',sans-serif; background:var(--bg); color:var(--ink);
+  min-height:100vh;
+}
+header{
+  padding:22px 28px; border-bottom:1px solid var(--line);
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+}
+header h1{font-size:20px; font-weight:800; letter-spacing:.2px}
+header .sub{color:var(--muted); font-size:13px}
+.gold-dot{width:10px;height:10px;border-radius:50%;background:var(--gold);box-shadow:0 0 12px var(--gold)}
+.layout{display:grid; grid-template-columns:340px 1fr; gap:0; min-height:calc(100vh - 70px)}
+/* ---------- Sidebar ---------- */
+aside{
+  border-left:1px solid var(--line); background:var(--panel);
+  overflow-y:auto; max-height:calc(100vh - 70px);
+}
+.week{padding:14px 16px 6px; color:var(--gold); font-size:12px; font-weight:800; letter-spacing:1px}
+.tweet-item{
+  padding:12px 16px; cursor:pointer; border-bottom:1px solid #1a2230;
+  display:flex; gap:10px; align-items:flex-start; transition:background .15s;
+}
+.tweet-item:hover{background:var(--panel2)}
+.tweet-item.active{background:var(--panel2); border-right:3px solid var(--gold)}
+.tweet-item .ico{font-size:18px; line-height:1.4}
+.tweet-item .tt{font-size:13px; line-height:1.7; color:#C9CFDA}
+.tweet-item .tag{font-size:11px; color:var(--muted); margin-top:2px}
+/* ---------- Main ---------- */
+main{padding:26px 30px; display:grid; grid-template-columns:1fr 460px; gap:28px; align-items:start}
+.controls .field{margin-bottom:16px}
+label{display:block; font-size:13px; color:var(--muted); margin-bottom:6px; font-weight:500}
+textarea,input,select{
+  width:100%; background:var(--panel2); border:1px solid var(--line); border-radius:10px;
+  color:var(--ink); font-family:'Tajawal'; font-size:15px; padding:11px 13px; outline:none;
+}
+textarea{min-height:130px; resize:vertical; line-height:1.9}
+textarea:focus,input:focus,select:focus{border-color:var(--gold)}
+.series-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px}
+.series-btn{
+  background:var(--panel2); border:1px solid var(--line); border-radius:10px;
+  padding:10px 6px; cursor:pointer; text-align:center; color:var(--ink);
+  font-family:'Tajawal'; font-size:11.5px; transition:all .15s;
+}
+.series-btn .si{font-size:20px; display:block; margin-bottom:4px}
+.series-btn.active{border-color:var(--gold); background:#242F42; box-shadow:0 0 0 1px var(--gold) inset}
+.row2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.actions{display:flex; gap:10px; margin-top:20px; flex-wrap:wrap}
+button.act{
+  flex:1; min-width:150px; padding:13px 16px; border-radius:10px; border:none; cursor:pointer;
+  font-family:'Tajawal'; font-weight:800; font-size:14.5px; transition:transform .1s, opacity .15s;
+}
+button.act:active{transform:scale(.98)}
+.dl{background:linear-gradient(135deg,#C9A45C,#A9863F); color:#14100A}
+.cp{background:var(--panel2); color:var(--ink); border:1px solid var(--line)!important}
+.cp:hover{border-color:var(--gold)!important}
+.toast{
+  position:fixed; bottom:24px; right:50%; transform:translateX(50%);
+  background:var(--gold); color:#14100A; font-weight:800; padding:11px 24px; border-radius:30px;
+  font-size:14px; opacity:0; pointer-events:none; transition:opacity .25s; z-index:50;
+}
+.toast.show{opacity:1}
+/* ---------- Preview ---------- */
+.preview-wrap{position:sticky; top:20px}
+.preview-box{
+  border:1px solid var(--line); border-radius:14px; overflow:hidden;
+  background:#000; box-shadow:0 20px 60px rgba(0,0,0,.45);
+}
+canvas{width:100%; display:block}
+.hint{color:var(--muted); font-size:12px; margin-top:10px; text-align:center; line-height:1.8}
+@media(max-width:1100px){
+  .layout{grid-template-columns:1fr}
+  aside{max-height:260px; border-left:none; border-bottom:1px solid var(--line)}
+  main{grid-template-columns:1fr}
+  .preview-wrap{position:static}
+}
+</style>
+</head>
+<body>
+<header>
+  <span class="gold-dot"></span>
+  <h1>مولّد بطاقات التغريدات الدينية</h1>
+  <span class="sub">30 تغريدة جاهزة · 7 سلاسل · تصدير PNG</span>
+</header>
+
+<div class="layout">
+  <aside id="list"></aside>
+
+  <main>
+    <section class="controls">
+      <div class="field">
+        <label>السلسلة</label>
+        <div class="series-grid" id="seriesGrid"></div>
+      </div>
+      <div class="field">
+        <label>نص التغريدة</label>
+        <textarea id="txt"></textarea>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>المصدر / التخريج</label>
+          <input id="src" placeholder="مثال: متفق عليه">
+        </div>
+        <div class="field">
+          <label>معرّف الحساب</label>
+          <input id="handle" value="@حسابك">
+        </div>
+      </div>
+      <div class="field">
+        <label>الوسم</label>
+        <input id="hashtag">
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>المنصة / المقاس</label>
+          <select id="fmt">
+            <option value="square" selected>🐦 X — مربع 1080×1080</option>
+            <option value="story">💬 واتساب / 👻 سناب — ستوري 1080×1920</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>دقة التصدير</label>
+          <select id="res">
+            <option value="1">قياسية (×1)</option>
+            <option value="2" selected>عالية (×2)</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="act dl" id="shareBtn">📤 مشاركة البطاقة</button>
+        <button class="act cp" id="dlBtn">⬇️ تحميل PNG</button>
+        <button class="act cp" id="cpBtn">📋 نسخ النص</button>
+      </div>
+    </section>
+
+    <section class="preview-wrap">
+      <div class="preview-box"><canvas id="cv" width="1080" height="1080"></canvas></div>
+      <div class="hint">المعاينة مباشرة — كل تعديل ينعكس فوراً<br>النسخ يضيف رمز السلسلة تلقائياً في بداية التغريدة</div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast">تم ✓</div>
+
+<script>
+/* ================= المقاسات ================= */
+/* icon: موضع رمز السلسلة | center: مركز كتلة النص (نسبة من الارتفاع)
+   fs: حجم الخط الابتدائي | maxBlock: أقصى ارتفاع لكتلة النص
+   srcUp/footUp: ارتفاع المصدر والتذييل من الأسفل */
+const FORMATS = {
+  square: {w:1080, h:1080, label:'X_مربع',
+           layout:{icon:148, center:0.535, fs:52, maxBlock:620, srcUp:190, footUp:105}},
+  story:  {w:1080, h:1920, label:'ستوري_واتساب_سناب',
+           layout:{icon:300, center:0.51, fs:58, maxBlock:1050, srcUp:330, footUp:210}}
+};
+
+/* ================= السلاسل ================= */
+const SERIES = {
+  aya:    {name:'آية وتدبر',        icon:'📖', c1:'#0E4D3C', c2:'#071F18', tag:'#آية_وتدبر'},
+  thikr:  {name:'ذكر اليوم',        icon:'🤲', c1:'#173F66', c2:'#0A1B2E', tag:'#ذكر_اليوم'},
+  sunnah: {name:'سنة مهجورة',       icon:'🌱', c1:'#3D5222', c2:'#1A2410', tag:'#سنن_مهجورة'},
+  asmaa:  {name:'أسماء الله الحسنى', icon:'✨', c1:'#452470', c2:'#1D0F30', tag:'#أسماء_الله_الحسنى'},
+  fiqh:   {name:'دقيقة فقه',        icon:'⚖️', c1:'#6B4512', c2:'#2B1C08', tag:'#دقيقة_فقه'},
+  seerah: {name:'من السيرة',        icon:'🕌', c1:'#0D5252', c2:'#062222', tag:'#من_السيرة'},
+  jumuah: {name:'يوم الجمعة',       icon:'🌙', c1:'#26246B', c2:'#0F0E2E', tag:'#يوم_الجمعة'}
+};
+
+/* ================= التغريدات ================= */
+const TWEETS = [
+ // الأسبوع الأول
+ {w:'الأسبوع الأول', s:'aya', t:'﴿فَاذْكُرُونِي أَذْكُرْكُمْ﴾ [البقرة: 152]\n\nتأمل: أنت تذكره في الأرض بين مشاغلك، وهو يذكرك في الملأ الأعلى.\nأي شرف أعظم من هذا؟', src:''},
+ {w:'الأسبوع الأول', s:'thikr', t:'قال ﷺ: «من قال: سبحان الله وبحمده، في يوم مائة مرة، حُطّت خطاياه وإن كانت مثل زبد البحر»\n\nمائة مرة لا تستغرق دقيقتين.. لا تفوّتها اليوم.', src:'متفق عليه'},
+ {w:'الأسبوع الأول', s:'sunnah', t:'سنة مهجورة: صلاة الضحى\n\nركعتان في وقت انشغال الناس بدنياهم، تجزئ عن 360 صدقة تلزمك كل يوم عن كل مفصل في جسدك.', src:'الأصل في صحيح مسلم'},
+ {w:'الأسبوع الأول', s:'asmaa', t:'(اللطيف)\n\nالذي يعلم دقائق الأمور، ويسوق إليك الخير من حيث لا تحتسب.\nكم من باب أُغلق في وجهك، ثم تبيّن لك بعد سنوات أن إغلاقه كان عين اللطف.', src:''},
+ {w:'الأسبوع الأول', s:'fiqh', t:'سؤال: هل يجوز الجمع بين نية صيام القضاء ونية التطوع؟\n\nالأحوط إفراد القضاء بنية مستقلة، لأن الفرض دَين مقدَّم. اسأل أهل العلم في التفاصيل.', src:''},
+ {w:'الأسبوع الأول', s:'seerah', t:'دخل النبي ﷺ مكة فاتحاً منتصراً بعد أن أُخرج منها مظلوماً..\n\nفماذا قال لمن آذوه؟ «اذهبوا فأنتم الطلقاء»\n\nالقوة الحقيقية: أن تقدر ثم تعفو.', src:''},
+ {w:'الأسبوع الأول', s:'jumuah', t:'قال ﷺ: «من صلى عليّ صلاةً صلى الله عليه بها عشراً»\n\nأكثروا من الصلاة على النبي في يومكم هذا.\n\nاللهم صلّ وسلم على نبينا محمد ﷺ', src:'رواه مسلم'},
+ // الأسبوع الثاني
+ {w:'الأسبوع الثاني', s:'aya', t:'﴿أَلَا بِذِكْرِ اللَّهِ تَطْمَئِنُّ الْقُلُوبُ﴾ [الرعد: 28]\n\nجرّبت البشر، وجرّبت الأشياء، وبقي القلق..\nجرّب الذكر، فالطمأنينة هناك.', src:''},
+ {w:'الأسبوع الثاني', s:'thikr', t:'قال ﷺ: «كلمتان خفيفتان على اللسان، ثقيلتان في الميزان، حبيبتان إلى الرحمن: سبحان الله وبحمده، سبحان الله العظيم»', src:'متفق عليه'},
+ {w:'الأسبوع الثاني', s:'sunnah', t:'سنة مهجورة: النوم على طهارة\n\nتوضأ قبل نومك كوضوئك للصلاة، ونم على شقك الأيمن، كما أوصى النبي ﷺ البراء بن عازب.', src:'متفق عليه'},
+ {w:'الأسبوع الثاني', s:'asmaa', t:'(الشكور)\n\nيقبل اليسير من العمل، ويضاعف عليه الأجر الكبير.\nتمرة تتصدق بها، كلمة طيبة، إماطة أذى.. لا شيء يضيع عنده سبحانه.', src:''},
+ {w:'الأسبوع الثاني', s:'fiqh', t:'سؤال: نسيت وأكلت وأنا صائم، هل أفطرت؟\n\nصومك صحيح، أتم يومك. قال ﷺ: «فإنما أطعمه الله وسقاه»', src:'متفق عليه'},
+ {w:'الأسبوع الثاني', s:'seerah', t:'كان النبي ﷺ في بيته «في مهنة أهله» — يخدم نفسه ويعين أهل بيته.\n\nالنبوة لم تمنعه من التواضع في بيته.. فكيف بنا؟', src:'رواه البخاري'},
+ {w:'الأسبوع الثاني', s:'jumuah', t:'لا تنسَ اليوم:\n\n• قراءة سورة الكهف\n• الإكثار من الصلاة على النبي ﷺ\n• تحرّي ساعة الإجابة آخر ساعة قبل المغرب\n\nجمعة مباركة 🤍', src:''},
+ // الأسبوع الثالث
+ {w:'الأسبوع الثالث', s:'aya', t:'﴿وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا﴾ [الطلاق: 2]\n\nضاقت؟ الآية لم تقل: يجعل له حلاً واحداً.. بل «مخرجاً» ينشئه الله لك إنشاءً، من حيث لا تتوقع.', src:''},
+ {w:'الأسبوع الثالث', s:'thikr', t:'دعاء جامع علّمه النبي ﷺ:\n\n«اللهم إني أسألك الهدى والتقى والعفاف والغنى»\n\nأربع كلمات تجمع خيري الدنيا والآخرة.', src:'رواه مسلم'},
+ {w:'الأسبوع الثالث', s:'sunnah', t:'سنة مهجورة: ركعتا الوضوء\n\nقال ﷺ لبلال: «حدثني بأرجى عمل عملته في الإسلام» فذكر أنه لا يتطهر إلا صلى بعدها ما كُتب له.', src:'متفق عليه'},
+ {w:'الأسبوع الثالث', s:'asmaa', t:'(الودود)\n\nيحب عباده الصالحين ويتودد إليهم بنعمه.\nليس رباً تعبده من بعيد.. بل يحبك إذا تقربت إليه، ويفرح بتوبتك إذا عدت.', src:''},
+ {w:'الأسبوع الثالث', s:'fiqh', t:'سؤال: هل يشترط الوضوء لقراءة القرآن من الجوال؟\n\nالجوال لا يأخذ حكم المصحف عند عامة أهل العلم المعاصرين، فتجوز القراءة منه دون وضوء، والوضوء أكمل.', src:''},
+ {w:'الأسبوع الثالث', s:'seerah', t:'في أحلك ساعات الهجرة، والمطاردون على باب الغار، قال ﷺ لأبي بكر:\n\n«ما ظنك باثنين الله ثالثهما؟»\n\nاليقين بالله لا تهزّه الظروف.', src:'متفق عليه'},
+ {w:'الأسبوع الثالث', s:'jumuah', t:'قال ﷺ: «خير يوم طلعت عليه الشمس يوم الجمعة»\n\nاجعل ليومك نصيباً من الدعاء والذكر والصلاة على النبي ﷺ', src:'رواه مسلم'},
+ // الأسبوع الرابع
+ {w:'الأسبوع الرابع', s:'aya', t:'﴿وَقُل رَّبِّ زِدْنِي عِلْمًا﴾ [طه: 114]\n\nالشيء الوحيد الذي أُمر النبي ﷺ أن يطلب الزيادة منه: العلم.\nلا مال، ولا جاه.. علم.', src:''},
+ {w:'الأسبوع الرابع', s:'thikr', t:'سيد الاستغفار:\n\n«اللهم أنت ربي لا إله إلا أنت، خلقتني وأنا عبدك، وأنا على عهدك ووعدك ما استطعت..»\n\nمن قالها موقناً بها حين يمسي فمات دخل الجنة، وكذلك حين يصبح.', src:'رواه البخاري'},
+ {w:'الأسبوع الرابع', s:'sunnah', t:'سنة مهجورة: إفشاء السلام\n\nقال ﷺ: «لا تدخلون الجنة حتى تؤمنوا، ولا تؤمنوا حتى تحابوا، أولا أدلكم على شيء إذا فعلتموه تحاببتم؟ أفشوا السلام بينكم»', src:'رواه مسلم'},
+ {w:'الأسبوع الرابع', s:'asmaa', t:'(الرزاق)\n\nرزقك مكتوب قبل أن تولد، ولن تموت حتى تستوفيه.\nاسعَ ولا تقلق.. فالذي تكفّل برزق الطير في السماء لن ينساك.', src:''},
+ {w:'الأسبوع الرابع', s:'fiqh', t:'سؤال: فاتتني تكبيرة الإحرام، هل أنتظر الإمام يقوم؟\n\nادخل مع الإمام على أي حال كان، لقوله ﷺ: «فما أدركتم فصلّوا وما فاتكم فأتموا»', src:'متفق عليه'},
+ {w:'الأسبوع الرابع', s:'seerah', t:'قال أنس بن مالك: خدمت النبي ﷺ عشر سنين، فما قال لي: أفٍّ قط، وما قال لشيء صنعته: لِمَ صنعته؟\n\nهكذا كانت أخلاقه مع من يخدمه.. فكيف مع أهله وأصحابه؟', src:'متفق عليه'},
+ {w:'الأسبوع الرابع', s:'jumuah', t:'ساعة الإجابة..\n\nقال ﷺ عن يوم الجمعة: «فيه ساعة لا يوافقها عبد مسلم وهو قائم يصلي يسأل الله تعالى شيئاً إلا أعطاه إياه»\n\nلا تغرب شمس اليوم إلا وقد دعوت.', src:'متفق عليه'},
+ // احتياطية
+ {w:'احتياطي', s:'thikr', t:'قال ﷺ: «أحب الأعمال إلى الله أدومها وإن قلّ»\n\nصفحة واحدة من القرآن يومياً خير من ختمة تنقطع بعدها شهوراً.\nالاستمرارية.. لا الكمّية.', src:'متفق عليه'},
+ {w:'احتياطي', s:'fiqh', t:'قال ﷺ: «من حُسن إسلام المرء تركُه ما لا يعنيه»\n\nنصف راحة البال في هذا الحديث.', src:'رواه الترمذي'}
+];
+
+/* ================= الحالة ================= */
+let state = { series:'aya', text:TWEETS[0].t, src:TWEETS[0].src, activeIdx:0 };
+
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const $ = id => document.getElementById(id);
+
+/* ================= بناء الواجهة ================= */
+function buildSeriesGrid(){
+  const g = $('seriesGrid'); g.innerHTML='';
+  Object.entries(SERIES).forEach(([key,s])=>{
+    const b = document.createElement('button');
+    b.className = 'series-btn' + (key===state.series?' active':'');
+    b.innerHTML = `<span class="si">${s.icon}</span>${s.name}`;
+    b.onclick = ()=>{ state.series=key; $('hashtag').value=s.tag; buildSeriesGrid(); draw(); };
+    g.appendChild(b);
+  });
+}
+
+function buildList(){
+  const list = $('list'); list.innerHTML='';
+  let lastW='';
+  TWEETS.forEach((tw,i)=>{
+    if(tw.w!==lastW){
+      const w=document.createElement('div'); w.className='week'; w.textContent=tw.w; list.appendChild(w); lastW=tw.w;
+    }
+    const s=SERIES[tw.s];
+    const d=document.createElement('div');
+    d.className='tweet-item'+(i===state.activeIdx?' active':'');
+    d.innerHTML=`<span class="ico">${s.icon}</span><div><div class="tt">${tw.t.split('\n')[0].slice(0,55)}${tw.t.length>55?'…':''}</div><div class="tag">${s.name}</div></div>`;
+    d.onclick=()=>{
+      state.activeIdx=i; state.series=tw.s; state.text=tw.t; state.src=tw.src;
+      $('txt').value=tw.t; $('src').value=tw.src; $('hashtag').value=s.tag;
+      buildSeriesGrid(); buildList(); draw();
+    };
+    list.appendChild(d);
+  });
+}
+
+/* ================= الرسم على الكانفس ================= */
+function roundRect(c,x,y,w,h,r){
+  c.beginPath();
+  c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r);
+  c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath();
+}
+
+function star8(c,cx,cy,R){
+  c.beginPath();
+  for(let i=0;i<16;i++){
+    const r = i%2===0 ? R : R*0.42;
+    const a = (Math.PI/8)*i - Math.PI/2;
+    const px = cx + r*Math.cos(a), py = cy + r*Math.sin(a);
+    i===0 ? c.moveTo(px,py) : c.lineTo(px,py);
+  }
+  c.closePath();
+}
+
+function wrapText(c,text,maxW){
+  const out=[];
+  text.split('\n').forEach(par=>{
+    if(par.trim()===''){ out.push(''); return; }
+    const words=par.split(' ');
+    let line='';
+    words.forEach(w=>{
+      const test = line ? line+' '+w : w;
+      if(c.measureText(test).width > maxW && line){ out.push(line); line=w; }
+      else line=test;
+    });
+    if(line) out.push(line);
+  });
+  return out;
+}
+
+function draw(scale=1){
+  const fmt = FORMATS[$('fmt').value];
+  const L = fmt.layout;
+  const W = fmt.w*scale, H = fmt.h*scale;
+  const target = scale===1 ? cv : Object.assign(document.createElement('canvas'),{width:W,height:H});
+  if(scale===1){ cv.width=W; cv.height=H; }
+  const c = target.getContext('2d');
+  const s = SERIES[state.series];
+  const u = W/1080; // وحدة القياس
+
+  /* الخلفية */
+  const g = c.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,s.c1); g.addColorStop(1,s.c2);
+  c.fillStyle=g; c.fillRect(0,0,W,H);
+
+  /* نقش النجمة الثمانية */
+  c.save(); c.globalAlpha=0.05; c.strokeStyle='#E3C98F'; c.lineWidth=1.4*u;
+  const step=170*u;
+  for(let y=step/2;y<H+step;y+=step)
+    for(let x=((y/step)%2===0?step/2:0);x<W+step;x+=step){
+      star8(c,x,y,52*u); c.stroke();
+    }
+  c.restore();
+
+  /* الإطار الذهبي */
+  c.strokeStyle='rgba(227,201,143,.55)'; c.lineWidth=2*u;
+  roundRect(c,38*u,38*u,W-76*u,H-76*u,26*u); c.stroke();
+  c.strokeStyle='rgba(227,201,143,.22)'; c.lineWidth=1*u;
+  roundRect(c,52*u,52*u,W-104*u,H-104*u,20*u); c.stroke();
+
+  /* شارة السلسلة */
+  c.direction='rtl'; c.textAlign='center'; c.textBaseline='middle';
+  c.font=`${64*u}px "Tajawal"`;
+  c.fillText(s.icon, W/2, L.icon*u);
+  c.fillStyle='#E3C98F';
+  c.font=`800 ${40*u}px "Tajawal"`;
+  c.fillText(s.name, W/2, (L.icon+78)*u);
+  /* خط فاصل قصير */
+  const dy = (L.icon+120)*u;
+  c.strokeStyle='rgba(227,201,143,.7)'; c.lineWidth=2.5*u;
+  c.beginPath(); c.moveTo(W/2-90*u,dy); c.lineTo(W/2+90*u,dy); c.stroke();
+  c.fillStyle='#E3C98F';
+  star8(c,W/2,dy,9*u); c.fill();
+
+  /* النص الرئيسي */
+  const maxW = W-220*u;
+  let fs = L.fs;
+  c.font=`${fs*u}px "Amiri"`;
+  let lines = wrapText(c,state.text,maxW);
+  while(lines.length*(fs*1.85) > L.maxBlock && fs>32){
+    fs -= 2;
+    c.font=`${fs*u}px "Amiri"`;
+    lines = wrapText(c,state.text,maxW);
+  }
+  const lh = fs*1.85*u;
+  const blockH = lines.length*lh;
+  let y = (H*L.center) - blockH/2 + lh/2;
+  c.fillStyle='#F5F1E6';
+  lines.forEach(ln=>{
+    if(ln!=='') c.fillText(ln, W/2, y);
+    y += ln==='' ? lh*0.55 : lh;
+  });
+
+  /* المصدر */
+  if(state.src && state.src.trim()!==''){
+    const sy = H - L.srcUp*u;
+    c.font=`700 ${30*u}px "Tajawal"`;
+    c.fillStyle='#E3C98F';
+    c.fillText('['+state.src+']', W/2, sy);
+  }
+
+  /* التذييل */
+  c.font=`500 ${26*u}px "Tajawal"`;
+  c.fillStyle='rgba(245,241,230,.55)';
+  const handle = $('handle').value.trim();
+  const tag = $('hashtag').value.trim();
+  c.fillText(`${tag}   ${handle}`, W/2, H - L.footUp*u);
+
+  return target;
+}
+
+/* ================= الإجراءات ================= */
+function toast(msg){
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),1800);
+}
+
+$('shareBtn').onclick = async ()=>{
+  await document.fonts.ready;
+  const scale = parseInt($('res').value);
+  const c = draw(scale);
+  const s = SERIES[state.series];
+  c.toBlob(async blob=>{
+    const file = new File([blob], `بطاقة_${s.name.replace(/ /g,'_')}.png`, {type:'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      try{
+        await navigator.share({files:[file], title:s.name});
+        toast('تمت المشاركة ✓');
+      }catch(e){ /* المستخدم أغلق قائمة المشاركة */ }
+    }else{
+      /* متصفح لا يدعم المشاركة — تحميل بدلاً منها */
+      const a = document.createElement('a');
+      a.download = file.name; a.href = URL.createObjectURL(blob); a.click();
+      toast('المشاركة غير مدعومة هنا — تم التحميل بدلاً منها');
+    }
+  }, 'image/png');
+};
+
+$('dlBtn').onclick = async ()=>{
+  await document.fonts.ready;
+  const scale = parseInt($('res').value);
+  const c = draw(scale);
+  const s = SERIES[state.series];
+  const fmt = FORMATS[$('fmt').value];
+  const a = document.createElement('a');
+  a.download = `بطاقة_${s.name.replace(/ /g,'_')}_${fmt.label}.png`;
+  a.href = c.toDataURL('image/png');
+  a.click();
+  toast('تم تحميل البطاقة ✓');
+};
+
+$('cpBtn').onclick = async ()=>{
+  const s = SERIES[state.series];
+  const parts = [ `${s.icon} ${state.text}` ];
+  if(state.src.trim()) parts.push(`[${state.src}]`);
+  const tag = $('hashtag').value.trim();
+  if(tag) parts.push('\n'+tag);
+  try{
+    await navigator.clipboard.writeText(parts.join('\n'));
+    toast('نُسخ نص التغريدة مع الرمز ✓');
+  }catch(e){ toast('تعذّر النسخ — انسخ يدوياً'); }
+};
+
+$('txt').addEventListener('input', e=>{ state.text=e.target.value; draw(); });
+$('src').addEventListener('input', e=>{ state.src=e.target.value; draw(); });
+$('handle').addEventListener('input', ()=>draw());
+$('hashtag').addEventListener('input', ()=>draw());
+$('fmt').addEventListener('change', ()=>draw());
+
+/* ================= التهيئة ================= */
+$('txt').value = state.text;
+$('src').value = state.src;
+$('hashtag').value = SERIES[state.series].tag;
+buildSeriesGrid();
+buildList();
+document.fonts.ready.then(()=>draw());
+draw();
+</script>
+</body>
+</html>
