@@ -110,32 +110,42 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
   body{background:#fff;margin:0}
   .sheet{display:none!important}
   #printPages{display:block}
-  .page{width:210mm;height:296.8mm;position:relative;overflow:hidden;
-        break-after:page;page-break-after:always}
+  /* ‎--k معامل الملاءمة: تُضرب به كل مقاسات الصفحة فيصغر التصميم حقيقةً
+     (لا بـ zoom ولا transform — فهما لا يُعتمدان في طباعة سفاري والجوال) */
+  .page{width:calc(210mm*var(--k,1));height:calc(296.8mm*var(--k,1));margin:0 auto;
+        position:relative;overflow:hidden;break-after:page;page-break-after:always}
   .page:last-child{break-after:auto;page-break-after:auto}
-  /* ملاءمة الهوامش: يُصغَّر صندوق الصفحة نفسه (zoom لا transform، إذ يؤثّر في التخطيط)
-     ليسع داخل المساحة القابلة للطباعة، فلا يفيض على ورقة تالية فارغة كما يحدث في الجوال */
-  html.fitpage .page{zoom:.84;margin:0 auto}   /* ١٧٦٫٤ × ٢٤٩٫٣مم — يسع A4 بهوامش حتى ١٦مم */
-  .pband{position:absolute;top:0;right:0;left:0;height:30mm;background:var(--navy);
-         display:flex;align-items:center;gap:4.5mm;padding:0 7.2mm}
-  .pstripe{position:absolute;top:30mm;right:0;left:0;height:1.3mm;background:var(--rose)}
-  .plogo{height:14.4mm;flex:0 0 auto}
-  .pdiv{width:.36mm;height:13.3mm;background:var(--rose);flex:0 0 auto;margin:0 1mm}
+  .pband{position:absolute;top:0;right:0;left:0;height:calc(30mm*var(--k,1));background:var(--navy);
+         display:flex;align-items:center;gap:calc(4.5mm*var(--k,1));padding:0 calc(7.2mm*var(--k,1))}
+  .pstripe{position:absolute;top:calc(30mm*var(--k,1));right:0;left:0;
+           height:calc(1.3mm*var(--k,1));background:var(--rose)}
+  .plogo{height:calc(14.4mm*var(--k,1));flex:0 0 auto}
+  .pdiv{width:calc(.36mm*var(--k,1));height:calc(13.3mm*var(--k,1));background:var(--rose);
+        flex:0 0 auto;margin:0 calc(1mm*var(--k,1))}
   .ptit{flex:1 1 auto;min-width:0;text-align:right}
-  .ptit h2{margin:0;font-size:19pt;font-weight:700;color:#fff;line-height:1.15}
-  .ptit .s1{font-size:10.5pt;font-weight:600;color:var(--rose);margin-top:.9mm;line-height:1.2}
-  .ptit .s2{font-size:8.5pt;color:#C9CDDC;margin-top:.5mm;line-height:1.2}
-  .pdots{display:flex;gap:1.1mm;flex:0 0 auto}
-  .pdots i{width:2.6mm;height:2.6mm;transform:rotate(45deg);background:var(--rose)}
+  .ptit h2{margin:0;font-size:calc(19pt*var(--k,1));font-weight:700;color:#fff;line-height:1.15}
+  .ptit .s1{font-size:calc(10.5pt*var(--k,1));font-weight:600;color:var(--rose);
+            margin-top:calc(.9mm*var(--k,1));line-height:1.2}
+  .ptit .s2{font-size:calc(8.5pt*var(--k,1));color:#C9CDDC;
+            margin-top:calc(.5mm*var(--k,1));line-height:1.2}
+  .pdots{display:flex;gap:calc(1.1mm*var(--k,1));flex:0 0 auto}
+  .pdots i{width:calc(2.6mm*var(--k,1));height:calc(2.6mm*var(--k,1));
+           transform:rotate(45deg);background:var(--rose)}
   .pdots i:nth-child(even){background:#4B5382}
-  table.pt{position:absolute;top:39.4mm;right:7.24mm;width:195.5mm;
-           border-collapse:collapse;table-layout:fixed;font-size:8pt}
-  table.pt col:nth-child(1){width:25.23mm} table.pt col:nth-child(2){width:17.22mm}
-  table.pt col:nth-child(3){width:22.22mm} table.pt col:nth-child(4){width:52.22mm}
-  table.pt col:nth-child(5){width:30.28mm} table.pt col:nth-child(6){width:48.33mm}
-  table.pt th{height:8.33mm;background:var(--navy);color:#fff;font-size:9.5pt;font-weight:700;
-              border:.18mm solid var(--line);padding:0 1.2mm}
-  table.pt td{height:5.44mm;border:.18mm solid var(--line);padding:0 1.2mm;text-align:center;
+  table.pt{position:absolute;top:calc(39.4mm*var(--k,1));right:calc(7.24mm*var(--k,1));
+           width:calc(195.5mm*var(--k,1));
+           border-collapse:collapse;table-layout:fixed;font-size:calc(8pt*var(--k,1))}
+  table.pt col:nth-child(1){width:calc(25.23mm*var(--k,1))}
+  table.pt col:nth-child(2){width:calc(17.22mm*var(--k,1))}
+  table.pt col:nth-child(3){width:calc(22.22mm*var(--k,1))}
+  table.pt col:nth-child(4){width:calc(52.22mm*var(--k,1))}
+  table.pt col:nth-child(5){width:calc(30.28mm*var(--k,1))}
+  table.pt col:nth-child(6){width:calc(48.33mm*var(--k,1))}
+  table.pt th{height:calc(8.33mm*var(--k,1));background:var(--navy);color:#fff;
+              font-size:calc(9.5pt*var(--k,1));font-weight:700;
+              border:calc(.18mm*var(--k,1)) solid var(--line);padding:0 calc(1.2mm*var(--k,1))}
+  table.pt td{height:calc(5.44mm*var(--k,1));border:calc(.18mm*var(--k,1)) solid var(--line);
+              padding:0 calc(1.2mm*var(--k,1));text-align:center;
               vertical-align:middle;line-height:1.1;background:#fff}
   table.pt tbody tr:nth-child(even) td:not(.wk){background:var(--grey)}
   table.pt td.wk{background:var(--slate);color:#fff;font-weight:700}
@@ -145,10 +155,12 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
   table.pt tr.fri td:not(.wk){background:var(--rose-l)}
   table.pt tr.fin td:not(.wk){background:var(--rose-l)}
   table.pt tr.off td:not(.wk){background:var(--rose);color:var(--navy);font-weight:600}
-  table.pt td.note{font-weight:700;color:var(--navy);font-size:9pt}
-  table.pt td.dua{height:7mm;background:var(--navy)!important;color:#fff;font-weight:700;font-size:9pt}
-  .pfoot{position:absolute;top:287.8mm;right:7.2mm;left:7.2mm;display:flex;
-         justify-content:space-between;font-size:7.5pt;color:#8A90A6}
+  table.pt td.note{font-weight:700;color:var(--navy);font-size:calc(9pt*var(--k,1))}
+  table.pt td.dua{height:calc(7mm*var(--k,1));background:var(--navy)!important;color:#fff;
+                  font-weight:700;font-size:calc(9pt*var(--k,1))}
+  .pfoot{position:absolute;top:calc(287.8mm*var(--k,1));right:calc(7.2mm*var(--k,1));
+         left:calc(7.2mm*var(--k,1));display:flex;
+         justify-content:space-between;font-size:calc(7.5pt*var(--k,1));color:#8A90A6}
 }
 @media (max-width:640px){
   .wrap{padding:10px 10px 20px}
@@ -345,10 +357,10 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
         <div class="hint">يشمل التواريخ وأرقام الآيات في الجدول والطباعة والتصدير.
           أمّا خانات الإدخال فتقبل الصيغتين معًا.</div>
         <div class="row" style="margin-top:9px"><label><input type="checkbox" id="fitPage" checked
-          style="min-width:auto"> ملاءمة هوامش الطباعة</label></div>
-        <div class="hint">يُصغَّر التصميم قليلًا ليسع داخل هوامش الطابعة، فلا تخرج ورقة فارغة
-          بعد كل ورقة — يحدث ذلك في سفاري والجوال لأنهما يفرضان هوامشهما.
-          أطفئيه لطباعة حافة إلى حافة من كروم.</div>
+          style="min-width:auto"> ملاءمة هوامش الطباعة</label>
+          <input type="number" id="fitPct" value="88" min="50" max="100" step="1">
+          <span class="hint">٪ من مقاس الورقة</span></div>
+        <div class="hint" id="fitInfo"></div>
         <div class="row" style="margin-top:9px"><label>الشعار</label>
           <input type="file" id="logoFile" class="txt file" accept="image/*">
           <button class="btn ghost sm" id="logoDef">الافتراضي</button></div>
@@ -1406,7 +1418,7 @@ function exportPptx(){
 const FIELDS = ['dFrom','dTo','wStart','mUnit','mFrom','mTo','mFromS','mToS','mAmt','mRep',
                 'bUnit','bFrom','bTo','bFromS','bToS','bAmt','bRep',
                 'bAmt2','bTol','mTol','mSpread','sMode','sBack','sDays','sUnit','sFrom','sTo','sFromS','sToS',
-                'sAmt','sRep','tTitle','tSub','tOrg','tDua','numStyle'];
+                'sAmt','sRep','tTitle','tSub','tOrg','tDua','numStyle','fitPct'];
 function collect(){
   const o = {}; FIELDS.forEach(f => o[f] = $(f).value);
   o.bOn = $('bOn').checked; o.bOneSura = $('bOneSura').checked;
@@ -1430,18 +1442,31 @@ function apply(o){
   if(o.bOn !== undefined) $('bOn').checked = o.bOn;
   if(o.bOneSura !== undefined) $('bOneSura').checked = o.bOneSura;
   if(o.mOneSura !== undefined) $('mOneSura').checked = o.mOneSura;
-  if(o.fitPage !== undefined){ $('fitPage').checked = o.fitPage; applyFit(); }
+  if(o.fitPage !== undefined) $('fitPage').checked = o.fitPage;
   if(o.days){ document.querySelectorAll('#dayBoxes input').forEach(c => c.checked = o.days.includes(+c.value)); syncDays(); }
   if(o.hols){ $('holBody').innerHTML = ''; o.hols.forEach(h => holRow(h[0], h[1], h[2])); }
   if(o.ovs){ $('ovBody').innerHTML = ''; o.ovs.forEach(v => ovRow(v[0], v[1], v[2])); }
   if(o.exs){ $('exBody').innerHTML = ''; o.exs.forEach(x => exRow(x[0], x[1], x[2], x[3])); }
   if(o.logo){ const lg = LOGO_EL(); lg.src = o.logo; lg.alt = o.logoName || 'شعار'; }
   logoNote(o.logo ? o.logoName : '');
-  toggleSmall(); toggleUnits();
+  toggleSmall(); toggleUnits(); applyFit();
 }
 /* ملاءمة صفحة الطباعة لهوامش الجهاز — مفعّلة افتراضيًّا لأن سفاري والجوال
-   يفرضان هوامشهما ويتجاهلان @page{margin:0} فتفيض الصفحة على ورقة فارغة تالية */
-function applyFit(){ document.documentElement.classList.toggle('fitpage', $('fitPage').checked); }
+   يفرضان هوامشهما ويتجاهلان @page{margin:0} فتفيض الصفحة على ورقة فارغة تالية.
+   صغّري النسبة أكثر إن بقيت الأوراق الفارغة (هوامش جهازك أوسع). */
+function applyFit(){
+  const on = $('fitPage').checked;
+  const p = Math.min(100, Math.max(50, Math.round(+$('fitPct').value) || 88));
+  const k = on ? p / 100 : 1;
+  document.documentElement.style.setProperty('--k', k);
+  $('fitPct').disabled = !on;
+  const w = Math.round(210 * k * 10) / 10, h = Math.round(296.8 * k * 10) / 10;
+  $('fitInfo').textContent = on
+    ? ('الصفحة ' + fmt(w) + ' × ' + fmt(h) + ' مم، تسع هامشًا حتى '
+       + fmt(Math.round((210 - w) / 2 * 10) / 10) + ' مم على كل جانب. '
+       + 'ارفعي النسبة ما دام لا تظهر ورقة فارغة بعد كل ورقة، وصغّريها إن ظهرت.')
+    : 'حافة إلى حافة (٢١٠ × ٢٩٦٫٨ مم) — يصلح لكروم وحده؛ سفاري والجوال يُخرجان ورقة فارغة بعد كل ورقة.';
+}
 function toggleSmall(){
   const v = $('sMode').value;
   $('sRange').style.display   = v === 'range'  ? '' : 'none';
@@ -1477,6 +1502,7 @@ function toggleUnits(){
   if(saved){ try{ apply(JSON.parse(saved)); }catch(e){} }
   applyFit();
   $('fitPage').addEventListener('change', applyFit);
+  $('fitPct').addEventListener('input', applyFit);
   logoNote(LOGO_EL().alt);
 
   syncDays();
