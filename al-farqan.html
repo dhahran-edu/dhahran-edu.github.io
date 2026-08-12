@@ -356,7 +356,7 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
           </select></div>
         <div class="hint">يشمل التواريخ وأرقام الآيات في الجدول والطباعة والتصدير.
           أمّا خانات الإدخال فتقبل الصيغتين معًا.</div>
-        <div class="row" style="margin-top:9px"><label><input type="checkbox" id="fitPage" checked
+        <div class="row" style="margin-top:9px"><label><input type="checkbox" id="fitPage"
           style="min-width:auto"> ملاءمة هوامش الطباعة</label>
           <input type="number" id="fitPct" value="88" min="50" max="100" step="1">
           <span class="hint">٪ من مقاس الورقة</span></div>
@@ -1464,8 +1464,10 @@ function applyFit(){
   $('fitInfo').textContent = on
     ? ('الصفحة ' + fmt(w) + ' × ' + fmt(h) + ' مم، تسع هامشًا حتى '
        + fmt(Math.round((210 - w) / 2 * 10) / 10) + ' مم على كل جانب. '
-       + 'ارفعي النسبة ما دام لا تظهر ورقة فارغة بعد كل ورقة، وصغّريها إن ظهرت.')
-    : 'حافة إلى حافة (٢١٠ × ٢٩٦٫٨ مم) — يصلح لكروم وحده؛ سفاري والجوال يُخرجان ورقة فارغة بعد كل ورقة.';
+       + 'ارفعي النسبة ما دامت لا تخرج ورقة فارغة، وصغّريها إن خرجت.')
+    : 'حافة إلى حافة (٢١٠ × ٢٩٦٫٨ مم) — الوضع الأصلي بلا هوامش. '
+      + 'قد تعدّ معاينة سفاري ضعف الصفحات، والعبرة بالملف المُصدَّر؛ '
+      + 'فإن خرجت فيه ورقة فارغة بعد كل ورقة (يحدث في الجوال) ففعّلي الملاءمة.';
 }
 function toggleSmall(){
   const v = $('sMode').value;
