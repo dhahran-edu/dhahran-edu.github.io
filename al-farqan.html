@@ -43,6 +43,9 @@ input:focus,select:focus{outline:2px solid var(--rose);outline-offset:1px}
 input[type=number]{width:74px}
 input.date{width:104px;text-align:center;direction:ltr}
 input.txt{flex:1 1 130px}
+input.file{padding:4px;font-size:11.5px;cursor:pointer}
+input.file::file-selector-button{font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;
+  border:1px solid var(--navy);background:#fff;color:var(--navy);border-radius:7px;padding:4px 9px;margin-inline-end:7px}
 .hint{font-size:11px;color:#9096AC}
 .days{display:flex;flex-wrap:wrap;gap:5px}
 .days label{display:inline-flex;align-items:center;gap:4px;font-size:12px;background:var(--grey);
@@ -338,6 +341,10 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
           </select></div>
         <div class="hint">يشمل التواريخ وأرقام الآيات في الجدول والطباعة والتصدير.
           أمّا خانات الإدخال فتقبل الصيغتين معًا.</div>
+        <div class="row" style="margin-top:9px"><label>الشعار</label>
+          <input type="file" id="logoFile" class="txt file" accept="image/*">
+          <button class="btn ghost sm" id="logoDef">الافتراضي</button></div>
+        <div class="hint" id="logoInfo"></div>
       </div>
 
     </div>
@@ -700,6 +707,46 @@ function readHols(){
     a: parseHD(tr.querySelector('.hf').value),
     b: parseHD(tr.querySelector('.ht').value),
   })).filter(h => h.a && h.b && h.b >= h.a);
+}
+
+/* ---------------- الشعار ----------------
+   يُصغَّر ويُعاد ترميزه PNG ليصلح للطباعة ولتصدير PowerPoint مهما كانت صيغة الملف */
+const LOGO_EL = () => document.querySelector('header .logo');
+const LOGO_MAX = 420;                       // أقصى ارتفاع بالبكسل — يكفي الطباعة والشرائح
+const DEFAULT_LOGO = LOGO_EL().src;
+function setLogo(src, name){
+  const el = LOGO_EL();
+  el.src = src;
+  el.alt = name || 'مركز الفرقان';
+  logoNote(name);
+  render();                                 // ليتحدّث الشعار في صفحات الطباعة أيضًا
+}
+function logoNote(name){
+  const custom = LOGO_EL().src !== DEFAULT_LOGO;
+  $('logoInfo').textContent = custom
+    ? 'شعار مرفوع' + (name ? ': ' + name : '') + ' — يظهر في الترويسة والطباعة وملف PowerPoint.'
+    : 'الشعار الافتراضي. ارفعي صورة PNG أو JPG لتحلّ محلّه.';
+}
+function loadLogo(file){
+  if(!file) return;
+  const fr = new FileReader();
+  fr.onerror = () => alert('تعذّرت قراءة الملف.');
+  fr.onload = () => {
+    const img = new Image();
+    img.onerror = () => alert('تعذّرت قراءة الصورة — جرّبي صيغة PNG أو JPG.');
+    img.onload = () => {
+      const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height;
+      if(!w0 || !h0){ alert('تعذّر تحديد أبعاد الصورة — جرّبي صيغة PNG أو JPG.'); return; }
+      const k = Math.min(1, LOGO_MAX / h0);
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(w0 * k)); c.height = Math.max(1, Math.round(h0 * k));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      try{ setLogo(c.toDataURL('image/png'), file.name); }
+      catch(e){ alert('تعذّر تحويل الصورة: ' + e.message); }
+    };
+    img.src = fr.result;
+  };
+  fr.readAsDataURL(file);
 }
 
 /* قيمة أسبوع فريدة لصف الدعوة حتى لا يندمج مع أسبوع ما قبله في الجدول والشرائح */
@@ -1361,6 +1408,8 @@ function collect(){
               tr.querySelector('.hf').value, tr.querySelector('.ht').value]);
   o.ovs = [...$('ovBody').children].map(tr => [+tr.querySelector('.od').value,
               tr.querySelector('.ow').value, tr.querySelector('.ot').value]);
+  const lg = LOGO_EL();
+  if(lg.src !== DEFAULT_LOGO){ o.logo = lg.src; o.logoName = lg.alt; }
   o.exs = [...$('exBody').children].map(tr => [tr.querySelector('.xc').value,
               +tr.querySelector('.xs').value,
               tr.querySelector('.xa').value, tr.querySelector('.xb').value]);
@@ -1377,6 +1426,8 @@ function apply(o){
   if(o.hols){ $('holBody').innerHTML = ''; o.hols.forEach(h => holRow(h[0], h[1], h[2])); }
   if(o.ovs){ $('ovBody').innerHTML = ''; o.ovs.forEach(v => ovRow(v[0], v[1], v[2])); }
   if(o.exs){ $('exBody').innerHTML = ''; o.exs.forEach(x => exRow(x[0], x[1], x[2], x[3])); }
+  if(o.logo){ const lg = LOGO_EL(); lg.src = o.logo; lg.alt = o.logoName || 'شعار'; }
+  logoNote(o.logo ? o.logoName : '');
   toggleSmall(); toggleUnits();
 }
 function toggleSmall(){
@@ -1412,6 +1463,7 @@ function toggleUnits(){
 
   const saved = localStorage.getItem('khitta-cfg');
   if(saved){ try{ apply(JSON.parse(saved)); }catch(e){} }
+  logoNote(LOGO_EL().alt);
 
   syncDays();
   document.querySelectorAll('#dayBoxes input').forEach(c => c.addEventListener('change', syncDays));
@@ -1424,10 +1476,15 @@ function toggleUnits(){
   $('addOv').onclick   = () => { ovRow(4, '', 'study'); render(); };
   $('addEx').onclick   = () => { exRow('all', 1, '', ''); render(); };
   $('defHol').onclick  = () => { $('holBody').innerHTML=''; DEFAULT_HOL.forEach(h=>holRow(h[0],h[1],h[2])); render(); };
+  $('logoFile').onchange = e => { loadLogo(e.target.files[0]); e.target.value = ''; };
+  $('logoDef').onclick   = () => setLogo(DEFAULT_LOGO, '');
   $('btnPrint').onclick = () => window.print();
-  $('btnSave').onclick  = () => { localStorage.setItem('khitta-cfg', JSON.stringify(collect()));
-                                  $('btnSave').textContent = 'تم الحفظ ✓';
-                                  setTimeout(()=>$('btnSave').textContent='حفظ الإعدادات', 1600); };
+  $('btnSave').onclick  = () => {
+    let msg = 'تم الحفظ ✓';
+    try{ localStorage.setItem('khitta-cfg', JSON.stringify(collect())); }
+    catch(e){ msg = 'تعذّر الحفظ — الشعار كبير'; }
+    $('btnSave').textContent = msg;
+    setTimeout(()=>$('btnSave').textContent='حفظ الإعدادات', 2000); };
   $('btnReset').onclick = () => { localStorage.removeItem('khitta-cfg'); location.reload(); };
   $('btnCsv').onclick   = exportCsv;
   $('btnPptx').onclick  = exportPptx;
