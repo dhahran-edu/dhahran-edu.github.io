@@ -1455,6 +1455,10 @@ function apply(o){
   logoNote(o.logo ? o.logoName : '');
   toggleSmall(); toggleUnits(); applyFit();
 }
+/* الجوال يفرض رؤوسًا وتذييلات (الرابط والتاريخ ورقم الصفحة) ويحجز لها شريطًا
+   لا يمكن إطفاؤه، فتضيق المساحة المتاحة — لذا تُفعَّل الملاءمة تلقائيًّا فيه */
+const isTouch = () => (window.matchMedia && matchMedia('(pointer:coarse)').matches)
+                   || navigator.maxTouchPoints > 1;
 /* ملاءمة صفحة الطباعة لهوامش الجهاز — مفعّلة افتراضيًّا لأن سفاري والجوال
    يفرضان هوامشهما ويتجاهلان @page{margin:0} فتفيض الصفحة على ورقة فارغة تالية.
    صغّري النسبة أكثر إن بقيت الأوراق الفارغة (هوامش جهازك أوسع). */
@@ -1505,7 +1509,12 @@ function toggleUnits(){
   DEFAULT_HOL.forEach(h => holRow(h[0], h[1], h[2]));
 
   const saved = localStorage.getItem('khitta-cfg');
-  if(saved){ try{ apply(JSON.parse(saved)); }catch(e){} }
+  let cfg = null;
+  if(saved){ try{ cfg = JSON.parse(saved); apply(cfg); }catch(e){} }
+  /* الجوال: يقتطع شريطًا لرؤوسه وتذييلاته، فيبدأ بالملاءمة ما لم تُحفظ رغبة أخرى */
+  if((!cfg || cfg.fitPage === undefined) && isTouch()){
+    $('fitPage').checked = true; $('fitPct').value = 80;
+  }
   applyFit();
   $('fitPage').addEventListener('change', applyFit);
   $('fitPct').addEventListener('input', applyFit);
