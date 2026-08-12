@@ -263,12 +263,18 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
         <b>المراجعة الصغرى</b>
         <div class="row"><label>النمط</label>
           <select id="sMode">
-            <option value="follow">تتبع آخر ما حُفظ</option>
+            <option value="follow">تتبع آخر ما حُفظ (بالأوجه)</option>
+            <option value="days">آخر أيام الحفظ الجديد</option>
             <option value="range">مدى محدَّد (من – إلى بمقدار)</option>
           </select></div>
         <div id="sFollow">
           <div class="row"><label>المقدار</label>
             <input type="number" id="sBack" value="4" min="0.25" step="0.25"> <span class="hint">آخر كم وجه حُفظ</span></div>
+        </div>
+        <div id="sDaysBox" style="display:none">
+          <div class="row"><label>عدد الأيام</label>
+            <input type="number" id="sDays" value="4" min="1" step="1">
+            <span class="hint">آخر كم يوم حفظ</span></div>
         </div>
         <div id="sRange" style="display:none">
           <div class="row"><label>التحديد</label>
@@ -848,6 +854,7 @@ function render(){
   }
   const smallPages = small ? small.total : 0, smallDays = small ? daysNeeded(small) : 0;
   const back = Math.max(0.05, +$('sBack').value);
+  const sDaysN = Math.max(1, Math.round(+$('sDays').value) || 4);
 
   const need = (memo.rep === 'stop') ? memoNeed : studyDays.length;
   const memoCount = Math.min(need, studyDays.length);
@@ -862,6 +869,7 @@ function render(){
 
   /* --- توليد الصفوف --- */
   const rows = [];
+  const memoLog = [];                 // مقاطع الحفظ الجديد يومًا بيوم — لنمط «آخر أيام الحفظ»
   for(const d of all){
     const r = {j: d.j, day: DAYS_AR[d.wd], date: hStr(d.j), week: d.week, kind: 'study'};
     if(d.kind === 'off'){ r.kind = 'off'; r.text = d.hol; }
@@ -870,11 +878,11 @@ function render(){
       r.kind = 'fin';
       r.text = (d.j === studyDays[studyDays.length-1].j) ? 'الاختبار النهائي' : 'مراجعة عامة';
     } else {
-      let mLo;
+      let mLo, mp = null;
       if(d.kind === 'rev'){            // يوم مراجعة فقط: لا يتقدّم الحفظ الجديد
         r.new = '—'; mLo = memo.cur;
       } else {
-        const mp = nextPortion(memo);
+        mp = nextPortion(memo);
         r.new = mp ? describe(mp[0], mp[1], mEx) : '';
         mLo = mp ? mp[0] : memo.baseEnd;
       }
@@ -882,11 +890,23 @@ function render(){
       if(sMode === 'range'){
         const sp = nextPortion(small);
         if(sp){ sLo = sp[0]; sHi = sp[1]; }
+      } else if(sMode === 'days'){     // ما حُفظ في آخر كذا يوم حفظ (بمستثنى الحفظ الجديد)
+        sXe = mEx;
+        if(memoLog.length){
+          let k = memoLog.length - 1, lo = memoLog[k][0];
+          const hi = memoLog[k][1];
+          /* ارجع يومًا بيوم ما دامت المقاطع متّصلة — تقف عند بداية دورة جديدة */
+          for(let n = 1; n < sDaysN && k > 0 && Math.abs(memoLog[k-1][1] - lo) < 1e-9; n++){
+            k--; lo = memoLog[k][0];
+          }
+          if(hi > lo + 1e-9){ sLo = lo; sHi = hi; }
+        }
       } else {                        // تتبع آخر ما حُفظ: بمستثنى الحفظ الجديد
         sXe = mEx;
         const lo = Math.max(memo.start, exBack(mEx, mLo, back));
         if(lo < mLo){ sLo = lo; sHi = mLo; }
       }
+      if(mp) memoLog.push(mp);
       r.small = (sLo != null) ? describe(sLo, sHi, sXe) : '';
       /* الكبرى تقف قبل ما يشغله اليوم من حفظ ومراجعة صغرى */
       let guard = mLo;
@@ -935,6 +955,8 @@ function render(){
   const smallTxt = sMode === 'range'
       ? ('<b>المراجعة الصغرى</b> ' + fmt($('sAmt').value) + ' صفحة يوميًا '
          + rSpan(sR) + '. ')
+      : sMode === 'days'
+      ? ('<b>المراجعة الصغرى</b> ما حُفظ في آخر ' + daysAr(sDaysN) + ' من أيام الحفظ. ')
       : ('<b>المراجعة الصغرى</b> آخر ' + fmt(back) + ' أوجه تم حفظها. ');
   const mOne = $('mOneSura').checked
       ? (' مع إتمام السورة في يومها فلا تجتمع سورتان'
@@ -960,10 +982,12 @@ function render(){
       + ($('mOneSura').checked ? ' (مع مراعاة حدود السور).' : '.') + exNote('m');
   $('bInfo').textContent = 'المدى: ' + fmt(bigPages) + ' صفحة — الدورة الأولى تكتمل في '
       + nd(bigFirst) + ' يومًا. عدد الدورات في هذه الخطة: ' + nd(big.cycles + 1) + '.' + exNote('b');
+  const sInherit = exNote('m').replace('المستثنى:', 'المستثنى (تبعًا للحفظ الجديد):');
   $('sInfo').textContent = sMode === 'range'
       ? ('المدى: ' + fmt(smallPages) + ' صفحة — دورة كاملة كل ' + nd(smallDays) + ' يومًا.' + exNote('s'))
-      : ('تتبع تلقائيًا آخر ما حُفظ قبل يوم الحفظ.'
-         + exNote('m').replace('المستثنى:', 'المستثنى (تبعًا للحفظ الجديد):'));
+      : sMode === 'days'
+      ? ('تجمع ما حُفظ في آخر ' + daysAr(sDaysN) + ' من أيام الحفظ، دون حفظ اليوم.' + sInherit)
+      : ('تتبع تلقائيًا آخر ما حُفظ قبل يوم الحفظ.' + sInherit);
 
   $('warn').innerHTML = warns.length
       ? warns.map(w => '<div class="warn" style="margin:14px 26px">' + w + '</div>').join('')
@@ -972,6 +996,9 @@ function render(){
   buildPrintPages(rows);
 }
 const fmt = v => nd((Math.round(+v * 100) / 100).toString());
+/* صيغة عدد الأيام بالعربية: يوم / يومين / ٤ أيام / ١٢ يومًا */
+const daysAr = n => n === 1 ? 'يوم' : n === 2 ? 'يومين'
+                  : (n <= 10 ? nd(n) + ' أيام' : nd(n) + ' يومًا');
 
 /* ============================================================
    تصدير PowerPoint (A4 عمودي) — يُبنى داخل المتصفح بلا مكتبات
@@ -1323,7 +1350,7 @@ function exportPptx(){
 /* ---------------- الإعدادات ---------------- */
 const FIELDS = ['dFrom','dTo','wStart','mUnit','mFrom','mTo','mFromS','mToS','mAmt','mRep',
                 'bUnit','bFrom','bTo','bFromS','bToS','bAmt','bRep',
-                'bAmt2','bTol','mTol','mSpread','sMode','sBack','sUnit','sFrom','sTo','sFromS','sToS',
+                'bAmt2','bTol','mTol','mSpread','sMode','sBack','sDays','sUnit','sFrom','sTo','sFromS','sToS',
                 'sAmt','sRep','tTitle','tSub','tOrg','tDua','numStyle'];
 function collect(){
   const o = {}; FIELDS.forEach(f => o[f] = $(f).value);
@@ -1353,9 +1380,10 @@ function apply(o){
   toggleSmall(); toggleUnits();
 }
 function toggleSmall(){
-  const r = $('sMode').value === 'range';
-  $('sRange').style.display = r ? '' : 'none';
-  $('sFollow').style.display = r ? 'none' : '';
+  const v = $('sMode').value;
+  $('sRange').style.display   = v === 'range'  ? '' : 'none';
+  $('sFollow').style.display  = v === 'follow' ? '' : 'none';
+  $('sDaysBox').style.display = v === 'days'   ? '' : 'none';
 }
 /* إظهار قوائم الأجزاء أو السور حسب نمط التحديد في كل قسم */
 function toggleUnits(){
