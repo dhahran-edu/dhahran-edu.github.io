@@ -52,6 +52,12 @@ input.txt{flex:1 1 130px}
 table.hol{width:100%;border-collapse:collapse;font-size:12px}
 table.hol td{padding:2px 3px}
 table.hol input{width:100%}
+table.exT select,table.exT input{width:100%;min-width:0;padding:6px 4px}
+table.exT th{font-size:10.5px;font-weight:600;color:#9096AC;text-align:center;padding:0 3px 2px}
+table.exT .exc{width:31%}
+table.exT .exs{width:29%}
+table.exT .exa{width:14%}
+table.exT .exa input{text-align:center}
 .btn{font-family:inherit;font-size:12.5px;font-weight:600;border-radius:8px;padding:7px 13px;
   cursor:pointer;border:1px solid var(--navy);background:var(--navy);color:#fff}
 .btn.ghost{background:#fff;color:var(--navy)}
@@ -288,6 +294,20 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
       </div>
 
       <div class="box">
+        <b>استثناء سور وآيات</b>
+        <table class="hol exT">
+          <thead><tr><th class="exc">القسم</th><th class="exs">السورة</th>
+            <th class="exa">من آية</th><th class="exa">إلى آية</th><th></th></tr></thead>
+          <tbody id="exBody"></tbody></table>
+        <div class="row" style="margin-top:8px">
+          <button class="btn ghost sm" id="addEx">+ إضافة استثناء</button>
+        </div>
+        <div class="hint">اترك خانتَي الآيات فارغتين لاستثناء السورة كاملة، أو حدّد
+          <b>من آية</b> و<b>إلى آية</b> لاستثناء جزء منها.
+          يُطوى المستثنى فلا يُحسب في المقدار اليومي ولا يظهر في الجدول.</div>
+      </div>
+
+      <div class="box">
         <b>استثناءات الأسابيع</b>
         <table class="hol"><tbody id="ovBody"></tbody></table>
         <div class="row" style="margin-top:8px">
@@ -388,7 +408,17 @@ function posOfAyah(g){
 }
 function suraOf(g){ let lo=0, hi=113;
   while(lo<hi){ const m=(lo+hi+1)>>1; if(CUM[m]<=g) lo=m; else hi=m-1; } return lo; }
-function describe(x1, x2){
+function describe(x1, x2, ex){
+  if(ex && ex.length){                    // اطوِ المستثنى ثم صِف ما بقي مقاطعَ متتابعة
+    const parts = []; let a = x1;
+    for(const g of ex){
+      if(g[1] <= a + 1e-9 || g[0] >= x2 - 1e-9) continue;
+      if(g[0] > a + 1e-9) parts.push(describe(a, Math.min(g[0], x2)));
+      a = Math.max(a, g[1]);
+    }
+    if(x2 > a + 1e-9) parts.push(describe(a, x2));
+    return parts.filter(Boolean).join(' + ');
+  }
   const a = ayahAt(x1), b = ayahAt(x2) - 1;
   if(b < a) return '';
   const parts = []; let cur = a;
@@ -419,6 +449,74 @@ function rangeOf(p){
   return {unit: u,
           from: +$(u === 'sura' ? p + 'FromS' : p + 'From').value,
           to:   +$(u === 'sura' ? p + 'ToS'   : p + 'To').value};
+}
+
+/* ---------------- المستثنى من السور والآيات ----------------
+   قائمة فترات [بداية، نهاية) في فضاء الصفحات، مرتّبة مدموجة بلا تداخل.
+   تُطوى فلا تُحسب في المقدار اليومي ولا تظهر في وصف اليوم. */
+function exList(rows, sec){
+  const iv = [];
+  for(const x of rows){
+    if(x.sec !== 'all' && x.sec !== sec) continue;
+    const n = SURAS[x.sura-1][1];
+    let a = x.from > 0 ? Math.min(x.from, n) : 1;
+    let b = x.to   > 0 ? Math.min(x.to,   n) : n;
+    if(b < a){ const t = a; a = b; b = t; }
+    iv.push([posOfAyah(CUM[x.sura-1] + a - 1), posOfAyah(CUM[x.sura-1] + b)]);
+  }
+  iv.sort((p, q) => p[0] - q[0]);
+  const out = [];
+  for(const g of iv){
+    const last = out[out.length-1];
+    if(last && g[0] <= last[1] + 1e-9) last[1] = Math.max(last[1], g[1]);
+    else out.push([g[0], g[1]]);
+  }
+  return out;
+}
+/* ادفع الموضع إلى أول موضع غير مستثنًى بعده (أو قبله في exBk) */
+function exFwd(ex, x){
+  for(const g of ex) if(x > g[0] - 1e-9 && x < g[1] - 1e-9) x = g[1];
+  return x;
+}
+function exBk(ex, x){
+  for(let i = ex.length-1; i >= 0; i--){ const g = ex[i];
+    if(x > g[0] + 1e-9 && x < g[1] + 1e-9) x = g[0]; }
+  return x;
+}
+/* الطول الفعلي (غير المستثنى) بين موضعين */
+function exLen(ex, a, b){
+  let n = b - a;
+  for(const g of ex){ const lo = Math.max(a, g[0]), hi = Math.min(b, g[1]); if(hi > lo) n -= hi - lo; }
+  return Math.max(0, n);
+}
+/* التقدّم من a بمقدار A من الصفحات غير المستثناة (وexBack بالعكس) */
+function exAdv(ex, a, A){
+  let x = exFwd(ex, a), r = A;
+  for(const g of ex){
+    if(g[1] <= x + 1e-9) continue;
+    const free = g[0] - x;
+    if(free >= r - 1e-9) return x + r;
+    r -= free; x = g[1];
+  }
+  return x + r;
+}
+function exBack(ex, b, A){
+  let x = exBk(ex, b), r = A;
+  for(let i = ex.length-1; i >= 0; i--){ const g = ex[i];
+    if(g[0] >= x - 1e-9) continue;
+    const free = x - g[1];
+    if(free >= r - 1e-9) return x - r;
+    r -= free; x = g[0];
+  }
+  return x - r;
+}
+/* وصف الاستثناء نصًّا لفقرة المنهجية */
+function exSpan(x){
+  const n = SURAS[x.sura-1][1];
+  const a = x.from > 0 ? Math.min(x.from, n) : 1, b = x.to > 0 ? Math.min(x.to, n) : n;
+  const lo = Math.min(a, b), hi = Math.max(a, b);
+  return 'سورة ' + SURAS[x.sura-1][0]
+    + ((lo === 1 && hi === n) ? '' : ' ' + LRM + '(' + nd(lo) + '-' + nd(hi) + ')' + LRM);
 }
 
 /* ---------------- التقويم ---------------- */
@@ -452,8 +550,10 @@ function mkTrack(from, to, amount, o){
   o = o || {};
   const u = o.unit || 'juz', mu = o.mUnit || 'juz';
   const s = rStart(u, from), e = rEnd(u, to);
+  const ex = o.ex || [];
   return {start:s, baseEnd:e, amt:Math.max(0.05, amount), amt2:(o.amt2 > 0 ? o.amt2 : 0),
-          rep:o.rep || 'start', cur:s, done:false, total:e - s, cycles:0,
+          ex:ex, span:e - s, rep:o.rep || 'start', cur:s, done:false,
+          total:exLen(ex, s, e), cycles:0,
           oneSura:!!o.oneSura, tol:(o.tol > 0 ? o.tol : 0), spread:o.spread === 'spread',
           si:null, sEnd:0, sAmt:0,
           mStart: o.mFrom ? rStart(mu, o.mFrom) : s, mEnd: o.mTo ? rEnd(mu, o.mTo) : e};
@@ -470,41 +570,43 @@ const amtOf = t => (t.cycles > 0 && t.amt2 > 0) ? t.amt2 : t.amt;
    المراجعة الكبرى تقف دونها ثم تبدأ دورة جديدة، فلا يتوافق العمودان في يوم واحد */
 function nextPortion(t, guard){
   if(t.done) return null;
+  const X = t.ex;
   const limit = () => {
     if(t.rep === 'stop' || guard == null) return t.baseEnd;
-    return Math.max(t.start + amtOf(t), Math.min(t.baseEnd, guard));
+    return Math.min(t.baseEnd, Math.max(exAdv(X, t.start, amtOf(t)), guard));
   };
   let e = limit();
-  if(t.cur >= e - 1e-9){
+  if(exLen(X, t.cur, e) <= 1e-9){
     if(t.rep === 'stop'){ t.done = true; return null; }
     t.cycles++;
     if(t.rep === 'memo'){ t.start = t.mStart; t.baseEnd = t.mEnd; }
     t.cur = t.start; t.si = null;
     e = limit();
+    if(exLen(X, t.cur, e) <= 1e-9){ t.done = true; return null; }   // المدى كلّه مستثنًى
   }
   const A = amtOf(t);
-  let x1 = t.cur, x2 = x1 + A;
-  if(x2 > e - 1e-9){ x2 = e; if(!t.oneSura) x1 = Math.max(t.start, e - A); }
+  let x1 = exFwd(X, t.cur), x2 = exAdv(X, x1, A);
+  if(x2 > e - 1e-9){ x2 = e; if(!t.oneSura) x1 = Math.max(t.start, exBack(X, e, A)); }
   if(t.oneSura){                       // لا تجتمع سورتان في يوم واحد
     const si = suraOf(ayahAt(x1));
     const sEnd = Math.min(posOfAyah(CUM[si] + SURAS[si][1]), e);
     if(t.spread){                      // وزّع الزيادة على أيام السورة بالتساوي
       if(t.si !== si){
-        const P = sEnd - x1;
+        const P = exLen(X, x1, sEnd);
         let d = Math.max(1, Math.round(P / A));
         if(t.tol > 0 && P / d - A > t.tol + 1e-9) d++;
         t.si = si; t.sEnd = sEnd; t.sAmt = P / d;
       }
-      x2 = Math.min(x1 + t.sAmt, sEnd);
+      x2 = Math.min(exAdv(X, x1, t.sAmt), sEnd);
     } else {                           // اجمع الزيادة في اليوم الأخير
       if(sEnd < x2 - 1e-9) x2 = sEnd;
-      else if(t.tol > 0 && sEnd > x2 && sEnd <= x2 + t.tol + 1e-9) x2 = sEnd;
+      else if(t.tol > 0 && sEnd > x2 && exLen(X, x1, sEnd) <= A + t.tol + 1e-9) x2 = sEnd;
     }
   }
   t.cur = x2;
   return [x1, x2];
 }
-const daysNeeded = t => Math.ceil((t.baseEnd - t.start) / t.amt - 1e-9);
+const daysNeeded = t => Math.ceil(t.total / t.amt - 1e-9);
 
 /* ---------------- عناصر الواجهة ---------------- */
 const $ = id => document.getElementById(id);
@@ -559,6 +661,32 @@ function readOvs(){
     });
     return {dow: +tr.querySelector('.od').value, all, weeks, type: tr.querySelector('.ot').value};
   });
+}
+/* --- استثناء السور والآيات --- */
+const EX_SECS = [['all','الكل'],['m','حفظ جديد'],
+                 ['b','مراجعة كبرى'],['s','مراجعة صغرى']];
+function exRow(sec, sura, from, to){
+  const tr = document.createElement('tr');
+  tr.innerHTML = '<td class="exc"><select class="xc">'
+      + EX_SECS.map(s => '<option value="' + s[0] + '">' + s[1] + '</option>').join('') + '</select></td>'
+    + '<td class="exs"><select class="xs">'
+      + SURAS.map((s,i) => '<option value="' + (i+1) + '">' + s[0] + '</option>').join('') + '</select></td>'
+    + '<td class="exa"><input class="xa" type="number" min="1" step="1" value="' + (from || '') + '" placeholder="١"></td>'
+    + '<td class="exa"><input class="xb" type="number" min="1" step="1" value="' + (to || '') + '" placeholder="آخرها"></td>'
+    + '<td><button class="btn ghost sm del">حذف</button></td>';
+  tr.querySelector('.xc').value = sec;
+  tr.querySelector('.xs').value = sura;
+  tr.querySelector('.del').onclick = () => { tr.remove(); render(); };
+  tr.querySelectorAll('input,select').forEach(i => { i.oninput = schedule; i.onchange = schedule; });
+  $('exBody').appendChild(tr);
+}
+function readExs(){
+  return [...$('exBody').children].map(tr => {
+    const sura = +tr.querySelector('.xs').value;
+    const g = q => { const v = asciiNum(tr.querySelector(q).value).trim();
+                     return /^\d+$/.test(v) ? +v : 0; };
+    return {sec: tr.querySelector('.xc').value, sura, from: g('.xa'), to: g('.xb')};
+  }).filter(x => x.sura >= 1 && x.sura <= 114);
 }
 function readHols(){
   return [...$('holBody').children].map(tr => ({
@@ -688,24 +816,36 @@ function render(){
 
   /* --- المسارات --- */
   const mR = rangeOf('m'), bR = rangeOf('b'), sR = rangeOf('s');
+  const exs = readExs();
+  const mEx = exList(exs, 'm'), bEx = exList(exs, 'b'), sEx = exList(exs, 's');
   const mOpt = {rep:$('mRep').value, oneSura:$('mOneSura').checked, tol:+$('mTol').value,
-                spread:$('mSpread').value, unit:mR.unit};
+                spread:$('mSpread').value, unit:mR.unit, ex:mEx};
   const memo = mkTrack(mR.from, mR.to, +$('mAmt').value, mOpt);
   /* عدد الأيام يُحسب على نسخة نظيفة قبل استهلاك المسار */
   const memoNeed = (mOpt.rep === 'stop')
       ? realDays(mkTrack(mR.from, mR.to, +$('mAmt').value, mOpt)) : daysNeeded(memo);
   const big  = mkTrack(bR.from, bR.to, +$('bAmt').value,
       {rep:$('bRep').value, unit:bR.unit, mFrom:mR.from, mTo:mR.to, mUnit:mR.unit,
-       amt2:+$('bAmt2').value, oneSura:$('bOneSura').checked, tol:+$('bTol').value});
+       amt2:+$('bAmt2').value, oneSura:$('bOneSura').checked, tol:+$('bTol').value, ex:bEx});
   const bigOn = $('bOn').checked;
   const bigFirst = daysNeeded(big), bigPages = big.total;
   const sMode = $('sMode').value;
   const small = sMode === 'range'
-      ? mkTrack(sR.from, sR.to, +$('sAmt').value, {rep:$('sRep').value, unit:sR.unit}) : null;
-  /* مدى مقلوب: «من» بعد «إلى» */
-  if(memo.total <= 0) warns.push('مدى <b>الحفظ الجديد</b> مقلوب — اجعل «من» قبل «إلى».');
-  if(bigOn && big.total <= 0) warns.push('مدى <b>المراجعة الكبرى</b> مقلوب — اجعل «من» قبل «إلى».');
-  if(small && small.total <= 0) warns.push('مدى <b>المراجعة الصغرى</b> مقلوب — اجعل «من» قبل «إلى».');
+      ? mkTrack(sR.from, sR.to, +$('sAmt').value, {rep:$('sRep').value, unit:sR.unit, ex:sEx}) : null;
+  /* مدى مقلوب: «من» بعد «إلى» — أو استُثني كاملًا */
+  const emptyMsg = (t, name) => t.span <= 0
+      ? ('مدى <b>' + name + '</b> مقلوب — اجعل «من» قبل «إلى».')
+      : ('مدى <b>' + name + '</b> مستثنًى بالكامل — راجع استثناء السور والآيات.');
+  if(memo.total <= 0) warns.push(emptyMsg(memo, 'الحفظ الجديد'));
+  if(bigOn && big.total <= 0) warns.push(emptyMsg(big, 'المراجعة الكبرى'));
+  if(small && small.total <= 0) warns.push(emptyMsg(small, 'المراجعة الصغرى'));
+  /* آيات خارج حدود السورة */
+  for(const x of exs){
+    const n = SURAS[x.sura-1][1];
+    if(x.from > n || x.to > n)
+      warns.push('سورة <b>' + SURAS[x.sura-1][0] + '</b> آياتها ' + LRM + nd(n) + LRM
+        + ' — رقم الآية في الاستثناء أكبر من ذلك، وقد قُصَّ إلى آخر السورة.');
+  }
   const smallPages = small ? small.total : 0, smallDays = small ? daysNeeded(small) : 0;
   const back = Math.max(0.05, +$('sBack').value);
 
@@ -735,23 +875,24 @@ function render(){
         r.new = '—'; mLo = memo.cur;
       } else {
         const mp = nextPortion(memo);
-        r.new = mp ? describe(mp[0], mp[1]) : '';
+        r.new = mp ? describe(mp[0], mp[1], mEx) : '';
         mLo = mp ? mp[0] : memo.baseEnd;
       }
-      let sLo = null, sHi = null;
+      let sLo = null, sHi = null, sXe = sEx;
       if(sMode === 'range'){
         const sp = nextPortion(small);
         if(sp){ sLo = sp[0]; sHi = sp[1]; }
-      } else {
-        const lo = Math.max(memo.start, mLo - back);
+      } else {                        // تتبع آخر ما حُفظ: بمستثنى الحفظ الجديد
+        sXe = mEx;
+        const lo = Math.max(memo.start, exBack(mEx, mLo, back));
         if(lo < mLo){ sLo = lo; sHi = mLo; }
       }
-      r.small = (sLo != null) ? describe(sLo, sHi) : '';
+      r.small = (sLo != null) ? describe(sLo, sHi, sXe) : '';
       /* الكبرى تقف قبل ما يشغله اليوم من حفظ ومراجعة صغرى */
       let guard = mLo;
       if(sMode !== 'range' && sLo != null) guard = Math.min(guard, sLo);
       const bp = bigOn ? nextPortion(big, guard) : null;
-      r.big = bp ? describe(bp[0], bp[1]) : '';
+      r.big = bp ? describe(bp[0], bp[1], bEx) : '';
     }
     rows.push(r);
   }
@@ -800,17 +941,29 @@ function render(){
          + ($('mSpread').value === 'spread'
             ? ' بتوزيع الزيادة على أيام السورة'
             : (+$('mTol').value > 0 ? ' (بزيادة حتى ' + fmt($('mTol').value) + ' وجه عند الحاجة)' : ''))) : '';
+  const secName = {all:'من جميع الأقسام', m:'من الحفظ الجديد',
+                   b:'من المراجعة الكبرى', s:'من المراجعة الصغرى'};
+  const exTxt = exs.length
+      ? ('<b>المستثنى:</b> ' + EX_SECS.map(s => {
+            const g = exs.filter(x => x.sec === s[0]);
+            return g.length ? (g.map(exSpan).join(' و') + ' ' + secName[s[0]]) : '';
+          }).filter(Boolean).join('، ') + '. ')
+      : '';
   $('how').innerHTML = '<b>منهجية الخطة:</b> الحفظ الجديد ' + fmt(memo.amt) + ' وجه يوميًا، '
-      + subAuto + mOne + '. ' + smallTxt + bigTxt
+      + subAuto + mOne + '. ' + smallTxt + bigTxt + exTxt
       + 'أيام غير الدراسة تعاهدٌ لما سبق، والإجازات المدرجة بلا حفظ ولا مراجعة.';
 
+  /* ما يخصّ كل قسم من الاستثناءات يظهر في سطر معلوماته */
+  const exNote = sec => { const g = exs.filter(x => x.sec === 'all' || x.sec === sec);
+    return g.length ? '  •  المستثنى: ' + g.map(exSpan).join('، ') : ''; };
   $('mInfo').textContent = 'المدى: ' + fmt(memo.total) + ' وجه — يحتاج ' + nd(memoNeed) + ' يومًا'
-      + ($('mOneSura').checked ? ' (مع مراعاة حدود السور).' : '.');
+      + ($('mOneSura').checked ? ' (مع مراعاة حدود السور).' : '.') + exNote('m');
   $('bInfo').textContent = 'المدى: ' + fmt(bigPages) + ' صفحة — الدورة الأولى تكتمل في '
-      + nd(bigFirst) + ' يومًا. عدد الدورات في هذه الخطة: ' + nd(big.cycles + 1) + '.';
+      + nd(bigFirst) + ' يومًا. عدد الدورات في هذه الخطة: ' + nd(big.cycles + 1) + '.' + exNote('b');
   $('sInfo').textContent = sMode === 'range'
-      ? ('المدى: ' + fmt(smallPages) + ' صفحة — دورة كاملة كل ' + nd(smallDays) + ' يومًا.')
-      : 'تتبع تلقائيًا آخر ما حُفظ قبل يوم الحفظ.';
+      ? ('المدى: ' + fmt(smallPages) + ' صفحة — دورة كاملة كل ' + nd(smallDays) + ' يومًا.' + exNote('s'))
+      : ('تتبع تلقائيًا آخر ما حُفظ قبل يوم الحفظ.'
+         + exNote('m').replace('المستثنى:', 'المستثنى (تبعًا للحفظ الجديد):'));
 
   $('warn').innerHTML = warns.length
       ? warns.map(w => '<div class="warn" style="margin:14px 26px">' + w + '</div>').join('')
@@ -1181,6 +1334,9 @@ function collect(){
               tr.querySelector('.hf').value, tr.querySelector('.ht').value]);
   o.ovs = [...$('ovBody').children].map(tr => [+tr.querySelector('.od').value,
               tr.querySelector('.ow').value, tr.querySelector('.ot').value]);
+  o.exs = [...$('exBody').children].map(tr => [tr.querySelector('.xc').value,
+              +tr.querySelector('.xs').value,
+              tr.querySelector('.xa').value, tr.querySelector('.xb').value]);
   return o;
 }
 function apply(o){
@@ -1193,6 +1349,7 @@ function apply(o){
   if(o.days){ document.querySelectorAll('#dayBoxes input').forEach(c => c.checked = o.days.includes(+c.value)); syncDays(); }
   if(o.hols){ $('holBody').innerHTML = ''; o.hols.forEach(h => holRow(h[0], h[1], h[2])); }
   if(o.ovs){ $('ovBody').innerHTML = ''; o.ovs.forEach(v => ovRow(v[0], v[1], v[2])); }
+  if(o.exs){ $('exBody').innerHTML = ''; o.exs.forEach(x => exRow(x[0], x[1], x[2], x[3])); }
   toggleSmall(); toggleUnits();
 }
 function toggleSmall(){
@@ -1237,6 +1394,7 @@ function toggleUnits(){
   ['mUnit','bUnit','sUnit'].forEach(id => $(id).addEventListener('change', toggleUnits));
   $('addHol').onclick  = () => { holRow('إجازة', '1/1/1448', '3/1/1448'); render(); };
   $('addOv').onclick   = () => { ovRow(4, '', 'study'); render(); };
+  $('addEx').onclick   = () => { exRow('all', 1, '', ''); render(); };
   $('defHol').onclick  = () => { $('holBody').innerHTML=''; DEFAULT_HOL.forEach(h=>holRow(h[0],h[1],h[2])); render(); };
   $('btnPrint').onclick = () => window.print();
   $('btnSave').onclick  = () => { localStorage.setItem('khitta-cfg', JSON.stringify(collect()));
