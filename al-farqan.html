@@ -113,6 +113,9 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
   .page{width:210mm;height:296.8mm;position:relative;overflow:hidden;
         break-after:page;page-break-after:always}
   .page:last-child{break-after:auto;page-break-after:auto}
+  /* ملاءمة الهوامش: يُصغَّر صندوق الصفحة نفسه (zoom لا transform، إذ يؤثّر في التخطيط)
+     ليسع داخل المساحة القابلة للطباعة، فلا يفيض على ورقة تالية فارغة كما يحدث في الجوال */
+  html.fitpage .page{zoom:.87;margin:0 auto}
   .pband{position:absolute;top:0;right:0;left:0;height:30mm;background:var(--navy);
          display:flex;align-items:center;gap:4.5mm;padding:0 7.2mm}
   .pstripe{position:absolute;top:30mm;right:0;left:0;height:1.3mm;background:var(--rose)}
@@ -341,6 +344,11 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
           </select></div>
         <div class="hint">يشمل التواريخ وأرقام الآيات في الجدول والطباعة والتصدير.
           أمّا خانات الإدخال فتقبل الصيغتين معًا.</div>
+        <div class="row" style="margin-top:9px"><label><input type="checkbox" id="fitPage" checked
+          style="min-width:auto"> ملاءمة هوامش الطباعة</label></div>
+        <div class="hint">يُصغَّر التصميم قليلًا ليسع داخل هوامش الطابعة، فلا تخرج ورقة فارغة
+          بعد كل ورقة — يحدث ذلك في سفاري والجوال لأنهما يفرضان هوامشهما.
+          أطفئيه لطباعة حافة إلى حافة من كروم.</div>
         <div class="row" style="margin-top:9px"><label>الشعار</label>
           <input type="file" id="logoFile" class="txt file" accept="image/*">
           <button class="btn ghost sm" id="logoDef">الافتراضي</button></div>
@@ -1402,7 +1410,7 @@ const FIELDS = ['dFrom','dTo','wStart','mUnit','mFrom','mTo','mFromS','mToS','mA
 function collect(){
   const o = {}; FIELDS.forEach(f => o[f] = $(f).value);
   o.bOn = $('bOn').checked; o.bOneSura = $('bOneSura').checked;
-  o.mOneSura = $('mOneSura').checked;
+  o.mOneSura = $('mOneSura').checked; o.fitPage = $('fitPage').checked;
   o.days = [...document.querySelectorAll('#dayBoxes input')].filter(c=>c.checked).map(c=>+c.value);
   o.hols = [...$('holBody').children].map(tr => [tr.querySelector('.hn').value,
               tr.querySelector('.hf').value, tr.querySelector('.ht').value]);
@@ -1422,6 +1430,7 @@ function apply(o){
   if(o.bOn !== undefined) $('bOn').checked = o.bOn;
   if(o.bOneSura !== undefined) $('bOneSura').checked = o.bOneSura;
   if(o.mOneSura !== undefined) $('mOneSura').checked = o.mOneSura;
+  if(o.fitPage !== undefined){ $('fitPage').checked = o.fitPage; applyFit(); }
   if(o.days){ document.querySelectorAll('#dayBoxes input').forEach(c => c.checked = o.days.includes(+c.value)); syncDays(); }
   if(o.hols){ $('holBody').innerHTML = ''; o.hols.forEach(h => holRow(h[0], h[1], h[2])); }
   if(o.ovs){ $('ovBody').innerHTML = ''; o.ovs.forEach(v => ovRow(v[0], v[1], v[2])); }
@@ -1430,6 +1439,9 @@ function apply(o){
   logoNote(o.logo ? o.logoName : '');
   toggleSmall(); toggleUnits();
 }
+/* ملاءمة صفحة الطباعة لهوامش الجهاز — مفعّلة افتراضيًّا لأن سفاري والجوال
+   يفرضان هوامشهما ويتجاهلان @page{margin:0} فتفيض الصفحة على ورقة فارغة تالية */
+function applyFit(){ document.documentElement.classList.toggle('fitpage', $('fitPage').checked); }
 function toggleSmall(){
   const v = $('sMode').value;
   $('sRange').style.display   = v === 'range'  ? '' : 'none';
@@ -1463,6 +1475,8 @@ function toggleUnits(){
 
   const saved = localStorage.getItem('khitta-cfg');
   if(saved){ try{ apply(JSON.parse(saved)); }catch(e){} }
+  applyFit();
+  $('fitPage').addEventListener('change', applyFit);
   logoNote(LOGO_EL().alt);
 
   syncDays();
