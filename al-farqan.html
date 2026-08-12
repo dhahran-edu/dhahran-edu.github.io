@@ -386,7 +386,8 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
       <button class="btn rose" id="btnPptx">تصدير PowerPoint</button>
       <button class="btn ghost" id="btnCsv">تصدير CSV</button>
       <button class="btn ghost" id="btnSave">حفظ الإعدادات</button>
-      <button class="btn ghost" id="btnReset">استعادة الافتراضي</button>
+      <button class="btn ghost" id="btnLoad">استرجاع المحفوظ</button>
+      <button class="btn ghost" id="btnReset">استعادة الأصل</button>
     </div>
   </section>
 
@@ -1688,7 +1689,9 @@ function apply(o){
   if(o.hols){ $('holBody').innerHTML = ''; o.hols.forEach(h => holRow(h[0], h[1], h[2])); }
   if(o.ovs){ $('ovBody').innerHTML = ''; o.ovs.forEach(v => ovRow(v[0], v[1], v[2])); }
   if(o.exs){ $('exBody').innerHTML = ''; o.exs.forEach(x => exRow(x[0], x[1], x[2], x[3])); }
-  if(o.logo){ const lg = LOGO_EL(); lg.src = o.logo; lg.alt = o.logoName || 'شعار'; }
+  const lg = LOGO_EL();
+  if(o.logo){ lg.src = o.logo; lg.alt = o.logoName || 'شعار'; }
+  else { lg.src = DEFAULT_LOGO; lg.alt = 'مركز الفرقان'; }   // الاسترجاع يعيد الشعار كما كان
   logoNote(o.logo ? o.logoName : '');
   toggleSmall(); toggleUnits(); applyFit();
 }
@@ -1730,6 +1733,15 @@ function toggleUnits(){
 }
 
 /* ---------------- التهيئة ---------------- */
+const CFG_KEY = 'khitta-cfg';          // إعدادات هذا المتصفّح
+const CFG_BAK = 'khitta-cfg-bak';      // نسخة تُحفظ قبل «استعادة الأصل» فلا يضيع الجهد
+/* رسالة عابرة على الزرّ ثم يعود نصّه */
+function flash(btn, msg, ms){
+  const old = btn.dataset.label || btn.textContent;
+  btn.dataset.label = old;
+  btn.textContent = msg;
+  setTimeout(() => { btn.textContent = btn.dataset.label; }, ms || 2000);
+}
 (function init(){
   const order = [5,6,0,1,2,3,4];                       // السبت → الجمعة
   $('dayBoxes').innerHTML = order.map(w =>
@@ -1745,7 +1757,7 @@ function toggleUnits(){
   suraOptions($('sFromS'), 1); suraOptions($('sToS'), 114);
   DEFAULT_HOL.forEach(h => holRow(h[0], h[1], h[2]));
 
-  const saved = localStorage.getItem('khitta-cfg');
+  const saved = localStorage.getItem(CFG_KEY);
   let cfg = null;
   if(saved){ try{ cfg = JSON.parse(saved); apply(cfg); }catch(e){} }
   /* الجوال: يقتطع شريطًا لرؤوسه وتذييلاته، فيبدأ بالملاءمة ما لم تُحفظ رغبة أخرى */
@@ -1774,11 +1786,31 @@ function toggleUnits(){
   $('btnPrint').onclick = () => window.print();
   $('btnSave').onclick  = () => {
     let msg = 'تم الحفظ ✓';
-    try{ localStorage.setItem('khitta-cfg', JSON.stringify(collect())); }
+    try{ localStorage.setItem(CFG_KEY, JSON.stringify(collect())); }
     catch(e){ msg = 'تعذّر الحفظ — الشعار كبير'; }
-    $('btnSave').textContent = msg;
-    setTimeout(()=>$('btnSave').textContent='حفظ الإعدادات', 2000); };
-  $('btnReset').onclick = () => { localStorage.removeItem('khitta-cfg'); location.reload(); };
+    flash($('btnSave'), msg);
+  };
+  /* استرجاع آخر إعدادات حُفظت — دون مساس بالمحفوظ */
+  $('btnLoad').onclick  = () => {
+    let raw = localStorage.getItem(CFG_KEY);
+    if(!raw){
+      const bak = localStorage.getItem(CFG_BAK);
+      if(bak && confirm('لا توجد إعدادات محفوظة الآن.\n'
+        + 'هل أستعيد آخر نسخة كانت محفوظة قبل «استعادة الأصل»؟')) raw = bak;
+    }
+    if(!raw){ flash($('btnLoad'), 'لا يوجد محفوظ'); return; }
+    try{ apply(JSON.parse(raw)); render(); flash($('btnLoad'), 'تم الاسترجاع ✓'); }
+    catch(e){ flash($('btnLoad'), 'تعذّر الاسترجاع'); }
+  };
+  /* العودة لإعدادات البرنامج الأصلية — مع الاحتفاظ بنسخة من المحفوظ */
+  $('btnReset').onclick = () => {
+    const cur = localStorage.getItem(CFG_KEY);
+    if(cur && !confirm('سيعود البرنامج إلى إعداداته الأصلية.\n'
+      + 'تُحفظ نسخة من إعداداتك يمكن إرجاعها بزرّ «استرجاع المحفوظ». متابعة؟')) return;
+    if(cur) { try{ localStorage.setItem(CFG_BAK, cur); }catch(e){} }
+    localStorage.removeItem(CFG_KEY);
+    location.reload();
+  };
   $('btnCsv').onclick   = exportCsv;
   $('btnPptx').onclick  = exportPptx;
   toggleSmall(); toggleUnits(); render();
