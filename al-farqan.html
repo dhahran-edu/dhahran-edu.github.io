@@ -189,8 +189,19 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
 
       <div class="box">
         <b>الحفظ الجديد</b>
-        <div class="row"><label>من جزء</label><select id="mFrom" class="txt"></select></div>
-        <div class="row"><label>إلى جزء</label><select id="mTo" class="txt"></select></div>
+        <div class="row"><label>التحديد</label>
+          <select id="mUnit" class="txt">
+            <option value="juz">بالأجزاء</option>
+            <option value="sura">بالسور</option>
+          </select></div>
+        <div id="mRngJuz">
+          <div class="row"><label>من جزء</label><select id="mFrom" class="txt"></select></div>
+          <div class="row"><label>إلى جزء</label><select id="mTo" class="txt"></select></div>
+        </div>
+        <div id="mRngSura" style="display:none">
+          <div class="row"><label>من سورة</label><select id="mFromS" class="txt"></select></div>
+          <div class="row"><label>إلى سورة</label><select id="mToS" class="txt"></select></div>
+        </div>
         <div class="row"><label>المقدار</label>
           <input type="number" id="mAmt" value="1" min="0.25" step="0.25"> <span class="hint">وجه / يوم</span></div>
         <div class="row"><label><input type="checkbox" id="mOneSura" style="min-width:auto">
@@ -212,8 +223,19 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
       <div class="box">
         <b>المراجعة الكبرى</b>
         <div class="row"><label><input type="checkbox" id="bOn" checked style="min-width:auto"> مفعّلة</label></div>
-        <div class="row"><label>من جزء</label><select id="bFrom" class="txt"></select></div>
-        <div class="row"><label>إلى جزء</label><select id="bTo" class="txt"></select></div>
+        <div class="row"><label>التحديد</label>
+          <select id="bUnit" class="txt">
+            <option value="juz">بالأجزاء</option>
+            <option value="sura">بالسور</option>
+          </select></div>
+        <div id="bRngJuz">
+          <div class="row"><label>من جزء</label><select id="bFrom" class="txt"></select></div>
+          <div class="row"><label>إلى جزء</label><select id="bTo" class="txt"></select></div>
+        </div>
+        <div id="bRngSura" style="display:none">
+          <div class="row"><label>من سورة</label><select id="bFromS" class="txt"></select></div>
+          <div class="row"><label>إلى سورة</label><select id="bToS" class="txt"></select></div>
+        </div>
         <div class="row"><label>المقدار</label>
           <input type="number" id="bAmt" value="5" min="0.25" step="0.25"> <span class="hint">صفحة / يوم</span></div>
         <div class="row"><label><input type="checkbox" id="bOneSura" style="min-width:auto">
@@ -243,8 +265,19 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
             <input type="number" id="sBack" value="4" min="0.25" step="0.25"> <span class="hint">آخر كم وجه حُفظ</span></div>
         </div>
         <div id="sRange" style="display:none">
-          <div class="row"><label>من جزء</label><select id="sFrom" class="txt"></select></div>
-          <div class="row"><label>إلى جزء</label><select id="sTo" class="txt"></select></div>
+          <div class="row"><label>التحديد</label>
+            <select id="sUnit" class="txt">
+              <option value="juz">بالأجزاء</option>
+              <option value="sura">بالسور</option>
+            </select></div>
+          <div id="sRngJuz">
+            <div class="row"><label>من جزء</label><select id="sFrom" class="txt"></select></div>
+            <div class="row"><label>إلى جزء</label><select id="sTo" class="txt"></select></div>
+          </div>
+          <div id="sRngSura" style="display:none">
+            <div class="row"><label>من سورة</label><select id="sFromS" class="txt"></select></div>
+            <div class="row"><label>إلى سورة</label><select id="sToS" class="txt"></select></div>
+          </div>
           <div class="row"><label>المقدار</label>
             <input type="number" id="sAmt" value="4" min="0.25" step="0.25"> <span class="hint">صفحة / يوم</span></div>
           <div class="row"><label>عند الاكتمال</label>
@@ -368,6 +401,25 @@ function describe(x1, x2){
 }
 const juzStart = j => JUZP[j-1];
 const juzEnd   = j => (j < 30 ? JUZP[j] : NP + 1);
+/* المدى بالسور: s رقم السورة 1..114 — الموضع الكسري في فضاء الصفحات */
+const suraStart = s => posOfAyah(CUM[s-1]);
+const suraEnd   = s => posOfAyah(CUM[s-1] + SURAS[s-1][1]);
+/* unit: 'juz' بالأجزاء | 'sura' بالسور */
+const rStart = (u, v) => u === 'sura' ? suraStart(v) : juzStart(v);
+const rEnd   = (u, v) => u === 'sura' ? suraEnd(v)   : juzEnd(v);
+/* وصف المدى نصًّا للترويسة وفقرة المنهجية */
+const rSpan = r => r.unit === 'sura'
+  ? (r.from === r.to ? 'سورة ' + SURAS[r.from-1][0]
+     : 'من سورة ' + SURAS[r.from-1][0] + ' إلى سورة ' + SURAS[r.to-1][0])
+  : (r.from === r.to ? 'الجزء ' + gen(JUZ_AR[r.from-1])
+     : 'من الجزء ' + gen(JUZ_AR[r.from-1]) + ' إلى الجزء ' + gen(JUZ_AR[r.to-1]));
+/* قراءة مدى قسمٍ من الواجهة: p = 'm' | 'b' | 's' */
+function rangeOf(p){
+  const u = $(p + 'Unit').value === 'sura' ? 'sura' : 'juz';
+  return {unit: u,
+          from: +$(u === 'sura' ? p + 'FromS' : p + 'From').value,
+          to:   +$(u === 'sura' ? p + 'ToS'   : p + 'To').value};
+}
 
 /* ---------------- التقويم ---------------- */
 function hjdn(y,m,d){ const i=(y-D.hy0)*12+(m-1);
@@ -398,12 +450,13 @@ const hStr = j => { const h = jdnToHijri(j); return LRM + nd(h.d) + ' / ' + nd(h
 /* rep: 'start' يعيد من بداية المدى | 'memo' يعيد من بداية الحفظ الجديد | 'stop' يتوقّف */
 function mkTrack(from, to, amount, o){
   o = o || {};
-  const s = juzStart(from), e = juzEnd(to);
+  const u = o.unit || 'juz', mu = o.mUnit || 'juz';
+  const s = rStart(u, from), e = rEnd(u, to);
   return {start:s, baseEnd:e, amt:Math.max(0.05, amount), amt2:(o.amt2 > 0 ? o.amt2 : 0),
           rep:o.rep || 'start', cur:s, done:false, total:e - s, cycles:0,
           oneSura:!!o.oneSura, tol:(o.tol > 0 ? o.tol : 0), spread:o.spread === 'spread',
           si:null, sEnd:0, sAmt:0,
-          mStart: o.mFrom ? juzStart(o.mFrom) : s, mEnd: o.mTo ? juzEnd(o.mTo) : e};
+          mStart: o.mFrom ? rStart(mu, o.mFrom) : s, mEnd: o.mTo ? rEnd(mu, o.mTo) : e};
 }
 /* عدد الأيام الفعلي لإتمام المدى (يراعي القصّ والزيادة عند حدود السور) */
 function realDays(t){
@@ -461,6 +514,10 @@ const DEFAULT_HOL = [
 ];
 function juzOptions(sel, val){
   sel.innerHTML = JUZ_AR.map((n,i)=>'<option value="'+(i+1)+'">الجزء '+n+'</option>').join('');
+  sel.value = val;
+}
+function suraOptions(sel, val){
+  sel.innerHTML = SURAS.map((s,i)=>'<option value="'+(i+1)+'">سورة '+s[0]+'</option>').join('');
   sel.value = val;
 }
 function holRow(name, from, to){
@@ -630,21 +687,25 @@ function render(){
   const studyDays = all.filter(d => d.kind === 'study');
 
   /* --- المسارات --- */
-  const mF0 = +$('mFrom').value, mT0 = +$('mTo').value;
+  const mR = rangeOf('m'), bR = rangeOf('b'), sR = rangeOf('s');
   const mOpt = {rep:$('mRep').value, oneSura:$('mOneSura').checked, tol:+$('mTol').value,
-                spread:$('mSpread').value};
-  const memo = mkTrack(mF0, mT0, +$('mAmt').value, mOpt);
+                spread:$('mSpread').value, unit:mR.unit};
+  const memo = mkTrack(mR.from, mR.to, +$('mAmt').value, mOpt);
   /* عدد الأيام يُحسب على نسخة نظيفة قبل استهلاك المسار */
   const memoNeed = (mOpt.rep === 'stop')
-      ? realDays(mkTrack(mF0, mT0, +$('mAmt').value, mOpt)) : daysNeeded(memo);
-  const big  = mkTrack(+$('bFrom').value, +$('bTo').value, +$('bAmt').value,
-      {rep:$('bRep').value, mFrom:mF0, mTo:mT0, amt2:+$('bAmt2').value,
-       oneSura:$('bOneSura').checked, tol:+$('bTol').value});
+      ? realDays(mkTrack(mR.from, mR.to, +$('mAmt').value, mOpt)) : daysNeeded(memo);
+  const big  = mkTrack(bR.from, bR.to, +$('bAmt').value,
+      {rep:$('bRep').value, unit:bR.unit, mFrom:mR.from, mTo:mR.to, mUnit:mR.unit,
+       amt2:+$('bAmt2').value, oneSura:$('bOneSura').checked, tol:+$('bTol').value});
   const bigOn = $('bOn').checked;
   const bigFirst = daysNeeded(big), bigPages = big.total;
   const sMode = $('sMode').value;
   const small = sMode === 'range'
-      ? mkTrack(+$('sFrom').value, +$('sTo').value, +$('sAmt').value, {rep:$('sRep').value}) : null;
+      ? mkTrack(sR.from, sR.to, +$('sAmt').value, {rep:$('sRep').value, unit:sR.unit}) : null;
+  /* مدى مقلوب: «من» بعد «إلى» */
+  if(memo.total <= 0) warns.push('مدى <b>الحفظ الجديد</b> مقلوب — اجعل «من» قبل «إلى».');
+  if(bigOn && big.total <= 0) warns.push('مدى <b>المراجعة الكبرى</b> مقلوب — اجعل «من» قبل «إلى».');
+  if(small && small.total <= 0) warns.push('مدى <b>المراجعة الصغرى</b> مقلوب — اجعل «من» قبل «إلى».');
   const smallPages = small ? small.total : 0, smallDays = small ? daysNeeded(small) : 0;
   const back = Math.max(0.05, +$('sBack').value);
 
@@ -702,9 +763,7 @@ function render(){
   $('tbody').innerHTML = tbodyHtml(rows);
 
   /* --- الترويسة والبطاقات --- */
-  const mF = +$('mFrom').value, mT = +$('mTo').value;
-  const subAuto = (mF === mT ? 'الجزء ' + gen(JUZ_AR[mF-1])
-                             : 'من الجزء ' + gen(JUZ_AR[mF-1]) + ' إلى الجزء ' + gen(JUZ_AR[mT-1]));
+  const subAuto = rSpan(mR);
   const h0 = jdnToHijri(j0), h1 = jdnToHijri(j1);
   $('hTitle').textContent = $('tTitle').value || 'خطة الحفظ والمراجعة';
   $('hSub').textContent   = ($('tSub').value || subAuto) + '  •  ' + LRM + nd(h0.y)
@@ -727,14 +786,14 @@ function render(){
   const rep2 = (+$('bAmt2').value > 0 && $('bRep').value !== 'stop')
       ? ' (وفي الدورات التالية ' + fmt($('bAmt2').value) + ' صفحة يوميًا)' : '';
   const oneS = $('bOneSura').checked ? ' مع الوقوف عند نهاية السورة فلا تجتمع سورتان في يوم' : '';
-  const bigTxt = bigOn ? ('<b>المراجعة الكبرى</b> ' + fmt($('bAmt').value) + ' صفحة يوميًا' + rep2 + oneS + ' من '
-      + JUZ_AR[+$('bFrom').value-1] + ' إلى ' + JUZ_AR[+$('bTo').value-1]
+  const bigTxt = bigOn ? ('<b>المراجعة الكبرى</b> ' + fmt($('bAmt').value) + ' صفحة يوميًا' + rep2 + oneS + ' '
+      + rSpan(bR)
       + ({start:'، وتعود من بداية المدى عند اكتمال الدورة. ',
           memo:'، فإذا اكتملت الدورة استُؤنفت من بداية الحفظ الجديد ضمن ما حُفظ فعلًا، دون أن تتوافق مع حفظ اليوم ومراجعته الصغرى. ',
           stop:'. '}[$('bRep').value] || '. ')) : '';
   const smallTxt = sMode === 'range'
-      ? ('<b>المراجعة الصغرى</b> ' + fmt($('sAmt').value) + ' صفحة يوميًا من '
-         + JUZ_AR[+$('sFrom').value-1] + ' إلى ' + JUZ_AR[+$('sTo').value-1] + '. ')
+      ? ('<b>المراجعة الصغرى</b> ' + fmt($('sAmt').value) + ' صفحة يوميًا '
+         + rSpan(sR) + '. ')
       : ('<b>المراجعة الصغرى</b> آخر ' + fmt(back) + ' أوجه تم حفظها. ');
   const mOne = $('mOneSura').checked
       ? (' مع إتمام السورة في يومها فلا تجتمع سورتان'
@@ -1109,8 +1168,10 @@ function exportPptx(){
 }
 
 /* ---------------- الإعدادات ---------------- */
-const FIELDS = ['dFrom','dTo','wStart','mFrom','mTo','mAmt','mRep','bFrom','bTo','bAmt','bRep',
-                'bAmt2','bTol','mTol','mSpread','sMode','sBack','sFrom','sTo','sAmt','sRep','tTitle','tSub','tOrg','tDua','numStyle'];
+const FIELDS = ['dFrom','dTo','wStart','mUnit','mFrom','mTo','mFromS','mToS','mAmt','mRep',
+                'bUnit','bFrom','bTo','bFromS','bToS','bAmt','bRep',
+                'bAmt2','bTol','mTol','mSpread','sMode','sBack','sUnit','sFrom','sTo','sFromS','sToS',
+                'sAmt','sRep','tTitle','tSub','tOrg','tDua','numStyle'];
 function collect(){
   const o = {}; FIELDS.forEach(f => o[f] = $(f).value);
   o.bOn = $('bOn').checked; o.bOneSura = $('bOneSura').checked;
@@ -1132,12 +1193,20 @@ function apply(o){
   if(o.days){ document.querySelectorAll('#dayBoxes input').forEach(c => c.checked = o.days.includes(+c.value)); syncDays(); }
   if(o.hols){ $('holBody').innerHTML = ''; o.hols.forEach(h => holRow(h[0], h[1], h[2])); }
   if(o.ovs){ $('ovBody').innerHTML = ''; o.ovs.forEach(v => ovRow(v[0], v[1], v[2])); }
-  toggleSmall();
+  toggleSmall(); toggleUnits();
 }
 function toggleSmall(){
   const r = $('sMode').value === 'range';
   $('sRange').style.display = r ? '' : 'none';
   $('sFollow').style.display = r ? 'none' : '';
+}
+/* إظهار قوائم الأجزاء أو السور حسب نمط التحديد في كل قسم */
+function toggleUnits(){
+  ['m','b','s'].forEach(p => {
+    const sura = $(p + 'Unit').value === 'sura';
+    $(p + 'RngJuz').style.display  = sura ? 'none' : '';
+    $(p + 'RngSura').style.display = sura ? '' : 'none';
+  });
 }
 
 /* ---------------- التهيئة ---------------- */
@@ -1151,6 +1220,9 @@ function toggleSmall(){
   juzOptions($('mFrom'), 17); juzOptions($('mTo'), 22);
   juzOptions($('bFrom'), 1);  juzOptions($('bTo'), 16);
   juzOptions($('sFrom'), 17); juzOptions($('sTo'), 22);
+  suraOptions($('mFromS'), 1); suraOptions($('mToS'), 114);
+  suraOptions($('bFromS'), 1); suraOptions($('bToS'), 114);
+  suraOptions($('sFromS'), 1); suraOptions($('sToS'), 114);
   DEFAULT_HOL.forEach(h => holRow(h[0], h[1], h[2]));
 
   const saved = localStorage.getItem('khitta-cfg');
@@ -1162,6 +1234,7 @@ function toggleSmall(){
     el.addEventListener('input', schedule); el.addEventListener('change', schedule);
   });
   $('sMode').addEventListener('change', toggleSmall);
+  ['mUnit','bUnit','sUnit'].forEach(id => $(id).addEventListener('change', toggleUnits));
   $('addHol').onclick  = () => { holRow('إجازة', '1/1/1448', '3/1/1448'); render(); };
   $('addOv').onclick   = () => { ovRow(4, '', 'study'); render(); };
   $('defHol').onclick  = () => { $('holBody').innerHTML=''; DEFAULT_HOL.forEach(h=>holRow(h[0],h[1],h[2])); render(); };
@@ -1172,7 +1245,7 @@ function toggleSmall(){
   $('btnReset').onclick = () => { localStorage.removeItem('khitta-cfg'); location.reload(); };
   $('btnCsv').onclick   = exportCsv;
   $('btnPptx').onclick  = exportPptx;
-  toggleSmall(); render();
+  toggleSmall(); toggleUnits(); render();
 })();
 
 function syncDays(){ document.querySelectorAll('#dayBoxes label')
