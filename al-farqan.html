@@ -107,9 +107,13 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
 @media print{
   @page{size:A4 portrait;margin:0}
   html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  body{background:#fff;margin:0}
+  /* عرض المستند = عرض الصفحة بالضبط: iOS يقيس مقاس الطباعة على عرض تخطيط المستند،
+     فلو بقي أعرض من التصميم صغّر الكل وترك هوامش عريضة */
+  html,body{width:calc(210mm*var(--k,1));min-width:0;max-width:none;
+            -webkit-text-size-adjust:100%;text-size-adjust:100%}
+  body{background:#fff;margin:0 auto}
   .sheet{display:none!important}
-  #printPages{display:block}
+  #printPages{display:block;width:100%}
   /* ‎--k معامل الملاءمة: تُضرب به كل مقاسات الصفحة فيصغر التصميم حقيقةً
      (لا بـ zoom ولا transform — فهما لا يُعتمدان في طباعة سفاري والجوال) */
   .page{width:calc(210mm*var(--k,1));height:calc(296.8mm*var(--k,1));margin:0 auto;
