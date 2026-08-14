@@ -236,6 +236,8 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
         </div>
         <div class="row"><label>المقدار</label>
           <input type="number" id="mAmt" value="1" min="0.25" step="0.25"> <span class="hint">وجه / يوم</span></div>
+        <div class="row"><label><input type="checkbox" id="mEven" style="min-width:auto">
+          وزّع صفحات المدى بالتساوي على أيام الخطة</label></div>
         <div class="row"><label><input type="checkbox" id="mOneSura" style="min-width:auto">
           لا تجمع سورتين في اليوم الواحد</label></div>
         <div class="row"><label>نمط الزيادة</label>
@@ -255,6 +257,8 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
       <div class="box">
         <b>المراجعة الكبرى</b>
         <div class="row"><label><input type="checkbox" id="bOn" checked style="min-width:auto"> مفعّلة</label></div>
+        <div class="row"><label><input type="checkbox" id="bAuto" style="min-width:auto">
+          متدرّجة تلقائيًّا مع الحفظ (تبدأ بما يسقط من الصغرى)</label></div>
         <div class="row"><label>التحديد</label>
           <select id="bUnit" class="txt">
             <option value="juz">بالأجزاء</option>
@@ -268,16 +272,28 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
           <div class="row"><label>من سورة</label><select id="bFromS" class="txt"></select></div>
           <div class="row"><label>إلى سورة</label><select id="bToS" class="txt"></select></div>
         </div>
+        <div class="row"><label>وحدة المقدار</label>
+          <select id="bAmtUnit" class="txt">
+            <option value="page">بالصفحات</option>
+            <option value="memo">بمقدار الحفظ الجديد</option>
+          </select></div>
         <div class="row"><label>المقدار</label>
-          <input type="number" id="bAmt" value="5" min="0.25" step="0.25"> <span class="hint">صفحة / يوم</span></div>
+          <input type="number" id="bAmt" value="5" min="0.25" step="0.25">
+          <span class="hint" id="bAmtU">صفحة / يوم في الدورة الأولى</span></div>
         <div class="row"><label><input type="checkbox" id="bOneSura" style="min-width:auto">
           لا تجمع سورتين في اليوم الواحد</label></div>
         <div class="row"><label>حدّ الزيادة</label>
           <input type="number" id="bTol" value="0" min="0" max="2" step="0.25">
           <span class="hint">صفحة تُزاد لإتمام السورة</span></div>
-        <div class="row"><label>مقدار الإعادة</label>
-          <input type="number" id="bAmt2" min="0.25" step="0.25" placeholder="مثل المقدار">
-          <span class="hint">صفحة / يوم في الدورات التالية</span></div>
+        <div class="row"><label>الدورة الثانية</label>
+          <input type="number" id="bAmt2" min="0.25" step="0.25" placeholder="مثل الأولى">
+          <span class="hint" id="bAmt2U">صفحة / يوم</span></div>
+        <div class="row"><label>الدورة الثالثة</label>
+          <input type="number" id="bAmt3" min="0.25" step="0.25" placeholder="مثل الثانية">
+          <span class="hint" id="bAmt3U">صفحة / يوم</span></div>
+        <div class="row"><label>الدورة الرابعة</label>
+          <input type="number" id="bAmt4" min="0.25" step="0.25" placeholder="مثل الثالثة">
+          <span class="hint" id="bAmt4U">صفحة / يوم فيها وفيما بعدها</span></div>
         <div class="row"><label>عند الاكتمال</label>
           <select id="bRep"><option value="start">يعيد من بداية مدى المراجعة</option>
                             <option value="memo">يعيد من بداية الحفظ الجديد</option>
@@ -597,10 +613,14 @@ function mkTrack(from, to, amount, o){
   const u = o.unit || 'juz', mu = o.mUnit || 'juz';
   const s = rStart(u, from), e = rEnd(u, to);
   const ex = o.ex || [];
-  return {start:s, baseEnd:e, amt:Math.max(0.05, amount), amt2:(o.amt2 > 0 ? o.amt2 : 0),
+  const A0 = Math.max(0.05, amount);
+  /* amts[0] الدورة الأولى، ثم مقدار كل دورة تالية — الصفر يعني «كسابقتها» */
+  return {start:s, baseEnd:e, amt:A0,
+          amts:[A0].concat((o.amts || []).map(v => (+v > 0 ? +v : 0))),
           ex:ex, span:e - s, rep:o.rep || 'start', cur:s, done:false,
           total:exLen(ex, s, e), cycles:0,
           oneSura:!!o.oneSura, tol:(o.tol > 0 ? o.tol : 0), spread:o.spread === 'spread',
+          wrap:!!o.wrap,
           si:null, sEnd:0, sAmt:0,
           mStart: o.mFrom ? rStart(mu, o.mFrom) : s, mEnd: o.mTo ? rEnd(mu, o.mTo) : e};
 }
@@ -610,8 +630,19 @@ function realDays(t){
   while(n < 3000 && nextPortion(c, null)) n++;
   return n;
 }
-/* المقدار الفعّال: مقدار الإعادة يُستخدم ابتداءً من الدورة الثانية */
-const amtOf = t => (t.cycles > 0 && t.amt2 > 0) ? t.amt2 : t.amt;
+/* المقدار الفعّال حسب رقم الدورة؛ ما لم يُحدَّد لدورةٍ مقدارٌ اتّبعت أقربَ دورةٍ قبلها،
+   وما بعد آخر دورة محدَّدة يمضي على مقدارها */
+function amtOf(t){
+  const A = t.amts;
+  for(let i = Math.min(t.cycles, A.length - 1); i > 0; i--) if(A[i] > 0) return A[i];
+  return t.amt;
+}
+/* بدء دورة جديدة: 'memo' يستأنف من بداية الحفظ الجديد ضمن ما حُفظ فعلًا */
+function roll(t){
+  t.cycles++;
+  if(t.rep === 'memo'){ t.start = t.mStart; t.baseEnd = t.mEnd; }
+  t.cur = t.start; t.si = null;
+}
 /* guard = أول صفحة يشغلها اليوم حفظٌ جديد أو مراجعة صغرى؛
    المراجعة الكبرى تقف دونها ثم تبدأ دورة جديدة، فلا يتوافق العمودان في يوم واحد */
 function nextPortion(t, guard){
@@ -624,15 +655,17 @@ function nextPortion(t, guard){
   let e = limit();
   if(exLen(X, t.cur, e) <= 1e-9){
     if(t.rep === 'stop'){ t.done = true; return null; }
-    t.cycles++;
-    if(t.rep === 'memo'){ t.start = t.mStart; t.baseEnd = t.mEnd; }
-    t.cur = t.start; t.si = null;
+    roll(t);
     e = limit();
     if(exLen(X, t.cur, e) <= 1e-9){ t.done = true; return null; }   // المدى كلّه مستثنًى
   }
+  /* نهاية متحرّكة: إمّا مسار متدرّج، وإمّا وقوفٌ دون المراجعة الصغرى لا عند آخر المدى.
+     عندها لا يرجع المسار بالبداية إلى الوراء ليملأ مقدار اليوم — وإلّا التصق بحدّ
+     الصغرى وزحف معه أبدًا — بل يأخذ ما بقي ثم يستأنف دورةً جديدة في اليوم التالي */
+  const soft = t.wrap || e < t.baseEnd - 1e-9;
   const A = amtOf(t);
   let x1 = exFwd(X, t.cur), x2 = exAdv(X, x1, A);
-  if(x2 > e - 1e-9){ x2 = e; if(!t.oneSura) x1 = Math.max(t.start, exBack(X, e, A)); }
+  if(x2 > e - 1e-9){ x2 = e; if(!t.oneSura && !soft) x1 = Math.max(t.start, exBack(X, e, A)); }
   if(t.oneSura){                       // لا تجتمع سورتان في يوم واحد
     const si = suraOf(ayahAt(x1));
     const sEnd = Math.min(posOfAyah(CUM[si] + SURAS[si][1]), e);
@@ -650,6 +683,8 @@ function nextPortion(t, guard){
     }
   }
   t.cur = x2;
+  /* بلغ النهاية المتحرّكة بمقدارٍ ناقص: توافق مع الصغرى، فتبدأ دورة جديدة */
+  if(soft && x2 >= e - 1e-9 && exLen(X, x1, x2) < A - 1e-9) roll(t);
   return [x1, x2];
 }
 const daysNeeded = t => Math.ceil(t.total / t.amt - 1e-9);
@@ -906,15 +941,59 @@ function render(){
   const mEx = exList(exs, 'm'), bEx = exList(exs, 'b'), sEx = exList(exs, 's');
   const mOpt = {rep:$('mRep').value, oneSura:$('mOneSura').checked, tol:+$('mTol').value,
                 spread:$('mSpread').value, unit:mR.unit, ex:mEx};
-  const memo = mkTrack(mR.from, mR.to, +$('mAmt').value, mOpt);
+  /* توزيع بالتساوي: يُقسَّم مدى الحفظ على أيام الحفظ المتاحة فينتهي المدى مع نهاية الخطة */
+  const mEven = $('mEven').checked;
+  let mAmt = Math.max(0.05, +$('mAmt').value);
+  if(mEven && studyDays.length){
+    const probe = mkTrack(mR.from, mR.to, mAmt, mOpt);
+    if(probe.total > 0){
+      mAmt = Math.max(0.05, probe.total / studyDays.length);
+      /* الوقوف عند حدود السور يزيح عدد الأيام عن القسمة المجرّدة،
+         فيُعاير المقدار بالتنصيف حتى يسع المدى أيام الخطة تمامًا */
+      if(mOpt.oneSura && mOpt.rep === 'stop'){
+        const fits = a => realDays(mkTrack(mR.from, mR.to, a, mOpt)) <= studyDays.length;
+        /* المطلوب أصغر مقدار يسع المدى في أيام الخطة: يُكبَّر حتى يسع، ثم يُصغَّر
+           حتى لا يسع، فيقع الحدّ بينهما ويُقرَّب بالتنصيف */
+        let hi = mAmt, i = 0;
+        while(i++ < 30 && !fits(hi)) hi *= 1.08;
+        if(fits(hi)){
+          let lo = hi; i = 0;
+          while(i++ < 30 && lo > 0.05 && fits(lo)) lo /= 1.08;
+          if(fits(lo)) hi = lo;               // يسع حتى أصغر مقدار: خذه ليمتدّ المدى أطول ما يمكن
+          else for(let k = 0; k < 18; k++){
+            const mid = (lo + hi) / 2;
+            if(fits(mid)) hi = mid; else lo = mid;
+          }
+          mAmt = Math.max(0.05, hi);
+        }
+      }
+    }
+  }
+  const memo = mkTrack(mR.from, mR.to, mAmt, mOpt);
   /* عدد الأيام يُحسب على نسخة نظيفة قبل استهلاك المسار */
   const memoNeed = (mOpt.rep === 'stop')
-      ? realDays(mkTrack(mR.from, mR.to, +$('mAmt').value, mOpt)) : daysNeeded(memo);
-  const big  = mkTrack(bR.from, bR.to, +$('bAmt').value,
+      ? realDays(mkTrack(mR.from, mR.to, mAmt, mOpt)) : daysNeeded(memo);
+  /* المراجعة الكبرى المتدرّجة: مداها ما سقط من المراجعة الصغرى من أول الحفظ،
+     ومقدارها اليومي = رقم الجزء الذي بلغه الحفظ الجديد × مقدار الحفظ اليومي.
+     مستثناها يرث مستثنى الحفظ الجديد لأن مادّتها هي ما حُفظ فعلًا. */
+  const bAuto = $('bAuto').checked;
+  /* وحدة مقادير الكبرى: صفحات، أو عددُ أيامٍ من الحفظ الجديد يُضرب في مقدار الحفظ اليومي */
+  const bByMemo = $('bAmtUnit').value === 'memo';
+  const bK = bByMemo ? memo.amt : 1;
+  const abEx = bAuto
+      ? exList(exs.map(x => x.sec === 'm' ? Object.assign({}, x, {sec:'b'}) : x), 'b') : bEx;
+  const big  = bAuto
+    ? mkTrack(mR.from, mR.to, mAmt, {rep:'start', unit:mR.unit, wrap:true,
+        oneSura:$('bOneSura').checked, tol:+$('bTol').value, ex:abEx})
+    : mkTrack(bR.from, bR.to, +$('bAmt').value * bK,
       {rep:$('bRep').value, unit:bR.unit, mFrom:mR.from, mTo:mR.to, mUnit:mR.unit,
-       amt2:+$('bAmt2').value, oneSura:$('bOneSura').checked, tol:+$('bTol').value, ex:bEx});
+       amts:[+$('bAmt2').value * bK, +$('bAmt3').value * bK, +$('bAmt4').value * bK],
+       oneSura:$('bOneSura').checked, tol:+$('bTol').value, ex:bEx});
   const bigOn = $('bOn').checked;
   const bigFirst = daysNeeded(big), bigPages = big.total;
+  /* رقم الجزء نسبةً إلى بداية مدى الحفظ: أول جزء = ١، الذي يليه = ٢ ... */
+  const juzNo = x => { let k = 30; while(k > 1 && JUZP[k-1] > x + 1e-9) k--; return k; };
+  const bJuz0 = juzNo(memo.start);
   const sMode = $('sMode').value;
   const small = sMode === 'range'
       ? mkTrack(sR.from, sR.to, +$('sAmt').value, {rep:$('sRep').value, unit:sR.unit, ex:sEx}) : null;
@@ -923,7 +1002,7 @@ function render(){
       ? ('مدى <b>' + name + '</b> مقلوب — اجعل «من» قبل «إلى».')
       : ('مدى <b>' + name + '</b> مستثنًى بالكامل — راجع استثناء السور والآيات.');
   if(memo.total <= 0) warns.push(emptyMsg(memo, 'الحفظ الجديد'));
-  if(bigOn && big.total <= 0) warns.push(emptyMsg(big, 'المراجعة الكبرى'));
+  if(bigOn && !bAuto && big.total <= 0) warns.push(emptyMsg(big, 'المراجعة الكبرى'));
   if(small && small.total <= 0) warns.push(emptyMsg(small, 'المراجعة الصغرى'));
   /* آيات خارج حدود السورة */
   for(const x of exs){
@@ -988,11 +1067,22 @@ function render(){
       }
       if(mp) memoLog.push(mp);
       r.small = (sLo != null) ? describe(sLo, sHi, sXe) : '';
-      /* الكبرى تقف قبل ما يشغله اليوم من حفظ ومراجعة صغرى */
-      let guard = mLo;
-      if(sMode !== 'range' && sLo != null) guard = Math.min(guard, sLo);
-      const bp = bigOn ? nextPortion(big, guard) : null;
-      r.big = bp ? describe(bp[0], bp[1], bEx) : '';
+      let bp = null;
+      if(bigOn && bAuto){
+        /* المدى = ما سقط من الصغرى: من أول الحفظ إلى أول ما تشغله الصغرى اليوم */
+        big.baseEnd = Math.max(big.start,
+          (sMode !== 'range' && sLo != null) ? sLo : mLo);   // المدى المحدَّد للصغرى لا يدلّ على ما سقط
+        big.amt = Math.max(0.05, (juzNo(mLo) - bJuz0 + 1) * memo.amt);
+        if(big.cur > big.baseEnd + 1e-9) big.cur = big.start;
+        big.done = false;
+        if(exLen(abEx, big.start, big.baseEnd) > 1e-9) bp = nextPortion(big, null);
+      } else if(bigOn){
+        /* الكبرى تقف قبل ما يشغله اليوم من حفظ ومراجعة صغرى */
+        let guard = mLo;
+        if(sMode !== 'range' && sLo != null) guard = Math.min(guard, sLo);
+        bp = nextPortion(big, guard);
+      }
+      r.big = bp ? describe(bp[0], bp[1], bAuto ? abEx : bEx) : '';
     }
     rows.push(r);
   }
@@ -1024,20 +1114,35 @@ function render(){
   ];
   $('cards').innerHTML = cards.map(c => '<div class="card"><b>' + nd(c[0]) + '</b><span>' + c[1] + '</span></div>').join('');
 
-  const rep2 = (+$('bAmt2').value > 0 && $('bRep').value !== 'stop')
-      ? ' (وفي الدورات التالية ' + fmt($('bAmt2').value) + ' صفحة يوميًا)' : '';
+  const CYC_AR = {2:'الثانية', 3:'الثالثة', 4:'الرابعة'};
+  /* المقدار يُوصف بالصفحات دائمًا، ويُذكر أصله بأيام الحفظ إن حُدِّد بها */
+  const bAmtStr = v => bByMemo
+      ? ('بمقدار ' + daysAr(+v) + ' من الحفظ الجديد — ' + fmt(+v * bK) + ' صفحة يوميًا')
+      : (fmt(v) + ' صفحة يوميًا');
+  const bCycs = [2,3,4].map(k => ({k, v:+$('bAmt' + k).value})).filter(x => x.v > 0);
+  const rep2 = (bCycs.length && $('bRep').value !== 'stop')
+      ? ' (' + bCycs.map((x,i) => (i ? 'و' : '') + 'في الدورة ' + CYC_AR[x.k]
+            + (x.k === 4 ? ' فما بعدها' : '') + ' ' + bAmtStr(x.v)).join('، ') + ')'
+      : '';
   const oneS = $('bOneSura').checked ? ' مع الوقوف عند نهاية السورة فلا تجتمع سورتان في يوم' : '';
-  const bigTxt = bigOn ? ('<b>المراجعة الكبرى</b> ' + fmt($('bAmt').value) + ' صفحة يوميًا' + rep2 + oneS + ' '
+  const bigTxt = !bigOn ? ''
+    : bAuto
+    ? ('<b>المراجعة الكبرى</b> متدرّجة مع الحفظ: مادّتها ما سقط من المراجعة الصغرى '
+       + 'من أول ' + rSpan(mR) + '، ومقدارها اليومي بعدد أجزاء ما بلغه الحفظ الجديد — '
+       + fmt(memo.amt) + ' صفحة في الجزء الأول، وضِعفها في الثاني، وثلاثة أضعافها في الثالث، وهكذا'
+       + oneS + '، وتعود من أوّله عند اكتمال الدورة. ')
+    : ('<b>المراجعة الكبرى</b> ' + bAmtStr($('bAmt').value) + rep2 + oneS + ' '
       + rSpan(bR)
       + ({start:'، وتعود من بداية المدى عند اكتمال الدورة. ',
-          memo:'، فإذا اكتملت الدورة استُؤنفت من بداية الحفظ الجديد ضمن ما حُفظ فعلًا، دون أن تتوافق مع حفظ اليوم ومراجعته الصغرى. ',
-          stop:'. '}[$('bRep').value] || '. ')) : '';
+          memo:'، فإذا اكتملت الدورة استُؤنفت من بداية الحفظ الجديد ضمن ما حُفظ فعلًا، وكلّما توافقت مع المراجعة الصغرى رجعت من بداية الحفظ الجديد. ',
+          stop:'. '}[$('bRep').value] || '. '));
   const smallTxt = sMode === 'range'
       ? ('<b>المراجعة الصغرى</b> ' + fmt($('sAmt').value) + ' صفحة يوميًا '
          + rSpan(sR) + '. ')
       : sMode === 'days'
       ? ('<b>المراجعة الصغرى</b> ما حُفظ في آخر ' + daysAr(sDaysN) + ' من أيام الحفظ. ')
       : ('<b>المراجعة الصغرى</b> آخر ' + fmt(back) + ' أوجه تم حفظها. ');
+  const mEvenTxt = mEven ? ' موزَّعةً بالتساوي على أيام الخطة' : '';
   const mOne = $('mOneSura').checked
       ? (' مع إتمام السورة في يومها فلا تجتمع سورتان'
          + ($('mSpread').value === 'spread'
@@ -1052,16 +1157,24 @@ function render(){
           }).filter(Boolean).join('، ') + '. ')
       : '';
   $('how').innerHTML = '<b>منهجية الخطة:</b> الحفظ الجديد ' + fmt(memo.amt) + ' وجه يوميًا، '
-      + subAuto + mOne + '. ' + smallTxt + bigTxt + exTxt
+      + subAuto + mEvenTxt + mOne + '. ' + smallTxt + bigTxt + exTxt
       + 'أيام غير الدراسة تعاهدٌ لما سبق، والإجازات المدرجة بلا حفظ ولا مراجعة.';
 
   /* ما يخصّ كل قسم من الاستثناءات يظهر في سطر معلوماته */
   const exNote = sec => { const g = exs.filter(x => x.sec === 'all' || x.sec === sec);
     return g.length ? '  •  المستثنى: ' + g.map(exSpan).join('، ') : ''; };
   $('mInfo').textContent = 'المدى: ' + fmt(memo.total) + ' وجه — يحتاج ' + nd(memoNeed) + ' يومًا'
-      + ($('mOneSura').checked ? ' (مع مراعاة حدود السور).' : '.') + exNote('m');
-  $('bInfo').textContent = 'المدى: ' + fmt(bigPages) + ' صفحة — الدورة الأولى تكتمل في '
-      + nd(bigFirst) + ' يومًا. عدد الدورات في هذه الخطة: ' + nd(big.cycles + 1) + '.' + exNote('b');
+      + ($('mOneSura').checked ? ' (مع مراعاة حدود السور).' : '.')
+      + (mEven ? '  •  التوزيع بالتساوي: ' + fmt(memo.amt) + ' وجه يوميًا على '
+                 + nd(studyDays.length) + ' يوم حفظ.' : '') + exNote('m');
+  $('bInfo').textContent = bAuto
+      ? ('متدرّجة: مادّتها ما سقط من المراجعة الصغرى، ومقدارها اليومي '
+         + fmt(memo.amt) + ' صفحة في الجزء الأول ثم يتضاعف مع كل جزء. '
+         + 'عدد الدورات في هذه الخطة: ' + nd(big.cycles + 1) + '.' + exNote('b'))
+      : ('المدى: ' + fmt(bigPages) + ' صفحة — الدورة الأولى تكتمل في '
+      + nd(bigFirst) + ' يومًا. عدد الدورات في هذه الخطة: ' + nd(big.cycles + 1) + '.'
+      + (bByMemo ? '  •  المقدار بأيام الحفظ: ' + fmt(big.amt) + ' صفحة يوميًا في الدورة الأولى.' : '')
+      + exNote('b'));
   const sInherit = exNote('m').replace('المستثنى:', 'المستثنى (تبعًا للحفظ الجديد):');
   $('sInfo').textContent = sMode === 'range'
       ? ('المدى: ' + fmt(smallPages) + ' صفحة — دورة كاملة كل ' + nd(smallDays) + ' يومًا.' + exNote('s'))
@@ -1658,13 +1771,15 @@ function exportPdf() {
 
 /* ---------------- الإعدادات ---------------- */
 const FIELDS = ['dFrom','dTo','wStart','mUnit','mFrom','mTo','mFromS','mToS','mAmt','mRep',
-                'bUnit','bFrom','bTo','bFromS','bToS','bAmt','bRep',
-                'bAmt2','bTol','mTol','mSpread','sMode','sBack','sDays','sUnit','sFrom','sTo','sFromS','sToS',
+                'bUnit','bFrom','bTo','bFromS','bToS','bAmtUnit','bAmt','bRep',
+                'bAmt2','bAmt3','bAmt4','bTol','mTol','mSpread','sMode','sBack','sDays',
+                'sUnit','sFrom','sTo','sFromS','sToS',
                 'sAmt','sRep','tTitle','tSub','tOrg','tDua','tFile','numStyle','fitPct'];
 function collect(){
   const o = {}; FIELDS.forEach(f => o[f] = $(f).value);
   o.bOn = $('bOn').checked; o.bOneSura = $('bOneSura').checked;
   o.mOneSura = $('mOneSura').checked; o.fitPage = $('fitPage').checked;
+  o.mEven = $('mEven').checked; o.bAuto = $('bAuto').checked;
   o.days = [...document.querySelectorAll('#dayBoxes input')].filter(c=>c.checked).map(c=>+c.value);
   o.hols = [...$('holBody').children].map(tr => [tr.querySelector('.hn').value,
               tr.querySelector('.hf').value, tr.querySelector('.ht').value]);
@@ -1678,12 +1793,14 @@ function collect(){
   return o;
 }
 function apply(o){
-  const MIG = {'0':'stop', '1':'start'};
+  const MIG = {'0':'stop', '1':'start', 'memo3':'memo'};
   ['mRep','bRep','sRep'].forEach(k => { if(MIG[o[k]] !== undefined) o[k] = MIG[o[k]]; });
   FIELDS.forEach(f => { if(o[f] !== undefined) $(f).value = o[f]; });
   if(o.bOn !== undefined) $('bOn').checked = o.bOn;
   if(o.bOneSura !== undefined) $('bOneSura').checked = o.bOneSura;
   if(o.mOneSura !== undefined) $('mOneSura').checked = o.mOneSura;
+  if(o.mEven !== undefined) $('mEven').checked = o.mEven;
+  if(o.bAuto !== undefined) $('bAuto').checked = o.bAuto;
   if(o.fitPage !== undefined) $('fitPage').checked = o.fitPage;
   if(o.days){ document.querySelectorAll('#dayBoxes input').forEach(c => c.checked = o.days.includes(+c.value)); syncDays(); }
   if(o.hols){ $('holBody').innerHTML = ''; o.hols.forEach(h => holRow(h[0], h[1], h[2])); }
@@ -1693,7 +1810,24 @@ function apply(o){
   if(o.logo){ lg.src = o.logo; lg.alt = o.logoName || 'شعار'; }
   else { lg.src = DEFAULT_LOGO; lg.alt = 'مركز الفرقان'; }   // الاسترجاع يعيد الشعار كما كان
   logoNote(o.logo ? o.logoName : '');
-  toggleSmall(); toggleUnits(); applyFit();
+  toggleSmall(); toggleUnits(); toggleAuto(); applyFit();
+}
+/* الحقول التي يُغني عنها التوزيع بالتساوي أو التدرّج التلقائي تُعطَّل ليتّضح مصدر المقدار */
+function toggleAuto(){
+  $('mAmt').disabled = $('mEven').checked;
+  const a = $('bAuto').checked;
+  ['bUnit','bFrom','bTo','bFromS','bToS','bAmtUnit','bAmt','bAmt2','bAmt3','bAmt4','bRep']
+    .forEach(id => $(id).disabled = a);
+  toggleAmtUnit();
+}
+/* تسمية وحدة مقادير الكبرى: صفحات أو أيام حفظ */
+function toggleAmtUnit(){
+  const m = $('bAmtUnit').value === 'memo';
+  $('bAmtU').textContent  = m ? 'بمقدار كم يوم حفظ — في الدورة الأولى' : 'صفحة / يوم في الدورة الأولى';
+  $('bAmt2U').textContent = m ? 'بمقدار كم يوم حفظ' : 'صفحة / يوم';
+  $('bAmt3U').textContent = m ? 'بمقدار كم يوم حفظ' : 'صفحة / يوم';
+  $('bAmt4U').textContent = m ? 'بمقدار كم يوم حفظ — فيها وفيما بعدها'
+                              : 'صفحة / يوم فيها وفيما بعدها';
 }
 /* الجوال يفرض رؤوسًا وتذييلات (الرابط والتاريخ ورقم الصفحة) ويحجز لها شريطًا
    لا يمكن إطفاؤه، فتضيق المساحة المتاحة — لذا تُفعَّل الملاءمة تلقائيًّا فيه */
@@ -1775,6 +1909,8 @@ function flash(btn, msg, ms){
     el.addEventListener('input', schedule); el.addEventListener('change', schedule);
   });
   $('sMode').addEventListener('change', toggleSmall);
+  ['mEven','bAuto','bAmtUnit'].forEach(id => $(id).addEventListener('change', toggleAuto));
+  toggleAuto();
   ['mUnit','bUnit','sUnit'].forEach(id => $(id).addEventListener('change', toggleUnits));
   $('addHol').onclick  = () => { holRow('إجازة', '1/1/1448', '3/1/1448'); render(); };
   $('addOv').onclick   = () => { ovRow(4, '', 'study'); render(); };
