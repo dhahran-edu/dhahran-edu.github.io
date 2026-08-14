@@ -46,6 +46,31 @@ input,select{font-family:inherit;font-size:13px;color:var(--ink);background:#fff
 input:focus,select:focus{outline:2px solid var(--rose);outline-offset:1px}
 input[type=number]{width:74px}
 input.date{width:104px;text-align:center;direction:ltr}
+/* تقويم هجريّ لاختيار التاريخ — بدل كتابته يدويًّا */
+.dcal{position:relative;display:inline-block}
+.dbtn{font-family:inherit;font-size:12.5px;color:var(--ink);background:#fff;cursor:pointer;
+  border:1px solid var(--line);border-radius:8px;padding:6px 10px;min-width:138px;width:100%}
+.dbtn.none{color:#9096AC}
+.dbtn:hover{border-color:var(--navy)}
+.dpop{position:absolute;top:calc(100% + 4px);inset-inline-start:0;z-index:30;width:252px;
+  background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px;
+  box-shadow:0 10px 26px rgba(20,25,60,.18)}
+.dnav{display:flex;gap:4px;align-items:center;margin-bottom:6px}
+.dnav select{flex:1 1 auto;padding:4px 3px;font-size:12px;min-width:0}
+.dnv{font-family:inherit;font-size:13px;line-height:1;background:var(--grey);color:var(--navy);
+  border:1px solid var(--line);border-radius:7px;padding:5px 9px;cursor:pointer}
+.dnv:hover{background:#fff;border-color:var(--navy)}
+.dhead,.dgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.dhead span{font-size:9px;color:#9096AC;text-align:center;padding:2px 0}
+.dcell{font-family:inherit;font-size:12px;color:var(--ink);background:#fff;cursor:pointer;
+  border:1px solid transparent;border-radius:6px;padding:5px 0}
+.dcell:hover{background:var(--grey)}
+.dcell.on{background:var(--navy);color:#fff;font-weight:700}
+.dfoot{margin-top:6px;padding-top:6px;border-top:1px dashed var(--line)}
+.dclr{width:100%;font-family:inherit;font-size:11.5px;color:var(--navy);background:var(--grey);
+  border:1px solid var(--line);border-radius:7px;padding:5px;cursor:pointer}
+.dclr:hover{background:#fff;border-color:var(--navy)}
+table.hol .dbtn{min-width:0;padding:5px 4px;font-size:11.5px}
 input.txt{flex:1 1 130px}
 input.file{padding:4px;font-size:11.5px;cursor:pointer}
 input.file::file-selector-button{font-family:inherit;font-size:11.5px;font-weight:600;cursor:pointer;
@@ -257,6 +282,9 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
       <div class="box">
         <b>المراجعة الكبرى</b>
         <div class="row"><label><input type="checkbox" id="bOn" checked style="min-width:auto"> مفعّلة</label></div>
+        <div class="row"><label>تبدأ من</label>
+          <input class="date" id="bStart" placeholder="مع بداية الخطة">
+          <span class="hint" id="gBStart"></span></div>
         <div class="row"><label><input type="checkbox" id="bAuto" style="min-width:auto">
           متدرّجة تلقائيًّا مع الحفظ (تبدأ بما يسقط من الصغرى)</label></div>
         <div class="row"><label>التحديد</label>
@@ -695,6 +723,94 @@ const DEFAULT_HOL = [
   ['إجازة الخريف', '10/6/1448', '18/6/1448'],
   ['إجازة منتصف العام', '30/7/1448', '8/8/1448'],
 ];
+/* ---------------- اختيار التاريخ الهجري ----------------
+   تُستبدل بكل خانة تاريخٍ ثلاثُ قوائم: يوم وشهر وسنة. ويبقى المدخل نفسه في مكانه
+   مخفيًّا يحمل النصّ «يوم/شهر/سنة»، فتعمل القراءة والحفظ والاسترجاع دون تغيير.
+   عدد أيام الشهر يُؤخذ من التقويم نفسه فلا يظهر يومٌ لا وجود له. */
+const HIJ_MONTHS = ['محرم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة',
+                    'رجب','شعبان','رمضان','شوال','ذو القعدة','ذو الحجة'];
+const monIdx = (y, m) => (y - D.hy0) * 12 + (m - 1);
+const monOk  = (y, m) => { const i = monIdx(y, m); return i >= 0 && i + 1 < D.mstart.length; };
+const monLen = (y, m) => { const i = monIdx(y, m); return D.mstart[i+1] - D.mstart[i]; };
+const HIJ_YEARS = (() => { const a = []; for(let y = D.hy0; monOk(y, 1); y++) a.push(y); return a; })();
+const selOpts = (arr, val) => arr.map(o => '<option value="' + o[0] + '"'
+    + (String(o[0]) === String(val) ? ' selected' : '') + '>' + o[1] + '</option>').join('');
+const DAYS_SH = ['إثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت','أحد'];   // موازية لـ DAYS_AR
+const DCOLS = [5,6,0,1,2,3,4];                                          // أعمدة التقويم: السبت → الجمعة
+function dateSel(inp, optional){
+  const box = document.createElement('span');
+  box.className = 'dcal';
+  box.innerHTML = '<button type="button" class="dbtn"></button>'
+    + '<div class="dpop" hidden>'
+    +   '<div class="dnav"><button type="button" class="dnv dprev">→</button>'
+    +     '<select class="dm"></select><select class="dy"></select>'
+    +     '<button type="button" class="dnv dnext">←</button></div>'
+    +   '<div class="dhead"></div><div class="dgrid"></div>'
+    +   (optional ? '<div class="dfoot"><button type="button" class="dclr">بلا تاريخ</button></div>' : '')
+    + '</div>';
+  inp.type = 'hidden';
+  inp.parentNode.insertBefore(box, inp.nextSibling);
+  const btn = box.querySelector('.dbtn'), pop = box.querySelector('.dpop');
+  const dm = box.querySelector('.dm'), dy = box.querySelector('.dy'), grid = box.querySelector('.dgrid');
+  let vy = HIJ_YEARS[0], vm = 1;                     // الشهر المعروض في التقويم
+  const parse = () => {
+    const p = asciiNum(inp.value).trim().match(/^(\d{1,2})\s*[\/\-]\s*(\d{1,2})\s*[\/\-]\s*(\d{3,4})$/);
+    if(!p) return null;
+    const d = +p[1], m = +p[2], y = +p[3];
+    return (y >= D.hy0 && monOk(y, m) && d >= 1 && d <= monLen(y, m)) ? {d:d, m:m, y:y} : null;
+  };
+  const label = () => {
+    const v = parse();
+    btn.textContent = v ? (nd(v.d) + ' ' + HIJ_MONTHS[v.m-1] + ' ' + nd(v.y))
+                        : (optional ? 'مع بداية الخطة' : 'اختاري تاريخًا');
+    btn.classList.toggle('none', !v);
+  };
+  const draw = () => {
+    dy.innerHTML = selOpts(HIJ_YEARS.map(v => [v, nd(v)]), vy);
+    const ms = []; for(let k = 1; k <= 12; k++) if(monOk(vy, k)) ms.push([k, HIJ_MONTHS[k-1]]);
+    if(vm > ms.length) vm = ms.length;
+    dm.innerHTML = selOpts(ms, vm);
+    box.querySelector('.dhead').innerHTML = DCOLS.map(w => '<span>' + DAYS_SH[w] + '</span>').join('');
+    const j1 = hjdn(vy, vm, 1), L = monLen(vy, vm), cur = parse();
+    let h = '<span></span>'.repeat(DCOLS.indexOf(j1 % 7));      // خانات فارغة قبل أول الشهر
+    for(let d = 1; d <= L; d++)
+      h += '<button type="button" class="dcell'
+        + ((cur && cur.y === vy && cur.m === vm && cur.d === d) ? ' on' : '')
+        + '" data-d="' + d + '">' + nd(d) + '</button>';
+    grid.innerHTML = h;
+  };
+  const close = () => { pop.hidden = true; };
+  const open  = () => {
+    document.querySelectorAll('.dpop:not([hidden])').forEach(p => { p.hidden = true; });
+    /* بلا قيمة يُفتح التقويم عند شهر بداية الخطة لا عند أوّل سنة مدعومة */
+    const v = parse() || (() => { const j = parseHD($('dFrom').value);
+                                  return j == null ? null : jdnToHijri(j); })();
+    if(v){ vy = v.y; vm = v.m; }
+    draw(); pop.hidden = false;
+  };
+  const pick = d => { inp.value = d ? (d + '/' + vm + '/' + vy) : ''; label(); close(); schedule(); };
+  btn.onclick = e => { e.stopPropagation(); pop.hidden ? open() : close(); };
+  pop.onclick = e => e.stopPropagation();
+  dm.onchange = () => { vm = +dm.value; draw(); };
+  dy.onchange = () => { vy = +dy.value; draw(); };
+  box.querySelector('.dprev').onclick = () => {
+    if(vm > 1) vm--; else if(monOk(vy - 1, 12)){ vy--; vm = 12; } draw(); };
+  box.querySelector('.dnext').onclick = () => {
+    if(vm < 12 && monOk(vy, vm + 1)) vm++; else if(monOk(vy + 1, 1)){ vy++; vm = 1; } draw(); };
+  grid.onclick = e => { const c = e.target.closest('.dcell'); if(c) pick(+c.dataset.d); };
+  if(optional) box.querySelector('.dclr').onclick = () => pick(0);
+  inp._sync = () => { label(); if(!pop.hidden) open(); };
+  label();
+}
+/* نقرةٌ خارج التقويم أو زرّ الهروب يغلقه */
+document.addEventListener('click', () =>
+  document.querySelectorAll('.dpop:not([hidden])').forEach(p => { p.hidden = true; }));
+document.addEventListener('keydown', e => { if(e.key === 'Escape')
+  document.querySelectorAll('.dpop:not([hidden])').forEach(p => { p.hidden = true; }); });
+/* بعد استرجاع الإعدادات تُحدَّث القوائم من نصوص التواريخ */
+const syncDates = () => document.querySelectorAll('input.date')
+    .forEach(i => i._sync && i._sync());
+
 function juzOptions(sel, val){
   sel.innerHTML = JUZ_AR.map((n,i)=>'<option value="'+(i+1)+'">الجزء '+n+'</option>').join('');
   sel.value = val;
@@ -712,6 +828,7 @@ function holRow(name, from, to){
   tr.querySelector('.del').onclick = () => { tr.remove(); render(); };
   tr.querySelectorAll('input').forEach(i => i.oninput = schedule);
   $('holBody').appendChild(tr);
+  tr.querySelectorAll('input.date').forEach(i => dateSel(i, false));
 }
 const OV_TYPES = [['study','حفظ ومراجعة'],['review','مراجعة فقط'],
                   ['keep','تعاهد ما سبق'],['off','إجازة']];
@@ -768,6 +885,16 @@ function readExs(){
                      return /^\d+$/.test(v) ? +v : 0; };
     return {sec: tr.querySelector('.xc').value, sura, from: g('.xa'), to: g('.xb')};
   }).filter(x => x.sura >= 1 && x.sura <= 114);
+}
+/* ترتيب صفوف الإجازات بحسب تاريخ البداية — وما لا تاريخ له في الذيل.
+   يُمسك عن الترتيب ما دام التحرير جاريًا في الجدول كي لا يقفز الصفّ تحت اليد */
+function sortHols(){
+  const body = $('holBody');
+  if(body.contains(document.activeElement)) return;
+  const rows = [...body.children];
+  const key = tr => { const j = parseHD(tr.querySelector('.hf').value); return j == null ? Infinity : j; };
+  const sorted = rows.slice().sort((a, b) => key(a) - key(b));
+  if(sorted.some((tr, i) => tr !== rows[i])) sorted.forEach(tr => body.appendChild(tr));
 }
 function readHols(){
   return [...$('holBody').children].map(tr => ({
@@ -893,6 +1020,7 @@ function render(){
     $('tbody').innerHTML = ''; return;
   }
 
+  sortHols();
   const studyW = [...document.querySelectorAll('#dayBoxes input')]
                   .filter(c => c.checked).map(c => +c.value);
   const wStart = +$('wStart').value;
@@ -990,6 +1118,13 @@ function render(){
        amts:[+$('bAmt2').value * bK, +$('bAmt3').value * bK, +$('bAmt4').value * bK],
        oneSura:$('bOneSura').checked, tol:+$('bTol').value, ex:bEx});
   const bigOn = $('bOn').checked;
+  /* تاريخ بدء المراجعة الكبرى — تُترك خانته فارغة لتبدأ مع الخطة */
+  const bRaw = $('bStart').value.trim(), bJ0 = bRaw ? parseHD(bRaw) : null;
+  $('gBStart').textContent = !bRaw ? 'مع بداية الخطة' : (bJ0 ? gStr(bJ0) : 'تاريخ غير صحيح');
+  if(bigOn && bRaw && !bJ0)
+    warns.push('تاريخ بداية <b>المراجعة الكبرى</b> غير صحيح — الصيغة يوم/شهر/سنة هجرية.');
+  if(bigOn && bJ0 && bJ0 > j1)
+    warns.push('تاريخ بداية <b>المراجعة الكبرى</b> بعد نهاية الخطة، فلن تظهر في الجدول.');
   const bigFirst = daysNeeded(big), bigPages = big.total;
   /* رقم الجزء نسبةً إلى بداية مدى الحفظ: أول جزء = ١، الذي يليه = ٢ ... */
   const juzNo = x => { let k = 30; while(k > 1 && JUZP[k-1] > x + 1e-9) k--; return k; };
@@ -1068,7 +1203,8 @@ function render(){
       if(mp) memoLog.push(mp);
       r.small = (sLo != null) ? describe(sLo, sHi, sXe) : '';
       let bp = null;
-      if(bigOn && bAuto){
+      const bDay = bigOn && (bJ0 == null || d.j >= bJ0);   // قبل تاريخ البدء لا تتقدّم الكبرى
+      if(bDay && bAuto){
         /* المدى = ما سقط من الصغرى: من أول الحفظ إلى أول ما تشغله الصغرى اليوم */
         big.baseEnd = Math.max(big.start,
           (sMode !== 'range' && sLo != null) ? sLo : mLo);   // المدى المحدَّد للصغرى لا يدلّ على ما سقط
@@ -1076,7 +1212,7 @@ function render(){
         if(big.cur > big.baseEnd + 1e-9) big.cur = big.start;
         big.done = false;
         if(exLen(abEx, big.start, big.baseEnd) > 1e-9) bp = nextPortion(big, null);
-      } else if(bigOn){
+      } else if(bDay){
         /* الكبرى تقف قبل ما يشغله اليوم من حفظ ومراجعة صغرى */
         let guard = mLo;
         if(sMode !== 'range' && sLo != null) guard = Math.min(guard, sLo);
@@ -1125,13 +1261,14 @@ function render(){
             + (x.k === 4 ? ' فما بعدها' : '') + ' ' + bAmtStr(x.v)).join('، ') + ')'
       : '';
   const oneS = $('bOneSura').checked ? ' مع الوقوف عند نهاية السورة فلا تجتمع سورتان في يوم' : '';
+  const bFrom = bJ0 ? ('تبدأ من ' + hStr(bJ0) + 'هـ، و') : '';
   const bigTxt = !bigOn ? ''
     : bAuto
-    ? ('<b>المراجعة الكبرى</b> متدرّجة مع الحفظ: مادّتها ما سقط من المراجعة الصغرى '
+    ? ('<b>المراجعة الكبرى</b> ' + bFrom + 'متدرّجة مع الحفظ: مادّتها ما سقط من المراجعة الصغرى '
        + 'من أول ' + rSpan(mR) + '، ومقدارها اليومي بعدد أجزاء ما بلغه الحفظ الجديد — '
        + fmt(memo.amt) + ' صفحة في الجزء الأول، وضِعفها في الثاني، وثلاثة أضعافها في الثالث، وهكذا'
        + oneS + '، وتعود من أوّله عند اكتمال الدورة. ')
-    : ('<b>المراجعة الكبرى</b> ' + bAmtStr($('bAmt').value) + rep2 + oneS + ' '
+    : ('<b>المراجعة الكبرى</b> ' + bFrom + bAmtStr($('bAmt').value) + rep2 + oneS + ' '
       + rSpan(bR)
       + ({start:'، وتعود من بداية المدى عند اكتمال الدورة. ',
           memo:'، فإذا اكتملت الدورة استُؤنفت من بداية الحفظ الجديد ضمن ما حُفظ فعلًا، وكلّما توافقت مع المراجعة الصغرى رجعت من بداية الحفظ الجديد. ',
@@ -1167,14 +1304,14 @@ function render(){
       + ($('mOneSura').checked ? ' (مع مراعاة حدود السور).' : '.')
       + (mEven ? '  •  التوزيع بالتساوي: ' + fmt(memo.amt) + ' وجه يوميًا على '
                  + nd(studyDays.length) + ' يوم حفظ.' : '') + exNote('m');
-  $('bInfo').textContent = bAuto
+  $('bInfo').textContent = (bJ0 ? 'تبدأ من ' + hStr(bJ0) + 'هـ.  •  ' : '') + (bAuto
       ? ('متدرّجة: مادّتها ما سقط من المراجعة الصغرى، ومقدارها اليومي '
          + fmt(memo.amt) + ' صفحة في الجزء الأول ثم يتضاعف مع كل جزء. '
          + 'عدد الدورات في هذه الخطة: ' + nd(big.cycles + 1) + '.' + exNote('b'))
       : ('المدى: ' + fmt(bigPages) + ' صفحة — الدورة الأولى تكتمل في '
       + nd(bigFirst) + ' يومًا. عدد الدورات في هذه الخطة: ' + nd(big.cycles + 1) + '.'
       + (bByMemo ? '  •  المقدار بأيام الحفظ: ' + fmt(big.amt) + ' صفحة يوميًا في الدورة الأولى.' : '')
-      + exNote('b'));
+      + exNote('b')));
   const sInherit = exNote('m').replace('المستثنى:', 'المستثنى (تبعًا للحفظ الجديد):');
   $('sInfo').textContent = sMode === 'range'
       ? ('المدى: ' + fmt(smallPages) + ' صفحة — دورة كاملة كل ' + nd(smallDays) + ' يومًا.' + exNote('s'))
@@ -1771,7 +1908,7 @@ function exportPdf() {
 
 /* ---------------- الإعدادات ---------------- */
 const FIELDS = ['dFrom','dTo','wStart','mUnit','mFrom','mTo','mFromS','mToS','mAmt','mRep',
-                'bUnit','bFrom','bTo','bFromS','bToS','bAmtUnit','bAmt','bRep',
+                'bStart','bUnit','bFrom','bTo','bFromS','bToS','bAmtUnit','bAmt','bRep',
                 'bAmt2','bAmt3','bAmt4','bTol','mTol','mSpread','sMode','sBack','sDays',
                 'sUnit','sFrom','sTo','sFromS','sToS',
                 'sAmt','sRep','tTitle','tSub','tOrg','tDua','tFile','numStyle','fitPct'];
@@ -1810,7 +1947,7 @@ function apply(o){
   if(o.logo){ lg.src = o.logo; lg.alt = o.logoName || 'شعار'; }
   else { lg.src = DEFAULT_LOGO; lg.alt = 'مركز الفرقان'; }   // الاسترجاع يعيد الشعار كما كان
   logoNote(o.logo ? o.logoName : '');
-  toggleSmall(); toggleUnits(); toggleAuto(); applyFit();
+  toggleSmall(); toggleUnits(); toggleAuto(); syncDates(); applyFit();
 }
 /* الحقول التي يُغني عنها التوزيع بالتساوي أو التدرّج التلقائي تُعطَّل ليتّضح مصدر المقدار */
 function toggleAuto(){
@@ -1889,6 +2026,8 @@ function flash(btn, msg, ms){
   suraOptions($('mFromS'), 1); suraOptions($('mToS'), 114);
   suraOptions($('bFromS'), 1); suraOptions($('bToS'), 114);
   suraOptions($('sFromS'), 1); suraOptions($('sToS'), 114);
+  ['dFrom','dTo'].forEach(id => dateSel($(id), false));
+  dateSel($('bStart'), true);                      // تاريخ اختياري: «—» يعني مع بداية الخطة
   DEFAULT_HOL.forEach(h => holRow(h[0], h[1], h[2]));
 
   const saved = localStorage.getItem(CFG_KEY);
@@ -1908,6 +2047,8 @@ function flash(btn, msg, ms){
   document.querySelectorAll('.panel input, .panel select').forEach(el => {
     el.addEventListener('input', schedule); el.addEventListener('change', schedule);
   });
+  $('holBody').addEventListener('focusout', schedule);   // بمغادرة الجدول يُعاد الترتيب
+  $('numStyle').addEventListener('change', () => { NUMSTYLE = $('numStyle').value; syncDates(); });
   $('sMode').addEventListener('change', toggleSmall);
   ['mEven','bAuto','bAmtUnit'].forEach(id => $(id).addEventListener('change', toggleAuto));
   toggleAuto();
