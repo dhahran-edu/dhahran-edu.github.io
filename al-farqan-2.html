@@ -499,6 +499,9 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
           <input type="number" id="fitPct" value="88" min="50" max="100" step="1">
           <span class="hint">٪ من مقاس الورقة</span></div>
         <div class="hint" id="fitInfo"></div>
+        <div class="row" style="margin-top:9px"><label><input type="checkbox" id="noLogo"
+          style="min-width:auto"> حذف الشعار</label></div>
+        <div class="hint">يُخفى شعار المركز وفاصله من الترويسة وصفحات الطباعة وملفَّي PDF وPowerPoint.</div>
       </div>
 
     </div>
@@ -1215,6 +1218,12 @@ function readHols(){
 /* ---------------- الشعار ----------------
    ثابت في هذه النسخة: شعار مركز الفرقان وحده، بلا رفعٍ ولا استبدال */
 const LOGO_EL = () => document.querySelector('header .logo');
+const noLogo = () => $('noLogo').checked;
+function applyLogo(){                       // الشعار وفاصله الورديّ يظهران معًا ويُخفيان معًا
+  const off = noLogo();
+  LOGO_EL().style.display = off ? 'none' : '';
+  document.querySelector('header .divr').style.display = off ? 'none' : '';
+}
 
 /* قيمة أسبوع فريدة لصف الدعوة حتى لا يندمج مع أسبوع ما قبله في الجدول والشرائح */
 const DUA_WK = ' dua';
@@ -1268,8 +1277,7 @@ function buildPrintPages(rows){
   const html = pages.map((p, i) =>
     '<div class="page">'
     + '<div class="pband">'
-      + '<img class="plogo" src="' + logo + '" alt="">'
-      + '<div class="pdiv"></div>'
+      + (noLogo() ? '' : '<img class="plogo" src="' + logo + '" alt=""><div class="pdiv"></div>')
       + '<div class="ptit"><h2>' + esc($('hTitle').textContent) + '</h2>'
         + '<div class="s1">' + esc($('hSub').textContent) + '</div>'
         + '<div class="s2">' + esc($('hRng').textContent) + '</div></div>'
@@ -1955,13 +1963,16 @@ function slideXml(srows, page, total, hdr) {
   sh.push(shape(id++, 'band', 'rect', 0, 0, S.W, S.BAND, S.NAVY));
   sh.push(shape(id++, 'stripe', 'rect', 0, S.BAND, S.W, S.STRIPE, S.ROSE));
 
-  const logoH = 520000, logoW = Math.round(logoH * hdr.logoW / hdr.logoH);
-  const logoX = S.W - S.MARGIN - logoW;
-  sh.push(picture(id++, 'rId2', logoX, Math.round((S.BAND - logoH) / 2), logoW, logoH));
-  const divX = logoX - 200000;
-  sh.push(shape(id++, 'div', 'rect', divX, Math.round((S.BAND - 480000) / 2), 13000, 480000, S.ROSE));
-
-  const tRight = divX - 170000, tLeft = S.MARGIN + 620000;
+  let tRight = S.W - S.MARGIN;              // بلا شعار: يمتدّ العنوان إلى حافّة الشريحة
+  if (!hdr.noLogo) {
+    const logoH = 520000, logoW = Math.round(logoH * hdr.logoW / hdr.logoH);
+    const logoX = S.W - S.MARGIN - logoW;
+    sh.push(picture(id++, 'rId2', logoX, Math.round((S.BAND - logoH) / 2), logoW, logoH));
+    const divX = logoX - 200000;
+    sh.push(shape(id++, 'div', 'rect', divX, Math.round((S.BAND - 480000) / 2), 13000, 480000, S.ROSE));
+    tRight = divX - 170000;
+  }
+  const tLeft = S.MARGIN + 620000;
   sh.push(textBox(id++, tLeft, 130000, tRight - tLeft, S.BAND - 260000, [
     para(hdr.title, 19, true, S.WHITE, 'r'),
     para(hdr.sub, 10.5, false, S.ROSE, 'r', 4),
@@ -2075,10 +2086,10 @@ function buildPptx(rows, hdr, logoBytes) {
     add('ppt/slides/_rels/slide' + (i + 1) + '.xml.rels', HEAD
       + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
       + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>'
-      + '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/>'
+      + (logoBytes ? '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/>' : '')
       + '</Relationships>');
   });
-  files.push({ name: 'ppt/media/image1.png', data: logoBytes });
+  if (logoBytes) files.push({ name: 'ppt/media/image1.png', data: logoBytes });
   return zipStore(files);
 }
 
@@ -2096,14 +2107,15 @@ function exportPptx(){
   btn.textContent = 'جارٍ التصدير…'; btn.disabled = true;
   setTimeout(() => {
     try{
-      const img = document.querySelector('header .logo');
+      const img = document.querySelector('header .logo'), off = noLogo();
       const bytes = buildPptx(rows, {
         title: $('hTitle').textContent,
         sub:   $('hSub').textContent,
         range: $('hRng').textContent,
         org:   $('fOrg').textContent,
         logoW: img.naturalWidth || 420, logoH: img.naturalHeight || 369,
-      }, b64bytes(img.src.split(',')[1]));
+        noLogo: off,
+      }, off ? null : b64bytes(img.src.split(',')[1]));
       const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
       deliver(new Blob([bytes], {type: PPTX}), fileName('pptx'), PPTX);
     }catch(e){ alert('تعذّر التصدير: ' + e.message); }
@@ -2181,10 +2193,10 @@ function drawPlanPage(ctx, srows, page, total, hdr, logo) {
     const h = P.LOGO_H, w = h * logo.naturalWidth / logo.naturalHeight;
     ctx.drawImage(logo, xr - w, (P.BAND - h) / 2, w, h);
     xr -= w + P.GAP + 1;
+    ctx.fillStyle = P.ROSE;
+    ctx.fillRect(xr - 0.36, (P.BAND - P.DIV_H) / 2, 0.36, P.DIV_H);
+    xr -= 0.36 + 1 + P.GAP;
   }
-  ctx.fillStyle = P.ROSE;
-  ctx.fillRect(xr - 0.36, (P.BAND - P.DIV_H) / 2, 0.36, P.DIV_H);
-  xr -= 0.36 + 1 + P.GAP;
 
   /* المعيَّنات في الطرف الأيسر */
   const step = P.DOT + P.DOT_GAP;
@@ -2316,7 +2328,7 @@ function exportPdf() {
     const pages = splitSlides(rows);
     const hdr = {title: $('hTitle').textContent, sub: $('hSub').textContent,
                  range: $('hRng').textContent, org: $('fOrg').textContent};
-    const logo = LOGO_EL(), k = PDF_DPI / 25.4, imgs = [];
+    const logo = noLogo() ? null : LOGO_EL(), k = PDF_DPI / 25.4, imgs = [];
     for (let i = 0; i < pages.length; i++) {
       const cv = document.createElement('canvas');
       cv.width = Math.round(PP.W * k); cv.height = Math.round(PP.H * k);
@@ -2341,7 +2353,7 @@ const FIELDS = ['dFrom','dTo','wStart','mUnit','mFrom','mTo','mFromS','mToS','mA
                 'sAmt','sRep','tTitle','tSub','tOrg','tDua','tFile','numStyle','fitPct'];
 function collect(){
   const o = {}; FIELDS.forEach(f => o[f] = $(f).value);
-  o.bOn = $('bOn').checked; o.fitPage = $('fitPage').checked;
+  o.bOn = $('bOn').checked; o.fitPage = $('fitPage').checked; o.noLogo = $('noLogo').checked;
   o.mEven = $('mEven').checked; o.bAuto = $('bAuto').checked; o.mNoFin = $('mNoFin').checked;
   o.bLikeS = $('bLikeS').checked;
   o.days = [...document.querySelectorAll('#dayBoxes input')].filter(c=>c.checked).map(c=>+c.value);
@@ -2372,6 +2384,7 @@ function apply(o){
   if(o.bAuto !== undefined) $('bAuto').checked = o.bAuto;
   if(o.bLikeS !== undefined) $('bLikeS').checked = o.bLikeS;
   if(o.fitPage !== undefined) $('fitPage').checked = o.fitPage;
+  if(o.noLogo !== undefined) $('noLogo').checked = o.noLogo;
   if(o.days){ document.querySelectorAll('#dayBoxes input').forEach(c => c.checked = o.days.includes(+c.value)); syncDays(); }
   if(o.hols){ $('holBody').innerHTML = ''; o.hols.forEach(h => holRow(h[0], h[1], h[2])); }
   if(o.ovs){ $('ovBody').innerHTML = ''; o.ovs.forEach(v => ovRow(v[0], v[1], v[2])); }
@@ -2381,7 +2394,7 @@ function apply(o){
                               s1:v[3], a1:v[4], s2:v[5], a2:v[6], amt:v[7]})); }
   toggleSmall(); toggleUnits(); toggleAuto();
   $('mTolUnit').dataset.was = $('mTolUnit').value;   // الاسترجاع لا يحوّل القيمة
-  toggleStop(); syncDates(); applyFit();
+  toggleStop(); syncDates(); applyFit(); applyLogo();
 }
 /* نمط الزيادة وحدّها لا محلّ لهما إن كان الوقوف عند المقدار المحدَّد */
 function toggleStop(){
@@ -2506,6 +2519,8 @@ function flash(btn, msg, ms){
   applyFit();
   $('fitPage').addEventListener('change', applyFit);
   $('fitPct').addEventListener('input', applyFit);
+  applyLogo();
+  $('noLogo').addEventListener('change', applyLogo);
 
   syncDays();
   document.querySelectorAll('#dayBoxes input').forEach(c => c.addEventListener('change', syncDays));
