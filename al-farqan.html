@@ -271,6 +271,17 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
             <option value="juz">بالأجزاء</option>
             <option value="sura">بالسور</option>
           </select></div>
+        <div class="row"><label>اتّجاه الخطة ٦</label>
+          <select id="mDir" class="txt">
+            <option value="asc">تصاعدي — من أوّل المدى إلى آخره</option>
+            <option value="desc">تنازلي — من آخر المدى إلى أوّله</option>
+          </select></div>
+        <div class="hint"><b id="mDirNote"></b>
+          و«من» أوّلُ ما يُحفظ و«إلى» آخرُه: «من آل عمران إلى البقرة» خطّةٌ نازلة تبدأ بآل عمران.
+          والاتّجاه يسري على الأقسام الثلاثة معًا: الحفظ الجديد والمراجعة الكبرى والمراجعة الصغرى.
+          والتنازلي يقلب ترتيب السور في المدى — الناس ثمّ الفلق ثمّ الإخلاص… — وكلُّ سورة تُقرأ من أوّلها إلى آخرها.
+          فإن لم يكن في المدى إلّا سورة واحدة قُسِّمت على مقدار اليوم وقُلب ترتيب أقسامها، من آخرها إلى أوّلها.
+          <span style="opacity:.55">(نسخة الاتّجاه ٦)</span></div>
         <div id="mRngJuz">
           <div class="row"><label>من جزء</label><select id="mFrom" class="txt"></select></div>
           <div class="row"><label>إلى جزء</label><select id="mTo" class="txt"></select></div>
@@ -499,10 +510,9 @@ footer{padding:13px 26px 20px;color:#8A90A6;font-size:11.5px;display:flex;
           <input type="number" id="fitPct" value="88" min="50" max="100" step="1">
           <span class="hint">٪ من مقاس الورقة</span></div>
         <div class="hint" id="fitInfo"></div>
-        <div class="row" style="margin-top:9px"><label>الشعار</label>
-          <input type="file" id="logoFile" class="txt file" accept="image/*">
-          <button class="btn ghost sm" id="logoDef">الافتراضي</button></div>
-        <div class="hint" id="logoInfo"></div>
+        <div class="row" style="margin-top:9px"><label><input type="checkbox" id="noLogo"
+          style="min-width:auto"> حذف الشعار</label></div>
+        <div class="hint">يُخفى شعار المركز وفاصله من الترويسة وصفحات الطباعة وملفَّي PDF وPowerPoint.</div>
       </div>
 
     </div>
@@ -632,7 +642,9 @@ function describe(x1, x2, ex){
     if(x2 > a + 1e-9) parts.push(describe(a, x2));
     return parts.filter(Boolean).join(' + ');
   }
-  const a = ayahAt(x1);
+  /* ayahAt يرجع TOTAL عند آخر المصحف وهو حدٌّ لا آية، فيُقصَر على آخر آية موجودة
+     — وإلّا دارت الحلقة أدناه أبدًا على نصيبٍ يقع في آخر آية */
+  const a = Math.min(ayahAt(x1), TOTAL - 1);
   let b = ayahAt(x2) - 1;
   /* نصيبٌ أقصرُ من آية: لا تسعه العبارة فتخلو خانته في الجدول — تُذكر آيته التي وقع فيها.
      أمّا المقطع الخالي حقًّا (طواه الاستثناء) فيبقى بلا وصف */
@@ -641,7 +653,7 @@ function describe(x1, x2, ex){
   while(cur <= b){
     const si = suraOf(cur), end = Math.min(b, CUM[si] + SURAS[si][1] - 1);
     parts.push(SURAS[si][0] + ' ' + LRM + '(' + nd(cur-CUM[si]+1) + '-' + nd(end-CUM[si]+1) + ')' + LRM);
-    cur = end + 1;
+    cur = Math.max(end + 1, cur + 1);        /* تقدُّمٌ مضمون مهما كانت الحدود */
   }
   return parts.join(' + ');
 }
@@ -692,13 +704,122 @@ const rSpan = r => r.unit === 'sura'
      : 'من سورة ' + SURAS[r.from-1][0] + ' إلى سورة ' + SURAS[r.to-1][0])
   : (r.from === r.to ? 'الجزء ' + gen(JUZ_AR[r.from-1])
      : 'من الجزء ' + gen(JUZ_AR[r.from-1]) + ' إلى الجزء ' + gen(JUZ_AR[r.to-1]));
-/* قراءة مدى قسمٍ من الواجهة: p = 'm' | 'b' | 's' */
+/* قراءة مدى قسمٍ من الواجهة: p = 'm' | 'b' | 's'
+   lo وhi طرفا المدى في المصحف، وfrom وto طرفاه بترتيب الخطة للوصف.
+   فلا يهمّ أيّهما وُضع في «من»، إنّما المعتبر الاتّجاه المختار */
+/* اتّجاه الخطة واحدٌ للأقسام الثلاثة، وقائمتُه تعمل دائمًا ولا تُعطَّل.
+   وتُضبط تلقائيًّا من «من» و«إلى» في الحفظ الجديد — فـ«من آل عمران إلى البقرة»
+   خطّةٌ نازلة — فإن غيّرتِها بيدك بعد ذلك احتُرم اختيارك حتى تُغيَّر الخانتان */
+const planDir = () => $('mDir').value === 'asc' ? 'asc' : 'desc';
 function rangeOf(p){
   const u = $(p + 'Unit').value === 'sura' ? 'sura' : 'juz';
-  return {unit: u,
-          from: +$(u === 'sura' ? p + 'FromS' : p + 'From').value,
-          to:   +$(u === 'sura' ? p + 'ToS'   : p + 'To').value};
+  const a = +$(u === 'sura' ? p + 'FromS' : p + 'From').value;
+  const b = +$(u === 'sura' ? p + 'ToS'   : p + 'To').value;
+  const dir = planDir(), desc = dir !== 'asc';
+  const lo = Math.min(a, b), hi = Math.max(a, b);
+  return {unit: u, dir: dir, desc: desc, lo: lo, hi: hi,
+          from: desc ? hi : lo, to: desc ? lo : hi};
 }
+
+/* ---------------- محور الخطة ----------------
+   قد يسير المدى تصاعديًّا من أوّله إلى آخره، أو تنازليًّا بالوحدات:
+   الجزء الثلاثون ثمّ التاسع والعشرون… وداخلَ كلّ وحدةٍ يمضي من أوّلها إلى آخرها.
+   فيُبنى للمدى «محور» مقاطعُه مرتّبةٌ بترتيب الخطة، ويعمل المحرّك كلّه
+   على مواضعه المتّصلة، ولا يُرَدّ إلى فضاء الصفحات إلّا عند الوصف والقياس.
+   وفي التصاعدي مقطعٌ واحد، فالمحور عينُ فضاء الصفحات مزاحًا ببداية المدى */
+function mkMap(u, lo, hi, dir, amt){
+  const b = []; let v = 0;
+  const add = (r0, r1) => { const L = r1 - r0;
+    if(L > 1e-9){ b.push({r0: r0, r1: r1, v0: v, v1: v + L}); v += L; } };
+  const R0 = rStart(u, lo), R1 = rEnd(u, hi);
+  if(dir !== 'asc'){       /* السور نزولًا في المدى كلِّه، وكلُّ سورةٍ من أوّلها إلى آخرها */
+    const g0 = ayahAt(R0), g1 = ayahAt(R1) - 1;
+    const s0 = suraOf(g0), s1 = suraOf(Math.max(g0, g1));
+    for(let k = s1; k >= s0; k--)
+      add(Math.max(R0, suraStart(k + 1)), Math.min(R1, suraEnd(k + 1)));
+    /* ليس في المدى إلّا سورةٌ واحدة فلا سورَ يُقلب ترتيبها — فتُقسَّم على مقدار اليوم
+       ويُقلب ترتيب أقسامها، وكلُّ قسمٍ يُقرأ من أوّله إلى آخره */
+    if(b.length === 1){
+      const g = b[0], L = g.r1 - g.r0;
+      const A = Math.max(0.05, Math.min(+amt > 0 ? +amt : 1, L));
+      b.length = 0; v = 0;
+      for(let n = Math.ceil(L / A - 1e-9), k = 0; k < n; k++)
+        add(Math.max(g.r0, g.r1 - (k + 1) * A), g.r1 - k * A);
+    }
+  }
+  else add(R0, R1);
+  if(!b.length) b.push({r0: R0, r1: R0, v0: 0, v1: 0});   /* مدًى خالٍ */
+  return {b: b, len: v, desc: dir !== 'asc'};
+}
+/* المقطع الذي يقع فيه موضع المحور؛ end ينسب الحدّ إلى المقطع الذي قبله */
+function blkAt(m, v, end){
+  const B = m.b; let lo = 0, hi = B.length - 1;
+  while(lo < hi){ const k = (lo + hi) >> 1;
+    if(end ? B[k].v1 >= v - 1e-9 : B[k].v1 > v + 1e-9) hi = k; else lo = k + 1; }
+  return B[lo];
+}
+/* موضع المحور ← فضاء الصفحات */
+function toR(m, v, end){
+  const g = blkAt(m, v, end);
+  return Math.min(g.r1, Math.max(g.r0, g.r0 + (v - g.v0)));
+}
+/* فضاء الصفحات ← موضع المحور؛ وما خرج عن المقاطع رُدّ إلى طرفه بترتيب الخطة.
+   وحدُّ المقطع يصلح موضعين: بدايةَ التالي ونهايةَ السابق — فend ينسبه إلى النهاية */
+function toV(m, x, end){
+  const B = m.b; let v = 0, got = null;
+  for(let i = 0; i < B.length; i++){
+    const g = B[i];
+    if(x >= g.r0 - 1e-9 && x <= g.r1 + 1e-9){
+      const w = g.v0 + Math.min(Math.max(x - g.r0, 0), g.v1 - g.v0);
+      if(!end) return w;
+      got = w;                                    /* آخر مقطعٍ يسعه بترتيب الخطة */
+    }
+    else if(m.desc ? g.r0 > x : g.r1 <= x) v = g.v1;   /* مقطعٌ سابقٌ بترتيب الخطة */
+  }
+  return got == null ? v : got;
+}
+/* نقل موضعٍ من محورٍ إلى آخر عبر فضاء الصفحات */
+const xfer = (a, b, v) => a === b ? v : toV(b, toR(a, v, false));
+/* مقاطع نصيبٍ في فضاء الصفحات — قد يقع في وحدتين عند التنازل، وترتيبها ترتيب الخطة */
+function segsOf(m, v1, v2){
+  const out = [];
+  for(const g of m.b){
+    const a = Math.max(v1, g.v0), b = Math.min(v2, g.v1);
+    if(b > a + 1e-9) out.push([g.r0 + (a - g.v0), g.r0 + (b - g.v0)]);
+  }
+  return out;
+}
+/* وصف نصيب اليوم على المحور (ex في فضاء الصفحات) */
+const describeV = (m, v1, v2, ex) => segsOf(m, v1, v2)
+    .map(g => describe(g[0], g[1], ex)).filter(Boolean).join(' + ');
+/* نقل المستثنى إلى المحور: يُقطَّع على المقاطع ثمّ يُرتّب ويُدمج */
+function exV(m, ex){
+  const iv = [];
+  for(const g of ex) for(const s of m.b){
+    const a = Math.max(g[0], s.r0), b = Math.min(g[1], s.r1);
+    if(b > a + 1e-9) iv.push([s.v0 + (a - s.r0), s.v0 + (b - s.r0)]);
+  }
+  iv.sort((p, q) => p[0] - q[0]);
+  const out = [];
+  for(const g of iv){
+    const last = out[out.length-1];
+    if(last && g[0] <= last[1] + 1e-9) last[1] = Math.max(last[1], g[1]);
+    else out.push([g[0], g[1]]);
+  }
+  return out;
+}
+/* نهايات الوحدات على المحور. وما تجاوز مقطع المحور قُصّ عند طرفه
+   وعُلّم «مقصوصًا»، فلا يُضَمّ بحدّ الزيادة إلى يومه؛ إذ بقيّة السورة في وحدةٍ أخرى */
+function unitEndsV(t, v){
+  const m = t.map, g = blkAt(m, v, false);
+  const x = g.r0 + Math.min(Math.max(v - g.v0, 0), g.r1 - g.r0);
+  return unitEnds(t.stop, x).map(o => {
+    const e = g.v0 + (o.end - g.r0);
+    return {i: g.v0 + '/' + o.i, end: Math.min(e, g.v1), cut: e > g.v1 + 1e-9};
+  }).sort((a, b) => a.end - b.end);
+}
+const linesBetweenV = (t, v1, v2) =>
+  linesBetween(toR(t.map, v1, true), toR(t.map, v2, true));
 
 /* ---------------- المستثنى من السور والآيات ----------------
    قائمة فترات [بداية، نهاية) في فضاء الصفحات، مرتّبة مدموجة بلا تداخل.
@@ -795,14 +916,21 @@ const hStr = j => { const h = jdnToHijri(j); return LRM + nd(h.d) + ' / ' + nd(h
 
 /* ---------------- المسارات ---------------- */
 /* rep: 'start' يعيد من بداية المدى | 'memo' يعيد من بداية الحفظ الجديد | 'stop' يتوقّف */
-function mkTrack(from, to, amount, o){
+function mkTrack(r, amount, o){
   o = o || {};
-  const u = o.unit || 'juz', mu = o.mUnit || 'juz';
-  const s = rStart(u, from), e = rEnd(u, to);
-  const ex = o.ex || [];
+  const map = mkMap(r.unit, r.lo, r.hi, r.dir, amount);
+  const ex = exV(map, o.ex || []);
+  const s = 0, e = map.len;
   const A0 = Math.max(0.05, amount);
+  /* مدى الحفظ الجديد منقولًا إلى محور هذا المسار — لدورة «يعيد من بداية الحفظ» */
+  let ms = s, me = e;
+  if(o.mRange){
+    const iv = exV(map, [[rStart(o.mRange.unit, o.mRange.lo),
+                          rEnd(o.mRange.unit, o.mRange.hi)]]);   /* صورة المدى كلِّه */
+    if(iv.length){ ms = iv[0][0]; me = iv[iv.length-1][1]; }
+  }
   /* amts[0] الدورة الأولى، ثم مقدار كل دورة تالية — الصفر يعني «كسابقتها» */
-  return {start:s, baseEnd:e, amt:A0,
+  return {map:map, start:s, baseEnd:e, amt:A0,
           amts:[A0].concat((o.amts || []).map(v => (+v > 0 ? +v : 0))),
           ex:ex, span:e - s, rep:o.rep || 'start', cur:s, done:false,
           total:exLen(ex, s, e), cycles:0,
@@ -811,7 +939,7 @@ function mkTrack(from, to, amount, o){
           spread:o.spread === 'spread',
           wrap:!!o.wrap,
           si:null, sEnd:0, sAmt:0,
-          mStart: o.mFrom ? rStart(mu, o.mFrom) : s, mEnd: o.mTo ? rEnd(mu, o.mTo) : e};
+          mStart: ms, mEnd: me};
 }
 /* عدد الأيام الفعلي لإتمام المدى (يراعي القصّ والزيادة عند حدود السور) */
 function realDays(t){
@@ -829,7 +957,7 @@ function mvPortion(t, o, hard){
   if(o.kind === 'amt'){
     x1 = exFwd(t.ex, t.cur);
     x2 = Math.min(exAdv(t.ex, x1, Math.max(0.05, o.amt)), hard == null ? t.baseEnd : hard);
-  } else { x1 = o.a; x2 = o.b; }
+  } else { x1 = toV(t.map, o.a); x2 = toV(t.map, o.b, true); }
   if(x2 <= x1 + 1e-9) return null;
   t.cur = x2; t.si = null; t.done = false;
   return [x1, x2];
@@ -908,7 +1036,7 @@ function nextPortion(t, guard){
   let x1 = exFwd(X, t.cur), x2 = exAdv(X, x1, A);
   if(x2 > e - 1e-9){ x2 = e; if(!t.oneSura && !soft) x1 = Math.max(t.start, exBack(X, e, A)); }
   if(t.oneSura){                       // لا تُقطع الوحدة: سورةً كانت أو مقطعًا موضوعيًّا
-    const U = unitEnds(t.stop, x1);
+    const U = unitEndsV(t, x1);
     const sEnd = Math.min(U[0].end, e);   // أقرب حدٍّ: لا يتجاوزه اليوم
     if(t.spread){                      // وزّع الزيادة على أيام الوحدة بالتساوي
       if(t.si !== U[0].i){
@@ -926,8 +1054,8 @@ function nextPortion(t, guard){
            ولو تعدّدت مقاطعها. والحدّ بالأسطر يُقاس من تخطيط المصحف */
         for(let k = U.length - 1; k >= 0; k--){
           const c = U[k].end;
-          if(c > e + 1e-9 || c <= x2 + 1e-9) continue;
-          if(t.tolLine > 0 ? linesBetween(x2, c) <= t.tolLine + 1e-9
+          if(U[k].cut || c > e + 1e-9 || c <= x2 + 1e-9) continue;
+          if(t.tolLine > 0 ? linesBetweenV(t, x2, c) <= t.tolLine + 1e-9
                            : t.tol > 0 && exLen(X, x1, c) <= A + t.tol + 1e-9){ x2 = c; break; }
         }
       }
@@ -1217,43 +1345,13 @@ function readHols(){
 }
 
 /* ---------------- الشعار ----------------
-   يُصغَّر ويُعاد ترميزه PNG ليصلح للطباعة ولتصدير PowerPoint مهما كانت صيغة الملف */
+   ثابت في هذه النسخة: شعار مركز الفرقان وحده، بلا رفعٍ ولا استبدال */
 const LOGO_EL = () => document.querySelector('header .logo');
-const LOGO_MAX = 420;                       // أقصى ارتفاع بالبكسل — يكفي الطباعة والشرائح
-const DEFAULT_LOGO = LOGO_EL().src;
-function setLogo(src, name){
-  const el = LOGO_EL();
-  el.src = src;
-  el.alt = name || 'مركز الفرقان';
-  logoNote(name);
-  render();                                 // ليتحدّث الشعار في صفحات الطباعة أيضًا
-}
-function logoNote(name){
-  const custom = LOGO_EL().src !== DEFAULT_LOGO;
-  $('logoInfo').textContent = custom
-    ? 'شعار مرفوع' + (name ? ': ' + name : '') + ' — يظهر في الترويسة والطباعة وملف PowerPoint.'
-    : 'الشعار الافتراضي. ارفعي صورة PNG أو JPG لتحلّ محلّه.';
-}
-function loadLogo(file){
-  if(!file) return;
-  const fr = new FileReader();
-  fr.onerror = () => alert('تعذّرت قراءة الملف.');
-  fr.onload = () => {
-    const img = new Image();
-    img.onerror = () => alert('تعذّرت قراءة الصورة — جرّبي صيغة PNG أو JPG.');
-    img.onload = () => {
-      const w0 = img.naturalWidth || img.width, h0 = img.naturalHeight || img.height;
-      if(!w0 || !h0){ alert('تعذّر تحديد أبعاد الصورة — جرّبي صيغة PNG أو JPG.'); return; }
-      const k = Math.min(1, LOGO_MAX / h0);
-      const c = document.createElement('canvas');
-      c.width = Math.max(1, Math.round(w0 * k)); c.height = Math.max(1, Math.round(h0 * k));
-      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-      try{ setLogo(c.toDataURL('image/png'), file.name); }
-      catch(e){ alert('تعذّر تحويل الصورة: ' + e.message); }
-    };
-    img.src = fr.result;
-  };
-  fr.readAsDataURL(file);
+const noLogo = () => $('noLogo').checked;
+function applyLogo(){                       // الشعار وفاصله الورديّ يظهران معًا ويُخفيان معًا
+  const off = noLogo();
+  LOGO_EL().style.display = off ? 'none' : '';
+  document.querySelector('header .divr').style.display = off ? 'none' : '';
 }
 
 /* قيمة أسبوع فريدة لصف الدعوة حتى لا يندمج مع أسبوع ما قبله في الجدول والشرائح */
@@ -1308,8 +1406,7 @@ function buildPrintPages(rows){
   const html = pages.map((p, i) =>
     '<div class="page">'
     + '<div class="pband">'
-      + '<img class="plogo" src="' + logo + '" alt="">'
-      + '<div class="pdiv"></div>'
+      + (noLogo() ? '' : '<img class="plogo" src="' + logo + '" alt=""><div class="pdiv"></div>')
       + '<div class="ptit"><h2>' + esc($('hTitle').textContent) + '</h2>'
         + '<div class="s1">' + esc($('hSub').textContent) + '</div>'
         + '<div class="s2">' + esc($('hRng').textContent) + '</div></div>'
@@ -1324,6 +1421,7 @@ function buildPrintPages(rows){
 
 /* ---------------- البناء ---------------- */
 function render(){
+  dirAuto();                                          // القائمة والمراجعتان تتبعان اتّجاه الخطة
   NUMSTYLE = $('numStyle').value;                     // يُقرأ أولًا ليطبَّق على كل ما يُولَّد بعده
   const j0 = parseHD($('dFrom').value), j1 = parseHD($('dTo').value);
   $('gFrom').textContent = j0 ? gStr(j0) : '—';
@@ -1391,8 +1489,8 @@ function render(){
       mvMap.set(v.j + '|' + v.sec, v);
   const mvAt = (j, sec) => mvMap.get(j + '|' + sec) || null;
   /* وصف المقطع؛ فإن طواه الاستثناء كلَّه ووُضع باليد وُصف كما كُتب */
-  const dsc = (p, ex, man) => !p ? ''
-      : (describe(p[0], p[1], ex) || (man ? describe(p[0], p[1]) : ''));
+  const dsc = (m, p, ex, man) => !p ? ''
+      : (describeV(m, p[0], p[1], ex) || (man ? describeV(m, p[0], p[1]) : ''));
   /* الوقوف اليومي: عند المقدار، أو عند حدّ السورة، أو عند حدّ المقطع الموضوعي */
   const mStop = $('mStop').value, bStop = $('bStop').value;
   const stopOpt = v => ({oneSura: v !== 'none', stop: v});
@@ -1401,25 +1499,25 @@ function render(){
   const mTolU = $('mTolUnit').value, mTolV = +$('mTol').value;
   const mOpt = Object.assign({rep:$('mRep').value, tol:tolPages(mTolV, mTolU),
                 tolLine: mTolU === 'line' ? mTolV : 0,
-                spread:$('mSpread').value, unit:mR.unit, ex:mEx}, stopOpt(mStop));
+                spread:$('mSpread').value, ex:mEx}, stopOpt(mStop));
   /* توزيع بالتساوي: يُقسَّم مدى الحفظ على أيام الحفظ المتاحة فينتهي المدى مع نهاية الخطة */
   const mEven = $('mEven').checked;
   let mAmt = Math.max(0.05, +$('mAmt').value);
   if(mEven && studyDays.length){
-    const probe = mkTrack(mR.from, mR.to, mAmt, mOpt);
+    const probe = mkTrack(mR, mAmt, mOpt);
     if(probe.total > 0){
       mAmt = Math.max(0.05, probe.total / studyDays.length);
       /* الوقوف عند حدود السور يزيح عدد الأيام عن القسمة المجرّدة،
          فيُعاير المقدار بالتنصيف حتى يسع المدى أيام الخطة تمامًا */
       if(mOpt.oneSura && mOpt.rep === 'stop')
         mAmt = scanAmt(studyDays.length, mAmt,
-                 a => realDays(mkTrack(mR.from, mR.to, a, mOpt)));
+                 a => realDays(mkTrack(mR, a, mOpt)));
     }
   }
-  const memo = mkTrack(mR.from, mR.to, mAmt, mOpt);
+  const memo = mkTrack(mR, mAmt, mOpt);
   /* عدد الأيام يُحسب على نسخة نظيفة قبل استهلاك المسار */
   const memoNeed = (mOpt.rep === 'stop')
-      ? realDaysMv(mkTrack(mR.from, mR.to, mAmt, mOpt), studyDays, j => mvAt(j, 'm'), mEven)
+      ? realDaysMv(mkTrack(mR, mAmt, mOpt), studyDays, j => mvAt(j, 'm'), mEven)
       : daysNeeded(memo);
   /* المراجعة الكبرى المتدرّجة: مداها ما سقط من المراجعة الصغرى من أول الحفظ،
      ومقدارها اليومي = رقم الجزء الذي بلغه الحفظ الجديد × مقدار الحفظ اليومي.
@@ -1435,10 +1533,10 @@ function render(){
   const abEx = bAuto
       ? exList(exs.map(x => x.sec === 'm' ? Object.assign({}, x, {sec:'b'}) : x), 'b') : bEx;
   const big  = bAuto
-    ? mkTrack(mR.from, mR.to, mAmt, Object.assign({rep:'start', unit:mR.unit, wrap:true,
+    ? mkTrack(mR, mAmt, Object.assign({rep:'start', wrap:true,
         tol:+$('bTol').value, ex:abEx}, stopOpt(bStop)))
-    : mkTrack(bR.from, bR.to, +$('bAmt').value * bK,
-      Object.assign({rep:$('bRep').value, unit:bR.unit, mFrom:mR.from, mTo:mR.to, mUnit:mR.unit,
+    : mkTrack(bR, +$('bAmt').value * bK,
+      Object.assign({rep:$('bRep').value, mRange:mR,
        amts:[+$('bAmt2').value * bK, +$('bAmt3').value * bK, +$('bAmt4').value * bK],
        tol:+$('bTol').value, ex:bEx}, stopOpt(bStop)));
   const bigOn = $('bOn').checked;
@@ -1453,13 +1551,16 @@ function render(){
   const bigEnd0 = big.baseEnd;          // آخر المدى قبل أن تزحف نهاية الكبرى المتدرّجة كل يوم
   /* رقم الجزء نسبةً إلى بداية مدى الحفظ: أول جزء = ١، الذي يليه = ٢ ... */
   const juzNo = x => { let k = 30; while(k > 1 && JUZP[k-1] > x + 1e-9) k--; return k; };
-  const bJuz0 = juzNo(memo.start);
+  /* رقم الجزء عند موضعٍ من محور الحفظ، وعدّ الأجزاء يجري بترتيب الخطة صعودًا كان أو نزولًا */
+  const juzAt = v => juzNo(toR(memo.map, v, false));
+  const mSgn  = mR.desc ? -1 : 1;
+  const bJuz0 = juzAt(memo.start);
   const sMode = $('sMode').value;
   const small = sMode === 'range'
-      ? mkTrack(sR.from, sR.to, +$('sAmt').value, {rep:$('sRep').value, unit:sR.unit, ex:sEx}) : null;
+      ? mkTrack(sR, +$('sAmt').value, {rep:$('sRep').value, ex:sEx}) : null;
   /* مدى مقلوب: «من» بعد «إلى» — أو استُثني كاملًا */
   const emptyMsg = (t, name) => t.span <= 0
-      ? ('مدى <b>' + name + '</b> مقلوب — اجعل «من» قبل «إلى».')
+      ? ('مدى <b>' + name + '</b> خالٍ — راجع «من» و«إلى».')
       : ('مدى <b>' + name + '</b> مستثنًى بالكامل — راجع استثناء السور والآيات.');
   if(memo.total <= 0) warns.push(emptyMsg(memo, 'الحفظ الجديد'));
   if(bigOn && !bAuto && big.total <= 0) warns.push(emptyMsg(big, 'المراجعة الكبرى'));
@@ -1528,8 +1629,9 @@ function render(){
   const memoLog = [];                 // مقاطع الحفظ الجديد يومًا بيوم — لنمط «آخر أيام الحفظ»
   /* مواضع نصيب كل يوم في كل عمود — تُملأ منها خانات التعديل اليدوي */
   const posMap = new Map();
-  const posSet = (j, sec, p, ex) => { if(p) posMap.set(j + '|' + sec,
-      [p[0], p[1], Math.max(0, exLen(ex, p[0], p[1]))]); };
+  /* تُخزّن في فضاء الصفحات ليملأ منها التعديل اليدوي خاناته */
+  const posSet = (j, sec, m, ex, p) => { if(p) posMap.set(j + '|' + sec,
+      [toR(m, p[0], false), toR(m, p[1], true), Math.max(0, exLen(ex, p[0], p[1]))]); };
   for(const d of all){
     const r = {j: d.j, day: DAYS_AR[d.wd], date: hStr(d.j), week: d.week, kind: 'study'};
     if(d.kind === 'off'){ r.kind = 'off'; r.text = d.hol; }
@@ -1544,29 +1646,29 @@ function render(){
         r.new = '—'; mLo = memo.cur;
       } else {
         mp = mvPortion(memo, mvM) || nextPortion(memo);
-        r.new = dsc(mp, mEx, mvM);
+        r.new = dsc(memo.map, mp, mEx, mvM);
         mLo = mp ? mp[0] : memo.baseEnd;
         /* بعد التعديل اليدوي يُعاد توزيع ما بقي على ما بقي من أيام الحفظ */
         if(mEven && mvM && mp && sdIdx.has(d.j)){
           const left = studyDays.length - 1 - sdIdx.get(d.j);
-          if(left > 0) memo.amt = fitAmt(memo, left, exLen(mEx, memo.cur, memo.baseEnd) / left);
+          if(left > 0) memo.amt = fitAmt(memo, left, exLen(memo.ex, memo.cur, memo.baseEnd) / left);
         }
       }
-      let sLo = null, sHi = null, sXe = sEx;
+      let sLo = null, sHi = null, sXe = sEx, sMap = small ? small.map : memo.map;
       if(mvS && sMode === 'range' && small){
         const sp = mvPortion(small, mvS);
         if(sp){ sLo = sp[0]; sHi = sp[1]; }
       } else if(mvS){                  // النمطان التلقائيان بلا مسار: يُثبَّت نصيب اليوم وحده
-        sXe = mEx;
+        sXe = mEx; sMap = memo.map;
         if(mvS.kind === 'amt'){
-          const lo = Math.max(memo.start, exBack(mEx, mLo, Math.max(0.05, mvS.amt)));
+          const lo = Math.max(memo.start, exBack(memo.ex, mLo, Math.max(0.05, mvS.amt)));
           if(lo < mLo){ sLo = lo; sHi = mLo; }
-        } else { sLo = mvS.a; sHi = mvS.b; }
+        } else { sLo = toV(memo.map, mvS.a); sHi = toV(memo.map, mvS.b, true); }
       } else if(sMode === 'range'){
         const sp = nextPortion(small);
         if(sp){ sLo = sp[0]; sHi = sp[1]; }
       } else if(sMode === 'days'){     // ما حُفظ في آخر كذا يوم حفظ (بمستثنى الحفظ الجديد)
-        sXe = mEx;
+        sXe = mEx; sMap = memo.map;
         if(memoLog.length){
           let k = memoLog.length - 1, lo = memoLog[k][0];
           const hi = memoLog[k][1];
@@ -1577,16 +1679,16 @@ function render(){
           if(hi > lo + 1e-9){ sLo = lo; sHi = hi; }
         }
       } else {                        // تتبع آخر ما حُفظ: بمستثنى الحفظ الجديد
-        sXe = mEx;
-        const lo = Math.max(memo.start, exBack(mEx, mLo, back));
+        sXe = mEx; sMap = memo.map;
+        const lo = Math.max(memo.start, exBack(memo.ex, mLo, back));
         if(lo < mLo){ sLo = lo; sHi = mLo; }
       }
       if(mp) memoLog.push(mp);
-      r.small = dsc(sLo == null ? null : [sLo, sHi], sXe, mvS);
-      if(sLo != null && !sFirst) sFirst = [sLo, sHi];   // أوّل نصيبٍ راجعته الصغرى في الخطة
+      r.small = dsc(sMap, sLo == null ? null : [sLo, sHi], sXe, mvS);
+      if(sLo != null && !sFirst) sFirst = [toR(sMap, sLo, false), toR(sMap, sHi, true)];   // أوّل نصيبٍ راجعته الصغرى في الخطة
       /* كم جزءًا من مدى الحفظ تمّ حفظه — أوّلُ يومٍ يبلغ فيه الحفظُ الجزءَ التالي
          هو يومُ إتمام ما قبله، فعنده تستأنف الكبرى بمقدارٍ جديد */
-      const jzDone = Math.max(0, juzNo(mLo) - bJuz0);
+      const jzDone = Math.max(0, mSgn * (juzAt(mLo) - bJuz0));
       const jzNew = bJzOn && jzDone > jzPrev;
       if(jzDone > jzPrev) jzPrev = jzDone;
       let bp = null, jzRoll = false;
@@ -1595,11 +1697,11 @@ function render(){
         /* المدى = ما سقط من الصغرى: من أول الحفظ إلى أول ما تشغله الصغرى اليوم */
         big.baseEnd = Math.max(big.start,
           (sMode !== 'range' && sLo != null) ? sLo : mLo);   // المدى المحدَّد للصغرى لا يدلّ على ما سقط
-        big.amt = Math.max(0.05, (juzNo(mLo) - bJuz0 + 1) * memo.amt);
+        big.amt = Math.max(0.05, (mSgn * (juzAt(mLo) - bJuz0) + 1) * memo.amt);
         if(big.cur > big.baseEnd + 1e-9) big.cur = big.start;
         big.done = false;
         bp = mvPortion(big, mvB, bigEnd0);
-        if(!bp && exLen(abEx, big.start, big.baseEnd) > 1e-9) bp = nextPortion(big, null);
+        if(!bp && exLen(big.ex, big.start, big.baseEnd) > 1e-9) bp = nextPortion(big, null);
       } else if(bDay){
         /* مقدارٌ بعدد ما تمّ حفظه من الأجزاء: يَجُبّ مقادير الدورات متى حُدِّد.
            الجزء الأول أوّلُ أجزاء مدى الحفظ لا أوّلُ المصحف، ولا يُعمل به حتى يتمّ */
@@ -1618,26 +1720,29 @@ function render(){
           }
         }
         /* الكبرى تقف قبل ما يشغله اليوم من حفظ ومراجعة صغرى */
-        let guard = mLo;
-        if(sMode !== 'range' && sLo != null) guard = Math.min(guard, sLo);
+        let guard = xfer(memo.map, big.map, mLo);
+        if(sMode !== 'range' && sLo != null)
+          guard = Math.min(guard, xfer(sMap, big.map, sLo));
         bp = mvPortion(big, mvB) || nextPortion(big, guard);
       }
       /* «تفتتح كلّ دورة بأوّل ما راجعته الصغرى»: كلّما استأنفت الكبرى من أوّل مدّتها —
          في أوّل الخطة أو بعد اكتمال دورة — كان نصيبها عين أوّل نصيبٍ راجعته الصغرى،
          لا مقدارَها المعتاد. ولا يكون ذلك إن وُضع نصيبها باليد، ولا إن خرج عن مداها،
          ولا يوم إتمام جزءٍ فإنّ لذلك اليوم مقدارَه المنصوص عليه فهو أولى */
-      if(bLikeS && bp && !mvB && !jzRoll && sFirst && bp[0] <= big.start + 1e-9
-         && sFirst[0] >= big.start - 1e-9 && sFirst[1] <= big.baseEnd + 1e-9
-         && sFirst[1] > sFirst[0] + 1e-9){
-        bp = [sFirst[0], sFirst[1]];
-        big.cur = sFirst[1]; big.si = null; big.done = false;
+      if(bLikeS && bp && !mvB && !jzRoll && sFirst && bp[0] <= big.start + 1e-9){
+        const f0 = toV(big.map, sFirst[0]), f1 = toV(big.map, sFirst[1], true);
+        if(f0 >= big.start - 1e-9 && f1 <= big.baseEnd + 1e-9 && f1 > f0 + 1e-9){
+          bp = [f0, f1];
+          big.cur = f1; big.si = null; big.done = false;
+        }
       }
-      r.big = dsc(bp, bAuto ? abEx : bEx, mvB);
+      r.big = dsc(big.map, bp, bAuto ? abEx : bEx, mvB);
       /* تعليم الخلايا المعدَّلة يدويًّا في الجدول على الشاشة */
       r.mv = {big: !!(mvB && bp), new: !!(mvM && mp), small: !!(mvS && sLo != null)};
-      posSet(d.j, 'm', mp, mEx);
-      posSet(d.j, 's', sLo == null ? null : [sLo, sHi], sXe);
-      posSet(d.j, 'b', bp, bAuto ? abEx : bEx);
+      posSet(d.j, 'm', memo.map, memo.ex, mp);
+      posSet(d.j, 's', sMap, sMap === memo.map ? memo.ex : small.ex,
+             sLo == null ? null : [sLo, sHi]);
+      posSet(d.j, 'b', big.map, big.ex, bp);
     }
     rows.push(r);
   }
@@ -1761,7 +1866,8 @@ function render(){
       + (mEven ? '  •  التوزيع بالتساوي: ' + fmt(memo.amt) + ' وجه يوميًا على '
                  + nd(studyDays.length) + ' يوم حفظ.' : '') + exNote('m');
   /* عدد المقاطع الموضوعية في مدى الحفظ ووسط طولها — ليتبيّن أثر الخيار قبل اختياره */
-  { const inR = RKP.filter(x => x > memo.start - 1e-9 && x < memo.baseEnd - 1e-9).length + 1;
+  { const mR0 = rStart(mR.unit, mR.lo), mR1 = rEnd(mR.unit, mR.hi);
+    const inR = RKP.filter(x => x > mR0 - 1e-9 && x < mR1 - 1e-9).length + 1;
     $('mStopInfo').textContent = (mStop !== 'theme' && mStop !== 'both') ? ''
       : ('المقاطع الموضوعية في المدى: ' + nd(inR) + ' مقطعًا — وسط الواحد '
          + fmt(memo.total / inR) + ' وجه. وهي الرُّكوعات: ' + nd(RKP.length)
@@ -1995,13 +2101,16 @@ function slideXml(srows, page, total, hdr) {
   sh.push(shape(id++, 'band', 'rect', 0, 0, S.W, S.BAND, S.NAVY));
   sh.push(shape(id++, 'stripe', 'rect', 0, S.BAND, S.W, S.STRIPE, S.ROSE));
 
-  const logoH = 520000, logoW = Math.round(logoH * hdr.logoW / hdr.logoH);
-  const logoX = S.W - S.MARGIN - logoW;
-  sh.push(picture(id++, 'rId2', logoX, Math.round((S.BAND - logoH) / 2), logoW, logoH));
-  const divX = logoX - 200000;
-  sh.push(shape(id++, 'div', 'rect', divX, Math.round((S.BAND - 480000) / 2), 13000, 480000, S.ROSE));
-
-  const tRight = divX - 170000, tLeft = S.MARGIN + 620000;
+  let tRight = S.W - S.MARGIN;              // بلا شعار: يمتدّ العنوان إلى حافّة الشريحة
+  if (!hdr.noLogo) {
+    const logoH = 520000, logoW = Math.round(logoH * hdr.logoW / hdr.logoH);
+    const logoX = S.W - S.MARGIN - logoW;
+    sh.push(picture(id++, 'rId2', logoX, Math.round((S.BAND - logoH) / 2), logoW, logoH));
+    const divX = logoX - 200000;
+    sh.push(shape(id++, 'div', 'rect', divX, Math.round((S.BAND - 480000) / 2), 13000, 480000, S.ROSE));
+    tRight = divX - 170000;
+  }
+  const tLeft = S.MARGIN + 620000;
   sh.push(textBox(id++, tLeft, 130000, tRight - tLeft, S.BAND - 260000, [
     para(hdr.title, 19, true, S.WHITE, 'r'),
     para(hdr.sub, 10.5, false, S.ROSE, 'r', 4),
@@ -2115,10 +2224,10 @@ function buildPptx(rows, hdr, logoBytes) {
     add('ppt/slides/_rels/slide' + (i + 1) + '.xml.rels', HEAD
       + '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
       + '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout1.xml"/>'
-      + '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/>'
+      + (logoBytes ? '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/image1.png"/>' : '')
       + '</Relationships>');
   });
-  files.push({ name: 'ppt/media/image1.png', data: logoBytes });
+  if (logoBytes) files.push({ name: 'ppt/media/image1.png', data: logoBytes });
   return zipStore(files);
 }
 
@@ -2136,14 +2245,15 @@ function exportPptx(){
   btn.textContent = 'جارٍ التصدير…'; btn.disabled = true;
   setTimeout(() => {
     try{
-      const img = document.querySelector('header .logo');
+      const img = document.querySelector('header .logo'), off = noLogo();
       const bytes = buildPptx(rows, {
         title: $('hTitle').textContent,
         sub:   $('hSub').textContent,
         range: $('hRng').textContent,
         org:   $('fOrg').textContent,
         logoW: img.naturalWidth || 420, logoH: img.naturalHeight || 369,
-      }, b64bytes(img.src.split(',')[1]));
+        noLogo: off,
+      }, off ? null : b64bytes(img.src.split(',')[1]));
       const PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
       deliver(new Blob([bytes], {type: PPTX}), fileName('pptx'), PPTX);
     }catch(e){ alert('تعذّر التصدير: ' + e.message); }
@@ -2221,10 +2331,10 @@ function drawPlanPage(ctx, srows, page, total, hdr, logo) {
     const h = P.LOGO_H, w = h * logo.naturalWidth / logo.naturalHeight;
     ctx.drawImage(logo, xr - w, (P.BAND - h) / 2, w, h);
     xr -= w + P.GAP + 1;
+    ctx.fillStyle = P.ROSE;
+    ctx.fillRect(xr - 0.36, (P.BAND - P.DIV_H) / 2, 0.36, P.DIV_H);
+    xr -= 0.36 + 1 + P.GAP;
   }
-  ctx.fillStyle = P.ROSE;
-  ctx.fillRect(xr - 0.36, (P.BAND - P.DIV_H) / 2, 0.36, P.DIV_H);
-  xr -= 0.36 + 1 + P.GAP;
 
   /* المعيَّنات في الطرف الأيسر */
   const step = P.DOT + P.DOT_GAP;
@@ -2356,7 +2466,7 @@ function exportPdf() {
     const pages = splitSlides(rows);
     const hdr = {title: $('hTitle').textContent, sub: $('hSub').textContent,
                  range: $('hRng').textContent, org: $('fOrg').textContent};
-    const logo = LOGO_EL(), k = PDF_DPI / 25.4, imgs = [];
+    const logo = noLogo() ? null : LOGO_EL(), k = PDF_DPI / 25.4, imgs = [];
     for (let i = 0; i < pages.length; i++) {
       const cv = document.createElement('canvas');
       cv.width = Math.round(PP.W * k); cv.height = Math.round(PP.H * k);
@@ -2374,14 +2484,14 @@ function exportPdf() {
 }
 
 /* ---------------- الإعدادات ---------------- */
-const FIELDS = ['dFrom','dTo','wStart','mUnit','mFrom','mTo','mFromS','mToS','mAmt','mRep',
+const FIELDS = ['dFrom','dTo','wStart','mUnit','mDir','mFrom','mTo','mFromS','mToS','mAmt','mRep',
                 'bStart','bUnit','bFrom','bTo','bFromS','bToS','bAmtUnit','bAmt','bRep',
                 'bAmt2','bAmt3','bAmt4','bJz1','bJz2','bJz3','bJz4','bTol','mTol','mTolUnit','mSpread','mStop','bStop','sMode','sBack','sDays',
                 'sUnit','sFrom','sTo','sFromS','sToS',
                 'sAmt','sRep','tTitle','tSub','tOrg','tDua','tFile','numStyle','fitPct'];
 function collect(){
   const o = {}; FIELDS.forEach(f => o[f] = $(f).value);
-  o.bOn = $('bOn').checked; o.fitPage = $('fitPage').checked;
+  o.bOn = $('bOn').checked; o.fitPage = $('fitPage').checked; o.noLogo = $('noLogo').checked;
   o.mEven = $('mEven').checked; o.bAuto = $('bAuto').checked; o.mNoFin = $('mNoFin').checked;
   o.bLikeS = $('bLikeS').checked;
   o.days = [...document.querySelectorAll('#dayBoxes input')].filter(c=>c.checked).map(c=>+c.value);
@@ -2389,8 +2499,6 @@ function collect(){
               tr.querySelector('.hf').value, tr.querySelector('.ht').value]);
   o.ovs = [...$('ovBody').children].map(tr => [+tr.querySelector('.od').value,
               tr.querySelector('.ow').value, tr.querySelector('.ot').value]);
-  const lg = LOGO_EL();
-  if(lg.src !== DEFAULT_LOGO){ o.logo = lg.src; o.logoName = lg.alt; }
   o.exs = [...$('exBody').children].map(tr => [tr.querySelector('.xc').value,
               +tr.querySelector('.xs').value,
               tr.querySelector('.xa').value, tr.querySelector('.xb').value]);
@@ -2404,6 +2512,10 @@ function collect(){
 function apply(o){
   const MIG = {'0':'stop', '1':'start', 'memo3':'memo'};
   ['mRep','bRep','sRep'].forEach(k => { if(MIG[o[k]] !== undefined) o[k] = MIG[o[k]]; });
+  /* الاتّجاه كان ثلاثةً لكلّ قسم، فصار واحدًا للخطة وخيارين: تصاعدي وتنازلي بالسور */
+  if(o.mDir === undefined && (o.bDir || o.sDir)) o.mDir = o.bDir || o.sDir;
+  if(o.mDir === 'sura') o.mDir = 'desc';
+  if(o.mDir === undefined) o.mDir = 'asc';        /* إعداداتٌ سابقة للاتّجاه: تصاعدية */
   /* الإعدادات القديمة: خانة «لا تجمع سورتين» صارت قائمة «الوقوف اليومي» */
   if(o.mStop === undefined && o.mOneSura !== undefined) o.mStop = o.mOneSura ? 'sura' : 'none';
   if(o.bStop === undefined && o.bOneSura !== undefined) o.bStop = o.bOneSura ? 'sura' : 'none';
@@ -2414,6 +2526,7 @@ function apply(o){
   if(o.bAuto !== undefined) $('bAuto').checked = o.bAuto;
   if(o.bLikeS !== undefined) $('bLikeS').checked = o.bLikeS;
   if(o.fitPage !== undefined) $('fitPage').checked = o.fitPage;
+  if(o.noLogo !== undefined) $('noLogo').checked = o.noLogo;
   if(o.days){ document.querySelectorAll('#dayBoxes input').forEach(c => c.checked = o.days.includes(+c.value)); syncDays(); }
   if(o.hols){ $('holBody').innerHTML = ''; o.hols.forEach(h => holRow(h[0], h[1], h[2])); }
   if(o.ovs){ $('ovBody').innerHTML = ''; o.ovs.forEach(v => ovRow(v[0], v[1], v[2])); }
@@ -2421,13 +2534,9 @@ function apply(o){
   if(o.mvs){ $('mvBody').innerHTML = '';
     o.mvs.forEach(v => mvRow({d:v[0], sec:v[1], kind:v[2],
                               s1:v[3], a1:v[4], s2:v[5], a2:v[6], amt:v[7]})); }
-  const lg = LOGO_EL();
-  if(o.logo){ lg.src = o.logo; lg.alt = o.logoName || 'شعار'; }
-  else { lg.src = DEFAULT_LOGO; lg.alt = 'مركز الفرقان'; }   // الاسترجاع يعيد الشعار كما كان
-  logoNote(o.logo ? o.logoName : '');
   toggleSmall(); toggleUnits(); toggleAuto();
   $('mTolUnit').dataset.was = $('mTolUnit').value;   // الاسترجاع لا يحوّل القيمة
-  toggleStop(); syncDates(); applyFit();
+  toggleStop(); syncDates(); applyFit(); applyLogo();
 }
 /* نمط الزيادة وحدّها لا محلّ لهما إن كان الوقوف عند المقدار المحدَّد */
 function toggleStop(){
@@ -2513,11 +2622,38 @@ function toggleUnits(){
     $(p + 'RngJuz').style.display  = sura ? 'none' : '';
     $(p + 'RngSura').style.display = sura ? '' : 'none';
   });
+  dirSync();                          // الاتّجاه يُقرأ من الوحدة المعروضة
 }
+/* «من» في الحفظ الجديد أوّلُ ما يُحفظ و«إلى» آخرُه، لا تُقلبان ولا تُبدَّلان أبدًا،
+   ومنهما وحدَهما يُقرأ اتّجاه الخطة: فـ«من آل عمران إلى البقرة» خطّةٌ نازلة.
+   فإن تساوى الطرفان — سورةٌ واحدة أو جزءٌ واحد — فلا دلالة فيهما، وعندئذٍ
+   تعمل قائمة «اتّجاه الخطة»؛ وفيما عدا ذلك تُعطَّل وتُظهر الاتّجاه المقروء.
+   والمراجعتان تتبعان اتّجاه الخطة، فتُرتَّب أطرافهما عليه */
+function dirSwap(p){
+  const desc = planDir() !== 'asc';
+  [[p + 'From', p + 'To'], [p + 'FromS', p + 'ToS']].forEach(q => {
+    const A = $(q[0]), B = $(q[1]), a = +A.value, b = +B.value;
+    if(desc ? a < b : a > b){ A.value = b; B.value = a; }
+  });
+}
+function dirAuto(){
+  const sel = $('mDir');
+  const sura = $('mUnit').value === 'sura';
+  const a = +$(sura ? 'mFromS' : 'mFrom').value;
+  const b = +$(sura ? 'mToS'   : 'mTo').value;
+  if(a !== b && !sel.dataset.man) sel.value = a > b ? 'desc' : 'asc';
+  sel.disabled = false;
+  $('mDirNote').textContent = sel.dataset.man
+    ? 'الاتّجاه مختارٌ بيدك. لتعود إلى ضبطه تلقائيًّا غيّري «من» أو «إلى».'
+    : 'الاتّجاه مضبوطٌ تلقائيًّا من «من» و«إلى»، ولك تغييره من هنا.';
+  dirSwap('b'); dirSwap('s');
+}
+/* تغيير «من» أو «إلى» يعيد الضبط التلقائي */
+function dirSync(){ delete $('mDir').dataset.man; dirAuto(); }
 
 /* ---------------- التهيئة ---------------- */
-const CFG_KEY = 'khitta-cfg';          // إعدادات هذا المتصفّح
-const CFG_BAK = 'khitta-cfg-bak';      // نسخة تُحفظ قبل «استعادة الأصل» فلا يضيع الجهد
+const CFG_KEY = 'khitta-cfg-2';        // إعدادات هذا المتصفّح — مستقلّة عن الصفحة الأولى
+const CFG_BAK = 'khitta-cfg-2-bak';    // نسخة تُحفظ قبل «استعادة الأصل» فلا يضيع الجهد
 /* رسالة عابرة على الزرّ ثم يعود نصّه */
 function flash(btn, msg, ms){
   const old = btn.dataset.label || btn.textContent;
@@ -2552,7 +2688,8 @@ function flash(btn, msg, ms){
   applyFit();
   $('fitPage').addEventListener('change', applyFit);
   $('fitPct').addEventListener('input', applyFit);
-  logoNote(LOGO_EL().alt);
+  applyLogo();
+  $('noLogo').addEventListener('change', applyLogo);
 
   syncDays();
   document.querySelectorAll('#dayBoxes input').forEach(c => c.addEventListener('change', syncDays));
@@ -2568,6 +2705,13 @@ function flash(btn, msg, ms){
   $('mTolUnit').addEventListener('change', switchTolUnit);
   toggleAuto();
   ['mUnit','bUnit','sUnit'].forEach(id => $(id).addEventListener('change', toggleUnits));
+  $('mDir').addEventListener('change', () => {
+    $('mDir').dataset.man = '1'; dirAuto();          // اختيارٌ يدويّ يُحترم
+  });
+  ['From','To','FromS','ToS'].forEach(k => {
+    $('m' + k).addEventListener('change', dirSync);
+    ['b','s'].forEach(p => $(p + k).addEventListener('change', () => dirSwap(p)));
+  });
   $('addHol').onclick  = () => { holRow('إجازة', '1/1/1448', '3/1/1448'); render(); };
   $('addOv').onclick   = () => { ovRow(4, '', 'study'); render(); };
   $('addEx').onclick   = () => { exRow('all', 1, '', ''); render(); };
@@ -2577,14 +2721,12 @@ function flash(btn, msg, ms){
     mvFill(mvRow({d: day ? hInput(day.j) : $('dFrom').value, sec:'m', kind:'range'}));
   };
   $('defHol').onclick  = () => { $('holBody').innerHTML=''; DEFAULT_HOL.forEach(h=>holRow(h[0],h[1],h[2])); render(); };
-  $('logoFile').onchange = e => { loadLogo(e.target.files[0]); e.target.value = ''; };
-  $('logoDef').onclick   = () => setLogo(DEFAULT_LOGO, '');
   $('btnPdf').onclick   = exportPdf;
   $('btnPrint').onclick = () => window.print();
   $('btnSave').onclick  = () => {
     let msg = 'تم الحفظ ✓';
     try{ localStorage.setItem(CFG_KEY, JSON.stringify(collect())); }
-    catch(e){ msg = 'تعذّر الحفظ — الشعار كبير'; }
+    catch(e){ msg = 'تعذّر الحفظ'; }
     flash($('btnSave'), msg);
   };
   /* استرجاع آخر إعدادات حُفظت — دون مساس بالمحفوظ */
